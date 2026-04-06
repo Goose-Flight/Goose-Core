@@ -1,0 +1,36 @@
+# ~/.config/goose/goose.yaml (optional — all values have sensible defaults)
+
+# Unit system
+units: metric  # metric | imperial
+
+# Report settings
+reports:
+  output_dir: ~/goose_reports
+  default_format: pdf  # pdf | html | json
+
+# Map settings
+maps:
+  tile_source: online  # online | local
+  tile_cache_dir: ~/.config/goose/tiles
+
+# Telemetry — ships in v1.1, not v1.0
+# Anonymous crash data sent to goose-flight.dev
+# ON by default. Opt out: goose telemetry disable
+# telemetry:
+#   enabled: true
+#   endpoint: https://goose-flight.dev/api/telemetry
+
+# Plugin threshold overrides (optional — defaults are tuned for general use)
+plugins:
+  vibration:
+    threshold_warning: 15.0   # m/s² RMS
+    threshold_critical: 30.0
+  battery_sag:
+    min_cell_voltage_warning: 3.5
+    min_cell_voltage_critical: 3.3
+  gps_health:
+    min_satellites_warning: 10
+    min_satellites_critical: 6
+    max_hdop_warning: 2.0
+    max_hdop_critical: 4.0
+  # ... all plugin thresholds are overridable

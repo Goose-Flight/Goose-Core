@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Mypy
+.mypy_cache/
+
+# Log files (keep directory structure, ignore binary logs)
+logs/**/*.ulg
+logs/**/*.bin
+!logs/.gitkeep
+!logs/px4/.gitkeep
+!logs/px4/good_flights/.gitkeep
+!logs/px4/crashes/.gitkeep
+!logs/ardupilot/.gitkeep
+
+# Environment
+.env
+.env.*

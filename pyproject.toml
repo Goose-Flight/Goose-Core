@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "goose-flight"
+version = "1.0.0"
+description = "Open source drone flight log crash analysis and validation engine"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "click>=8.0",
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "pyulog>=1.0",
+    "pymavlink>=2.4.40",
+    "fastapi>=0.100",
+    "uvicorn>=0.23",
+    "jinja2>=3.1",
+    "weasyprint>=60.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1",
+    "mypy>=1.5",
+]
+
+[project.scripts]
+goose = "goose.cli.main:cli"
+
+[project.entry-points."goose.plugins"]
+crash_detection = "goose.plugins.crash_detection:CrashDetectionPlugin"
+vibration = "goose.plugins.vibration:VibrationPlugin"
+battery_sag = "goose.plugins.battery_sag:BatterySagPlugin"
+gps_health = "goose.plugins.gps_health:GpsHealthPlugin"
+motor_saturation = "goose.plugins.motor_saturation:MotorSaturationPlugin"
+ekf_consistency = "goose.plugins.ekf_consistency:EkfConsistencyPlugin"
+rc_signal = "goose.plugins.rc_signal:RcSignalPlugin"
+attitude_tracking = "goose.plugins.attitude_tracking:AttitudeTrackingPlugin"
+position_tracking = "goose.plugins.position_tracking:PositionTrackingPlugin"
+failsafe_events = "goose.plugins.failsafe_events:FailsafeEventsPlugin"
+log_health = "goose.plugins.log_health:LogHealthPlugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/goose"]
+
+[tool.ruff]
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["goose"]
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

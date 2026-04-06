@@ -1,0 +1,27 @@
+name: Initialize Wiki
+on:
+  workflow_dispatch:
+jobs:
+  init-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bootstrap wiki with Home page
+        run: |
+          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" /tmp/wiki 2>&1 || true
+          if [ ! -d /tmp/wiki ]; then
+            mkdir /tmp/wiki
+            cd /tmp/wiki
+            git init
+            git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
+          fi
+          cd /tmp/wiki
+          cat > Home.md << 'EOF'
+# Welcome to Goose
+
+Initializing wiki...
+EOF
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add .
+          git commit -m "docs: bootstrap wiki"
+          git push -u origin HEAD:master || git push -u origin HEAD:main

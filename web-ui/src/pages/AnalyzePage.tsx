@@ -37,7 +37,7 @@ export function AnalyzePage() {
           <div className="bg-white rounded-lg shadow p-8">
             <div className="grid grid-cols-3 gap-8">
               <div className="flex flex-col items-center">
-                <ScoreRing score={result.score} label="Flight Score" />
+                <ScoreRing score={result.findings.length > 0 ? Math.min(...result.findings.map(f => f.score)) : 100} label="Flight Score" />
               </div>
               <div className="col-span-2 flex flex-col justify-center">
                 <div className="space-y-3">
@@ -48,9 +48,9 @@ export function AnalyzePage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Analysis Time</p>
+                    <p className="text-sm text-gray-600">Plugins Run</p>
                     <p className="font-semibold text-gray-900">
-                      {new Date(result.timestamp).toLocaleString()}
+                      {result.plugins_run.join(', ')}
                     </p>
                   </div>
                   <div>

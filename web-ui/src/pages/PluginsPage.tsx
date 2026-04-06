@@ -52,7 +52,7 @@ export function PluginsPage() {
           <div className="grid gap-4">
             {plugins.map((plugin) => (
               <div
-                key={plugin.id}
+                key={plugin.name}
                 className="border rounded-lg p-6 hover:border-blue-400 hover:bg-blue-50 transition"
               >
                 <div className="flex items-start justify-between">
@@ -65,19 +65,10 @@ export function PluginsPage() {
                         {plugin.description}
                       </p>
                     )}
-                    <p className="text-xs text-gray-500 mt-2">
-                      v{plugin.version}
-                    </p>
                   </div>
                   <div className="ml-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        plugin.enabled
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {plugin.enabled ? 'Enabled' : 'Disabled'}
+                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      Active
                     </span>
                   </div>
                 </div>

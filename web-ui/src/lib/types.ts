@@ -1,25 +1,24 @@
-export interface AnalysisResult {
+export interface Finding {
+  plugin: string;
+  title: string;
+  severity: string;
   score: number;
-  findings: Finding[];
-  file_name: string;
-  timestamp: string;
+  description: string;
+  evidence?: Record<string, unknown> | null;
+  phase?: string | null;
+  timestamp_start?: number | null;
+  timestamp_end?: number | null;
 }
 
-export interface Finding {
-  id: string;
-  type: string;
-  severity: 'critical' | 'warning' | 'info';
-  message: string;
-  line?: number;
-  details?: string;
+export interface AnalysisResult {
+  findings: Finding[];
+  plugins_run: string[];
+  file_name: string;
 }
 
 export interface Plugin {
-  id: string;
   name: string;
-  version: string;
-  enabled: boolean;
-  description?: string;
+  description?: string | null;
 }
 
 export interface UploadResponse {

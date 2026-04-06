@@ -5,11 +5,11 @@ interface FindingsTableProps {
   findings: Finding[]
 }
 
-type SortField = 'type' | 'severity' | 'message'
+type SortField = 'plugin' | 'severity' | 'title'
 type SortOrder = 'asc' | 'desc'
 
 export function FindingsTable({ findings }: FindingsTableProps) {
-  const [sortField, setSortField] = useState<SortField>('severity')
+  const [sortField, setSortField] = useState<SortField>('severity' as SortField)
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
 
   const getSeverityColor = (severity: string) => {
@@ -61,10 +61,10 @@ export function FindingsTable({ findings }: FindingsTableProps) {
           <tr className="bg-gray-100 border-b">
             <th className="text-left p-4">
               <button
-                onClick={() => handleSort('type')}
+                onClick={() => handleSort('plugin')}
                 className="font-semibold hover:text-blue-600"
               >
-                Type <SortIcon field="type" />
+                Plugin <SortIcon field="plugin" />
               </button>
             </th>
             <th className="text-left p-4">
@@ -75,43 +75,35 @@ export function FindingsTable({ findings }: FindingsTableProps) {
                 Severity <SortIcon field="severity" />
               </button>
             </th>
+            <th className="text-left p-4">Score</th>
             <th className="text-left p-4">
               <button
-                onClick={() => handleSort('message')}
+                onClick={() => handleSort('title')}
                 className="font-semibold hover:text-blue-600"
               >
-                Message <SortIcon field="message" />
+                Title <SortIcon field="title" />
               </button>
             </th>
-            <th className="text-left p-4">Details</th>
           </tr>
         </thead>
         <tbody>
           {sortedFindings.length === 0 ? (
             <tr>
-              <td colSpan={4} className="p-4 text-center text-gray-500">
+              <td colSpan={4} className="p-4 text-center text-gray-500 italic">
                 No findings
               </td>
             </tr>
           ) : (
-            sortedFindings.map((finding) => (
-              <tr key={finding.id} className="border-b hover:bg-gray-50">
-                <td className="p-4 font-medium text-gray-900">{finding.type}</td>
+            sortedFindings.map((finding, idx) => (
+              <tr key={`${finding.plugin}-${idx}`} className="border-b hover:bg-gray-50">
+                <td className="p-4 font-medium text-gray-900">{finding.plugin}</td>
                 <td className={`p-4 font-semibold ${getSeverityColor(finding.severity)}`}>
                   {finding.severity}
                 </td>
-                <td className="p-4 text-gray-700">{finding.message}</td>
-                <td className="p-4 text-gray-600 text-sm">
-                  {finding.details && (
-                    <details>
-                      <summary className="cursor-pointer hover:text-blue-600">
-                        View
-                      </summary>
-                      <pre className="mt-2 p-2 bg-gray-50 rounded text-xs whitespace-pre-wrap">
-                        {finding.details}
-                      </pre>
-                    </details>
-                  )}
+                <td className="p-4 text-gray-700">{finding.score}</td>
+                <td className="p-4 text-gray-700">
+                  <div className="font-medium">{finding.title}</div>
+                  <div className="text-sm text-gray-500">{finding.description}</div>
                 </td>
               </tr>
             ))

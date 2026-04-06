@@ -14,7 +14,8 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
     return { success: false, error }
   }
 
-  return response.json()
+  const result: AnalysisResult = await response.json()
+  return { success: true, result }
 }
 
 export async function getPlugins(): Promise<Plugin[]> {

@@ -104,13 +104,13 @@ def _plugin_result_line(plugin_name: str, score: int, summary: str) -> Text:
     """Format a single plugin result line."""
     # Icon based on score
     if score >= 90:
-        icon = "✓"
+        icon = "[+]"
         style = "green"
     elif score >= 60:
-        icon = "⚠"
+        icon = "[*]"
         style = "yellow"
     else:
-        icon = "✗"
+        icon = "[!]"
         style = "red"
 
     # Pad plugin name with dots to fixed width
@@ -140,7 +140,7 @@ def _print_text_report(
     mode = flight.primary_mode.capitalize()
 
     console.print()
-    console.print(f"🪿 Goose v{__version__} — Crash Analysis", style="bold")
+    console.print(f"[GOOSE] Goose v{__version__} - Crash Analysis", style="bold")
     console.print()
     console.print(f"  File: {filepath.name}")
     console.print(f"  Aircraft: PX4 {fw} · {vehicle} · {hw}")
@@ -151,7 +151,7 @@ def _print_text_report(
         conf_pct = int(analysis.confidence * 100)
         label = analysis.classification.replace("_", " ").title()
         console.print(
-            f"  🔴 CRASH DETECTED — {label} ({conf_pct}% confidence)",
+            f"  [CRASH] CRASH DETECTED — {label} ({conf_pct}% confidence)",
             style="bold red",
         )
         console.print()
@@ -174,7 +174,7 @@ def _print_text_report(
                 console.print(f"    t={ts:.0f}s  {desc}")
             console.print()
     else:
-        console.print("  🟢 NO CRASH DETECTED", style="bold green")
+        console.print("  [OK] NO CRASH DETECTED", style="bold green")
         console.print()
 
     # Plugin results
@@ -206,7 +206,7 @@ def _print_text_report(
     if analysis.crashed and analysis.inspect_checklist:
         console.print("  Inspect:", style="bold")
         for item in analysis.inspect_checklist:
-            console.print(f"  ☐ {item}")
+            console.print(f"  [ ] {item}")
         console.print()
 
     # Overall score

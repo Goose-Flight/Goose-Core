@@ -25,8 +25,8 @@ def discover_plugins() -> list[type[Plugin]]:
             plugin_cls = ep.load()
             if isinstance(plugin_cls, type) and issubclass(plugin_cls, Plugin):
                 plugins.append(plugin_cls)
-        except (AttributeError, ImportError, Exception):
-            # Skip plugins that aren't implemented yet
+        except Exception:
+            # Skip plugins that fail to load (missing, empty, or broken)
             pass
     return plugins
 

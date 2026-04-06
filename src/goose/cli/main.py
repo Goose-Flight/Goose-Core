@@ -6,6 +6,9 @@ import click
 
 from goose import __version__
 from goose.cli.crash import crash
+from goose.cli.analyze import analyze
+from goose.cli.serve import serve
+from goose.cli.plugins import plugins
 
 
 @click.group()
@@ -15,3 +18,6 @@ def cli() -> None:
 
 
 cli.add_command(crash)
+cli.add_command(analyze)
+cli.add_command(serve)
+cli.add_command(plugins)

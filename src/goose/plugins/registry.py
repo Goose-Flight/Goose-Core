@@ -21,9 +21,13 @@ def discover_plugins() -> list[type[Plugin]]:
     eps = entry_points()
     group = eps.get(ENTRY_POINT_GROUP, []) if isinstance(eps, dict) else eps.select(group=ENTRY_POINT_GROUP)
     for ep in group:
-        plugin_cls = ep.load()
-        if isinstance(plugin_cls, type) and issubclass(plugin_cls, Plugin):
-            plugins.append(plugin_cls)
+        try:
+            plugin_cls = ep.load()
+            if isinstance(plugin_cls, type) and issubclass(plugin_cls, Plugin):
+                plugins.append(plugin_cls)
+        except (AttributeError, ImportError, Exception):
+            # Skip plugins that aren't implemented yet
+            pass
     return plugins
 
 

@@ -643,39 +643,48 @@
 
   // ── Rendering ─────────────────────────────────────────────
   function renderResults(data) {
+    const meta = data.metadata;
+    const summary = data.summary;
     const findings = data.findings || [];
-
-    // Compute overall score from findings (min score, or 100 if none)
-    const overallScore = findings.length > 0
-      ? Math.min(...findings.map(f => f.score))
-      : 100;
 
     // Overall score
     const scoreEl = document.getElementById('overall-score');
-    scoreEl.textContent = overallScore;
-    scoreEl.className = 'score-number ' + scoreColorClass(overallScore);
+    scoreEl.textContent = data.overall_score;
+    scoreEl.className = 'score-number ' + scoreColorClass(data.overall_score);
 
-    // Severity strip — count by severity
+    // Severity strip
     const strip = document.getElementById('severity-strip');
-    const counts = { critical: 0, warning: 0, info: 0, pass: 0 };
-    findings.forEach(f => {
-      const sev = f.severity in counts ? f.severity : 'info';
-      counts[sev]++;
-    });
-    // Findings with score >= 90 and no severity issue count as pass
+    const sums = summary.by_severity || {};
     strip.innerHTML = ['critical', 'warning', 'info', 'pass'].map(sev => `
       <div class="sev-chip sev-${sev}">
-        <span class="chip-count">${counts[sev]}</span>
+        <span class="chip-count">${sums[sev] || 0}</span>
         <span class="chip-label">${sev}</span>
       </div>`).join('');
 
     // Metadata grid
     const grid = document.getElementById('meta-grid');
     const metaItems = [
-      { key: 'File', val: escHtml(data.file_name || '\u2014') },
-      { key: 'Plugins Run', val: escHtml((data.plugins_run || []).join(', ') || '\u2014') },
-      { key: 'Total Findings', val: String(findings.length) },
+      { key: 'File', val: escHtml(meta.filename || '\u2014') },
+      { key: 'Autopilot', val: escHtml(capitalize(meta.autopilot || '\u2014')) },
+      { key: 'Vehicle', val: escHtml(capitalize(meta.vehicle_type || '\u2014')) },
+      { key: 'Duration', val: escHtml(meta.duration_str || formatDuration(meta.duration_sec)) },
+      { key: 'Firmware', val: escHtml(meta.firmware_version || '\u2014') },
+      { key: 'Hardware', val: escHtml(meta.hardware || '\u2014') },
+      { key: 'Primary Mode', val: escHtml(capitalize(meta.primary_mode || '\u2014')) },
+      { key: 'Motor Count', val: escHtml(String(meta.motor_count || '\u2014')) },
+      { key: 'Log Format', val: escHtml(String(meta.log_format || '\u2014').toUpperCase()) },
+      { key: 'Status', val: meta.crashed
+          ? '<span class="badge-crashed">Crash Detected</span>'
+          : '<span style="color:#4ade80;font-weight:600;">Normal</span>' },
     ];
+
+    if (meta.start_time_utc) {
+      try {
+        const dt = new Date(meta.start_time_utc);
+        metaItems.push({ key: 'Flight Date', val: escHtml(dt.toLocaleString()) });
+      } catch (_) {}
+    }
+
     grid.innerHTML = metaItems.map(item => `
       <div class="meta-item">
         <div class="meta-key">${item.key}</div>
@@ -744,7 +753,7 @@
           <div class="finding-title">${escHtml(f.title)}</div>
           <div class="finding-desc">${escHtml(f.description)}</div>
         </td>
-        <td><span class="finding-plugin">${escHtml(f.plugin)}</span></td>
+        <td><span class="finding-plugin">${escHtml(f.plugin_name)}</span></td>
       </tr>`).join('');
   }
 

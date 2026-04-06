@@ -41,6 +41,10 @@ logs/**/*.bin
 !logs/px4/crashes/.gitkeep
 !logs/ardupilot/.gitkeep
 
+# Node
+node_modules/
+web-ui/
+
 # Environment
 .env
 .env.*

@@ -1,13 +1,15 @@
 """Goose embedded web UI — FastAPI application factory."""
 
-from __future__ import annotations
-
 import logging
 import math
 import os
 import tempfile
 from pathlib import Path
 from typing import Any
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
 
@@ -69,16 +71,6 @@ def _compute_overall_score(findings: list[Any]) -> int:
 
 def create_app():
     """Create and return the FastAPI application."""
-    try:
-        from fastapi import FastAPI, File, HTTPException, UploadFile
-        from fastapi.responses import FileResponse, JSONResponse
-        from fastapi.staticfiles import StaticFiles
-    except ImportError as exc:
-        raise RuntimeError(
-            "FastAPI is required for the web UI. "
-            "Install it with: pip install goose-flight[web]"
-        ) from exc
-
     app = FastAPI(
         title="Goose Flight Analyzer",
         description="Drone flight log validation and crash analysis",
@@ -310,3 +302,7 @@ def _format_duration(seconds: float) -> str:
     if minutes > 0:
         return f"{minutes}m {secs:02d}s"
     return f"{secs}s"
+
+
+# Module-level app instance for uvicorn ("goose.web.app:app")
+app = create_app()

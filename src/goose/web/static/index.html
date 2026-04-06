@@ -476,7 +476,7 @@
 <body>
 
 <header>
-  <div class="logo" aria-hidden="true">🪿</div>
+  <div class="logo" aria-hidden="true">&#x1FABF;</div>
   <div>
     <h1>Goose</h1>
     <div class="tagline">Drone flight log analyzer</div>
@@ -497,9 +497,9 @@
            accept=".ulg,.bin,.log,.tlog,.csv"
            aria-label="Choose flight log file"
            onchange="handleFileSelect(event)" />
-    <span class="upload-icon" aria-hidden="true">📂</span>
+    <span class="upload-icon" aria-hidden="true">&#x1F4C2;</span>
     <div class="upload-title">Drop a flight log here or click to browse</div>
-    <div class="upload-sub">Supports .ulg · .bin · .log · .tlog · .csv</div>
+    <div class="upload-sub">Supports .ulg &middot; .bin &middot; .log &middot; .tlog &middot; .csv</div>
     <div id="file-pill-container"></div>
   </div>
 
@@ -519,7 +519,7 @@
     <div class="section-title">Analysis Result</div>
     <div class="score-row">
       <div class="score-card">
-        <div id="overall-score" class="score-number">—</div>
+        <div id="overall-score" class="score-number">&mdash;</div>
         <div class="score-label">Overall Score</div>
       </div>
       <div class="severity-strip" id="severity-strip"></div>
@@ -591,8 +591,8 @@
     const pill = document.getElementById('file-pill-container');
     pill.innerHTML = `
       <div class="file-pill">
-        <span>📄 ${escHtml(file.name)}</span>
-        <span class="remove-file" title="Remove file" onclick="clearFile()">✕</span>
+        <span>&#x1F4C4; ${escHtml(file.name)}</span>
+        <span class="remove-file" title="Remove file" onclick="clearFile()">&#x2715;</span>
       </div>`;
 
     document.getElementById('analyze-btn').disabled = false;
@@ -664,15 +664,15 @@
     // Metadata grid
     const grid = document.getElementById('meta-grid');
     const metaItems = [
-      { key: 'File', val: escHtml(meta.filename || '—') },
-      { key: 'Autopilot', val: escHtml(capitalize(meta.autopilot || '—')) },
-      { key: 'Vehicle', val: escHtml(capitalize(meta.vehicle_type || '—')) },
+      { key: 'File', val: escHtml(meta.filename || '\u2014') },
+      { key: 'Autopilot', val: escHtml(capitalize(meta.autopilot || '\u2014')) },
+      { key: 'Vehicle', val: escHtml(capitalize(meta.vehicle_type || '\u2014')) },
       { key: 'Duration', val: escHtml(meta.duration_str || formatDuration(meta.duration_sec)) },
-      { key: 'Firmware', val: escHtml(meta.firmware_version || '—') },
-      { key: 'Hardware', val: escHtml(meta.hardware || '—') },
-      { key: 'Primary Mode', val: escHtml(capitalize(meta.primary_mode || '—')) },
-      { key: 'Motor Count', val: escHtml(String(meta.motor_count || '—')) },
-      { key: 'Log Format', val: escHtml(String(meta.log_format || '—').toUpperCase()) },
+      { key: 'Firmware', val: escHtml(meta.firmware_version || '\u2014') },
+      { key: 'Hardware', val: escHtml(meta.hardware || '\u2014') },
+      { key: 'Primary Mode', val: escHtml(capitalize(meta.primary_mode || '\u2014')) },
+      { key: 'Motor Count', val: escHtml(String(meta.motor_count || '\u2014')) },
+      { key: 'Log Format', val: escHtml(String(meta.log_format || '\u2014').toUpperCase()) },
       { key: 'Status', val: meta.crashed
           ? '<span class="badge-crashed">Crash Detected</span>'
           : '<span style="color:#4ade80;font-weight:600;">Normal</span>' },
@@ -730,14 +730,14 @@
       tbody.innerHTML = `
         <tr><td colspan="4">
           <div class="empty-state">
-            <span class="empty-icon">✅</span>
-            ${filter === 'all' ? 'No findings — flight looks clean.' : `No ${filter} findings.`}
+            <span class="empty-icon">&#x2705;</span>
+            ${filter === 'all' ? 'No findings \u2014 flight looks clean.' : `No ${filter} findings.`}
           </div>
         </td></tr>`;
       return;
     }
 
-    // Sort: critical → warning → info → pass, then by score asc
+    // Sort: critical -> warning -> info -> pass, then by score asc
     const order = { critical: 0, warning: 1, info: 2, pass: 3 };
     const sorted = [...filtered].sort((a, b) => {
       const sevDiff = (order[a.severity] || 2) - (order[b.severity] || 2);
@@ -774,7 +774,7 @@
   }
 
   function escHtml(str) {
-    if (str == null) return '—';
+    if (str == null) return '\u2014';
     return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -788,7 +788,7 @@
   }
 
   function formatDuration(sec) {
-    if (sec == null || isNaN(sec)) return '—';
+    if (sec == null || isNaN(sec)) return '\u2014';
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
     const s = Math.floor(sec % 60);

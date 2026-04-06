@@ -44,9 +44,22 @@ goose serve
 - Air-gapped — works with zero internet
 - Cross-platform — Linux, macOS, Windows, Raspberry Pi
 
-## Writing plugins
+## Documentation
 
-See [docs/writing-plugins.md](docs/writing-plugins.md)
+- **[Getting Started](docs/getting-started.md)** — Installation and your first crash analysis
+- **[CLI Reference](docs/cli-reference.md)** — Complete command documentation
+- **[FAQ](docs/faq.md)** — Common questions about installation, usage, compatibility
+- **[Troubleshooting](docs/troubleshooting.md)** — Solutions for common issues
+- **[API Reference](docs/api-reference.md)** — REST API for programmatic integration
+- **[Advanced Usage](docs/advanced-usage.md)** — Batch processing, automation, custom integrations
+- **[Writing Plugins](docs/writing-plugins.md)** — Extend Goose with custom analysis checks
+- **[Configuration](docs/configuration.md)** — Customize thresholds and behavior
+- **[Supported Formats](docs/supported-formats.md)** — Log file format details
+- **[Crash Analysis Guide](docs/crash-analysis-guide.md)** — Understanding crash reports
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and PR process.
 
 ## License
 

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goose — Flight Log Analyzer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0a0a0a;
+      --surface:     #141414;
+      --card:        #1a1a1a;
+      --card-hover:  #212121;
+      --border:      #2a2a2a;
+      --border-soft: #222;
+      --text:        #e0e0e0;
+      --muted:       #888;
+      --accent:      #22c55e;
+      --accent-dim:  #16a34a;
+      --accent-glow: rgba(34, 197, 94, 0.15);
+      --red:         #ef4444;
+      --amber:       #f59e0b;
+      --blue:        #3b82f6;
+      --purple:      #8b5cf6;
+      --radius:      10px;
+      --radius-lg:   16px;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    header .tagline {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* ── Upload zone ─────────────────────────────────────── */
+    #upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 56px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--card);
+      position: relative;
+    }
+
+    #upload-zone:hover,
+    #upload-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    #upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+      display: block;
+      line-height: 1;
+    }
+
+    .upload-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .upload-sub {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .file-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 8px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .file-pill .remove-file {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .file-pill .remove-file:hover { color: var(--red); }
+
+    /* ── Actions ─────────────────────────────────────────── */
+    #actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    #analyze-btn {
+      padding: 13px 40px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #analyze-btn:hover:not(:disabled) {
+      background: #16a34a;
+    }
+
+    #analyze-btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    #analyze-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    #analyze-btn .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.25);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    #analyze-btn.loading .spinner { display: block; }
+    #analyze-btn.loading .btn-label { opacity: 0.6; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error banner ────────────────────────────────────── */
+    #error-banner {
+      display: none;
+      margin-top: 20px;
+      padding: 14px 18px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: var(--radius);
+      color: #fca5a5;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Results ─────────────────────────────────────────── */
+    #results {
+      display: none;
+      margin-top: 40px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* Score card */
+    .score-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .score-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 140px;
+      flex-shrink: 0;
+    }
+
+    .score-number {
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -2px;
+    }
+
+    .score-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* Severity chips row */
+    .severity-strip {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      flex: 1;
+      align-items: center;
+    }
+
+    .sev-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      min-width: 80px;
+      font-weight: 700;
+    }
+
+    .sev-chip .chip-count {
+      font-size: 28px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sev-chip .chip-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+      opacity: 0.8;
+    }
+
+    .sev-critical  { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.3);  color: #f87171; }
+    .sev-warning   { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: #fbbf24; }
+    .sev-info      { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); color: #60a5fa; }
+    .sev-pass      { background: rgba(34,197,94,0.10);  border-color: rgba(34,197,94,0.25); color: #4ade80; }
+
+    /* Metadata grid */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .meta-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+
+    .meta-item .meta-key {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .meta-item .meta-val {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .badge-crashed {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.4);
+      border-radius: 999px;
+      color: #f87171;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* Findings table */
+    .findings-table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    thead th {
+      background: var(--surface);
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border-soft);
+      transition: background 0.1s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody tr:hover { background: var(--card-hover); }
+
+    tbody td {
+      padding: 12px 14px;
+      vertical-align: top;
+    }
+
+    .sev-badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .badge-critical { background: rgba(239,68,68,0.15);  color: #f87171; }
+    .badge-warning  { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .badge-info     { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .badge-pass     { background: rgba(34,197,94,0.12);  color: #4ade80; }
+
+    .score-cell {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .score-green  { color: var(--accent); }
+    .score-amber  { color: #f59e0b; }
+    .score-red    { color: var(--red); }
+
+    .finding-title { font-weight: 600; color: var(--text); }
+    .finding-desc  { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .finding-plugin {
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .empty-state .empty-icon { font-size: 32px; display: block; margin-bottom: 10px; }
+
+    /* Filter row */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+    /* Score ring coloring based on value */
+    .score-excellent { color: var(--accent); }
+    .score-good      { color: #a3e635; }
+    .score-fair      { color: #f59e0b; }
+    .score-poor      { color: #f97316; }
+    .score-critical  { color: var(--red); }
+
+    /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 640px) {
+      header { padding: 16px 20px; }
+      main { padding: 24px 16px 60px; }
+      .score-number { font-size: 48px; }
+      thead th:nth-child(4),
+      tbody td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo" aria-hidden="true">🪿</div>
+  <div>
+    <h1>Goose</h1>
+    <div class="tagline">Drone flight log analyzer</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Upload -->
+  <div id="upload-zone"
+       role="region"
+       aria-label="File upload area"
+       ondragover="handleDragOver(event)"
+       ondragleave="handleDragLeave(event)"
+       ondrop="handleDrop(event)">
+    <input type="file"
+           id="file-input"
+           accept=".ulg,.bin,.log,.tlog,.csv"
+           aria-label="Choose flight log file"
+           onchange="handleFileSelect(event)" />
+    <span class="upload-icon" aria-hidden="true">📂</span>
+    <div class="upload-title">Drop a flight log here or click to browse</div>
+    <div class="upload-sub">Supports .ulg · .bin · .log · .tlog · .csv</div>
+    <div id="file-pill-container"></div>
+  </div>
+
+  <div id="actions">
+    <button id="analyze-btn" disabled onclick="runAnalysis()">
+      <div class="spinner" aria-hidden="true"></div>
+      <span class="btn-label">Analyze Flight</span>
+    </button>
+  </div>
+
+  <div id="error-banner" role="alert" aria-live="polite"></div>
+
+  <!-- Results -->
+  <section id="results" aria-live="polite">
+
+    <!-- Score + summary chips -->
+    <div class="section-title">Analysis Result</div>
+    <div class="score-row">
+      <div class="score-card">
+        <div id="overall-score" class="score-number">—</div>
+        <div class="score-label">Overall Score</div>
+      </div>
+      <div class="severity-strip" id="severity-strip"></div>
+    </div>
+
+    <!-- Metadata -->
+    <div class="section-title" style="margin-top: 8px;">Flight Metadata</div>
+    <div class="meta-grid" id="meta-grid"></div>
+
+    <!-- Findings -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+      <div class="section-title" style="margin-bottom:0;">Findings</div>
+      <div class="filter-row" id="filter-row"></div>
+    </div>
+    <div class="findings-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:90px">Severity</th>
+            <th style="width:64px">Score</th>
+            <th>Finding</th>
+            <th style="width:110px">Plugin</th>
+          </tr>
+        </thead>
+        <tbody id="findings-body"></tbody>
+      </table>
+    </div>
+
+  </section>
+
+</main>
+
+<script>
+  // ── State ────────────────────────────────────────────────
+  let selectedFile = null;
+  let lastResults = null;
+  let activeFilter = 'all';
+
+  // ── File handling ─────────────────────────────────────────
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) setFile(file);
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('upload-zone').classList.add('drag-over');
+  }
+
+  function handleDragLeave(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.remove('drag-over');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('upload-zone').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  }
+
+  function setFile(file) {
+    selectedFile = file;
+    hideError();
+    hideResults();
+
+    const pill = document.getElementById('file-pill-container');
+    pill.innerHTML = `
+      <div class="file-pill">
+        <span>📄 ${escHtml(file.name)}</span>
+        <span class="remove-file" title="Remove file" onclick="clearFile()">✕</span>
+      </div>`;
+
+    document.getElementById('analyze-btn').disabled = false;
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    document.getElementById('file-pill-container').innerHTML = '';
+    document.getElementById('file-input').value = '';
+    document.getElementById('analyze-btn').disabled = true;
+    hideError();
+    hideResults();
+  }
+
+  // ── Analysis ──────────────────────────────────────────────
+  async function runAnalysis() {
+    if (!selectedFile) return;
+
+    const btn = document.getElementById('analyze-btn');
+    btn.disabled = true;
+    btn.classList.add('loading');
+    hideError();
+    hideResults();
+
+    try {
+      const form = new FormData();
+      form.append('file', selectedFile);
+
+      const res = await fetch('/api/analyze', { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (!res.ok) {
+        const msg = data.detail || `Server error ${res.status}`;
+        showError(msg);
+        return;
+      }
+
+      lastResults = data;
+      activeFilter = 'all';
+      renderResults(data);
+    } catch (err) {
+      showError('Network error: ' + err.message);
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Rendering ─────────────────────────────────────────────
+  function renderResults(data) {
+    const meta = data.metadata;
+    const summary = data.summary;
+    const findings = data.findings || [];
+
+    // Overall score
+    const scoreEl = document.getElementById('overall-score');
+    scoreEl.textContent = data.overall_score;
+    scoreEl.className = 'score-number ' + scoreColorClass(data.overall_score);
+
+    // Severity strip
+    const strip = document.getElementById('severity-strip');
+    const sums = summary.by_severity || {};
+    strip.innerHTML = ['critical', 'warning', 'info', 'pass'].map(sev => `
+      <div class="sev-chip sev-${sev}">
+        <span class="chip-count">${sums[sev] || 0}</span>
+        <span class="chip-label">${sev}</span>
+      </div>`).join('');
+
+    // Metadata grid
+    const grid = document.getElementById('meta-grid');
+    const metaItems = [
+      { key: 'File', val: escHtml(meta.filename || '—') },
+      { key: 'Autopilot', val: escHtml(capitalize(meta.autopilot || '—')) },
+      { key: 'Vehicle', val: escHtml(capitalize(meta.vehicle_type || '—')) },
+      { key: 'Duration', val: escHtml(meta.duration_str || formatDuration(meta.duration_sec)) },
+      { key: 'Firmware', val: escHtml(meta.firmware_version || '—') },
+      { key: 'Hardware', val: escHtml(meta.hardware || '—') },
+      { key: 'Primary Mode', val: escHtml(capitalize(meta.primary_mode || '—')) },
+      { key: 'Motor Count', val: escHtml(String(meta.motor_count || '—')) },
+      { key: 'Log Format', val: escHtml(String(meta.log_format || '—').toUpperCase()) },
+      { key: 'Status', val: meta.crashed
+          ? '<span class="badge-crashed">Crash Detected</span>'
+          : '<span style="color:#4ade80;font-weight:600;">Normal</span>' },
+    ];
+
+    if (meta.start_time_utc) {
+      try {
+        const dt = new Date(meta.start_time_utc);
+        metaItems.push({ key: 'Flight Date', val: escHtml(dt.toLocaleString()) });
+      } catch (_) {}
+    }
+
+    grid.innerHTML = metaItems.map(item => `
+      <div class="meta-item">
+        <div class="meta-key">${item.key}</div>
+        <div class="meta-val">${item.val}</div>
+      </div>`).join('');
+
+    // Filter buttons
+    buildFilterRow(findings);
+
+    // Findings table
+    renderFindings(findings, activeFilter);
+
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function buildFilterRow(findings) {
+    const row = document.getElementById('filter-row');
+    const counts = { all: findings.length, critical: 0, warning: 0, info: 0, pass: 0 };
+    findings.forEach(f => { if (f.severity in counts) counts[f.severity]++; });
+
+    const buttons = ['all', 'critical', 'warning', 'info', 'pass'].map(key => {
+      const label = key === 'all' ? `All (${counts.all})` : `${capitalize(key)} (${counts[key]})`;
+      const isActive = activeFilter === key ? ' active' : '';
+      return `<button class="filter-btn${isActive}" onclick="setFilter('${key}')">${label}</button>`;
+    });
+
+    row.innerHTML = buttons.join('');
+  }
+
+  function setFilter(sev) {
+    activeFilter = sev;
+    if (!lastResults) return;
+    buildFilterRow(lastResults.findings);
+    renderFindings(lastResults.findings, sev);
+  }
+
+  function renderFindings(findings, filter) {
+    const tbody = document.getElementById('findings-body');
+    const filtered = filter === 'all' ? findings : findings.filter(f => f.severity === filter);
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="4">
+          <div class="empty-state">
+            <span class="empty-icon">✅</span>
+            ${filter === 'all' ? 'No findings — flight looks clean.' : `No ${filter} findings.`}
+          </div>
+        </td></tr>`;
+      return;
+    }
+
+    // Sort: critical → warning → info → pass, then by score asc
+    const order = { critical: 0, warning: 1, info: 2, pass: 3 };
+    const sorted = [...filtered].sort((a, b) => {
+      const sevDiff = (order[a.severity] || 2) - (order[b.severity] || 2);
+      if (sevDiff !== 0) return sevDiff;
+      return a.score - b.score;
+    });
+
+    tbody.innerHTML = sorted.map(f => `
+      <tr>
+        <td><span class="sev-badge badge-${f.severity}">${escHtml(f.severity)}</span></td>
+        <td><span class="score-cell ${scoreColorClass(f.score)}">${f.score}</span></td>
+        <td>
+          <div class="finding-title">${escHtml(f.title)}</div>
+          <div class="finding-desc">${escHtml(f.description)}</div>
+        </td>
+        <td><span class="finding-plugin">${escHtml(f.plugin_name)}</span></td>
+      </tr>`).join('');
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+  function showError(msg) {
+    const el = document.getElementById('error-banner');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('error-banner').style.display = 'none';
+  }
+
+  function hideResults() {
+    document.getElementById('results').style.display = 'none';
+    lastResults = null;
+  }
+
+  function escHtml(str) {
+    if (str == null) return '—';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function capitalize(str) {
+    if (!str) return str;
+    return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function formatDuration(sec) {
+    if (sec == null || isNaN(sec)) return '—';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+    if (m > 0) return `${m}m ${String(s).padStart(2,'0')}s`;
+    return `${s}s`;
+  }
+
+  function scoreColorClass(score) {
+    if (score >= 90) return 'score-excellent';
+    if (score >= 70) return 'score-good';
+    if (score >= 50) return 'score-fair';
+    if (score >= 30) return 'score-poor';
+    return 'score-critical';
+  }
+</script>
+</body>
+</html>

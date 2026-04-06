@@ -44,29 +44,8 @@ def _finding_to_dict(finding: Any) -> dict[str, Any]:
 
 def _compute_overall_score(findings: list[Any]) -> int:
     """Compute a weighted overall score (0-100) from all findings."""
-    if not findings:
-        return 100
-
-    severity_weights = {
-        "critical": 3.0,
-        "warning": 1.5,
-        "info": 0.5,
-        "pass": 0.0,
-    }
-
-    total_weight = 0.0
-    weighted_sum = 0.0
-    for f in findings:
-        w = severity_weights.get(f.severity, 1.0)
-        total_weight += w
-        weighted_sum += w * f.score
-
-    if total_weight == 0:
-        return 100
-
-    raw = weighted_sum / total_weight
-    # Clamp and round
-    return max(0, min(100, round(raw)))
+    from goose.core.scoring import compute_overall_score
+    return compute_overall_score(findings)
 
 
 def create_app():

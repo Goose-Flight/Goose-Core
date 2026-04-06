@@ -15,24 +15,9 @@ from goose import __version__
 from goose.core.crash_detector import CrashAnalysis, analyze_crash
 from goose.core.finding import Finding
 from goose.core.flight import Flight
+from goose.core.scoring import compute_overall_score
 from goose.parsers.ulog import ULogParser
 from goose.plugins.base import Plugin
-
-
-# Scoring weights per plugin
-WEIGHTS: dict[str, float] = {
-    "crash_detection": 3.0,
-    "vibration": 1.5,
-    "battery_sag": 2.0,
-    "gps_health": 1.5,
-    "motor_saturation": 2.0,
-    "ekf_consistency": 1.5,
-    "rc_signal": 1.0,
-    "attitude_tracking": 1.0,
-    "position_tracking": 1.0,
-    "failsafe_events": 1.5,
-    "log_health": 0.5,
-}
 
 
 def _parse_log(filepath: Path) -> Flight:
@@ -80,24 +65,7 @@ def _format_duration(seconds: float) -> str:
 
 def _overall_score(findings: list[Finding]) -> int:
     """Compute weighted overall score from plugin findings."""
-    # Group best (minimum) score per plugin
-    plugin_scores: dict[str, int] = {}
-    for f in findings:
-        if f.plugin_name not in plugin_scores:
-            plugin_scores[f.plugin_name] = f.score
-        else:
-            plugin_scores[f.plugin_name] = min(plugin_scores[f.plugin_name], f.score)
-
-    total_weight = 0.0
-    weighted_sum = 0.0
-    for plugin_name, score in plugin_scores.items():
-        w = WEIGHTS.get(plugin_name, 1.0)
-        weighted_sum += score * w
-        total_weight += w
-
-    if total_weight == 0:
-        return 0
-    return round(weighted_sum / total_weight)
+    return compute_overall_score(findings)
 
 
 def _plugin_result_line(plugin_name: str, score: int, summary: str) -> Text:

@@ -3,95 +3,190 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Goose — Flight Log Analyzer</title>
+  <title>GOOSE — Flight Log Analyzer</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:          #0a0a0a;
-      --surface:     #141414;
-      --card:        #1a1a1a;
-      --card-hover:  #212121;
-      --border:      #2a2a2a;
-      --border-soft: #222;
-      --text:        #e0e0e0;
-      --muted:       #888;
-      --accent:      #22c55e;
-      --accent-dim:  #16a34a;
-      --accent-glow: rgba(34, 197, 94, 0.15);
-      --red:         #ef4444;
-      --amber:       #f59e0b;
-      --blue:        #3b82f6;
-      --purple:      #8b5cf6;
-      --radius:      10px;
-      --radius-lg:   16px;
+      --bg:           #0B0D10;
+      --surface:      #0f1216;
+      --card:         rgba(255,255,255,0.025);
+      --card-border:  rgba(255,255,255,0.05);
+      --card-hover:   rgba(255,255,255,0.04);
+      --text:         #D8D5CE;
+      --text-sec:     rgba(216,213,206,0.4);
+      --text-muted:   rgba(216,213,206,0.2);
+      --green:        #6ECC72;
+      --green-pass:   #639922;
+      --green-glow:   rgba(110,204,114,0.12);
+      --amber:        #EF9F27;
+      --amber-glow:   rgba(239,159,39,0.12);
+      --red:          #E24B4A;
+      --red-glow:     rgba(226,75,74,0.12);
+      --radius:       12px;
+      --font:         'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
     }
 
-    html { font-size: 16px; }
+    html { font-size: 14px; scroll-behavior: smooth; }
 
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-family: var(--font);
       min-height: 100vh;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Layout ─────────────────────────────────────────── */
+    /* ── Scrollbar ─────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+
+    /* ── Header ─────────────────────────────────────────────── */
     header {
-      padding: 24px 32px;
-      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11,13,16,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 0 28px;
+      height: 52px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 20px;
     }
 
-    .logo {
-      width: 36px;
-      height: 36px;
-      background: var(--accent);
-      border-radius: 8px;
+    .logo-group {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 18px;
+      gap: 10px;
       flex-shrink: 0;
     }
 
-    header h1 {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-    }
-
-    header .tagline {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 1px;
-    }
-
-    main {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 40px 24px 80px;
-    }
-
-    /* ── Upload zone ─────────────────────────────────────── */
-    #upload-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius-lg);
-      padding: 56px 32px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      background: var(--card);
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       position: relative;
     }
 
-    #upload-zone:hover,
+    .logo-icon svg {
+      width: 28px;
+      height: 28px;
+      filter: drop-shadow(0 0 6px var(--green));
+    }
+
+    .logo-text {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--green);
+      text-transform: uppercase;
+    }
+
+    .version-badge {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--green);
+      border: 1px solid var(--green);
+      border-radius: 4px;
+      padding: 2px 6px;
+      opacity: 0.7;
+    }
+
+    .header-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      border-left: 1px solid var(--card-border);
+      padding-left: 16px;
+    }
+
+    .header-meta span { color: rgba(216,213,206,0.25); }
+
+    nav {
+      margin-left: auto;
+      display: flex;
+      gap: 2px;
+    }
+
+    .nav-tab {
+      padding: 5px 12px;
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      background: none;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-tab:hover { color: var(--text); background: var(--card); }
+    .nav-tab.active { color: var(--green); background: var(--green-glow); }
+    .nav-tab.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    /* ── Upload View ─────────────────────────────────────────── */
+    #upload-view {
+      max-width: 640px;
+      margin: 60px auto 0;
+    }
+
+    .upload-heading {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .upload-heading h2 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .upload-heading p {
+      font-size: 12px;
+      color: var(--text-sec);
+    }
+
+    #upload-zone {
+      position: relative;
+      border: 1.5px dashed rgba(255,255,255,0.1);
+      border-radius: var(--radius);
+      padding: 56px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      background: var(--card);
+    }
+
+    #upload-zone:hover {
+      border-color: rgba(110,204,114,0.4);
+      background: rgba(110,204,114,0.04);
+      box-shadow: 0 0 0 1px rgba(110,204,114,0.08) inset;
+    }
+
     #upload-zone.drag-over {
-      border-color: var(--accent);
-      background: var(--accent-glow);
+      border-color: var(--green);
+      background: var(--green-glow);
+      box-shadow: 0 0 24px rgba(110,204,114,0.1);
     }
 
     #upload-zone input[type="file"] {
@@ -103,470 +198,1047 @@
       height: 100%;
     }
 
-    .upload-icon {
-      font-size: 40px;
-      margin-bottom: 16px;
-      display: block;
-      line-height: 1;
+    .upload-icon-ring {
+      width: 64px;
+      height: 64px;
+      border: 1.5px dashed rgba(255,255,255,0.12);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      transition: border-color 0.2s;
     }
 
+    #upload-zone:hover .upload-icon-ring,
+    #upload-zone.drag-over .upload-icon-ring {
+      border-color: var(--green);
+    }
+
+    .upload-icon-ring svg { opacity: 0.5; transition: opacity 0.2s; }
+    #upload-zone:hover .upload-icon-ring svg,
+    #upload-zone.drag-over .upload-icon-ring svg { opacity: 1; }
+
     .upload-title {
-      font-size: 18px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--text);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
     }
 
     .upload-sub {
-      font-size: 14px;
-      color: var(--muted);
+      font-size: 11px;
+      color: var(--text-sec);
+      letter-spacing: 0.04em;
+    }
+
+    .upload-formats {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .fmt-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+      padding: 2px 7px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    /* File pill */
+    .file-pill-wrap {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
     }
 
     .file-pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      margin-top: 16px;
-      padding: 8px 14px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 500;
+      padding: 7px 14px;
+      background: rgba(110,204,114,0.08);
+      border: 1px solid rgba(110,204,114,0.25);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green);
     }
 
-    .file-pill .remove-file {
+    .file-pill-name { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .remove-file {
       cursor: pointer;
-      color: var(--muted);
-      font-size: 16px;
+      color: rgba(110,204,114,0.5);
+      font-size: 14px;
       line-height: 1;
       user-select: none;
+      transition: color 0.15s;
+      flex-shrink: 0;
     }
 
-    .file-pill .remove-file:hover { color: var(--red); }
+    .remove-file:hover { color: var(--red); }
 
-    /* ── Actions ─────────────────────────────────────────── */
-    #actions {
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-    }
+    /* Analyze button */
+    #actions { margin-top: 20px; display: flex; justify-content: center; }
 
     #analyze-btn {
-      padding: 13px 40px;
-      background: var(--accent);
-      color: #000;
+      padding: 12px 36px;
+      background: var(--green);
+      color: #071008;
       border: none;
-      border-radius: var(--radius);
-      font-size: 15px;
+      border-radius: 8px;
+      font-family: var(--font);
+      font-size: 12px;
       font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
       display: flex;
       align-items: center;
       gap: 8px;
+      box-shadow: 0 0 0 0 rgba(110,204,114,0);
     }
 
     #analyze-btn:hover:not(:disabled) {
-      background: #16a34a;
+      background: #7fd984;
+      box-shadow: 0 0 20px rgba(110,204,114,0.25);
     }
 
-    #analyze-btn:active:not(:disabled) {
-      transform: scale(0.97);
-    }
+    #analyze-btn:active:not(:disabled) { transform: scale(0.98); }
 
-    #analyze-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+    #analyze-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    #analyze-btn .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(0,0,0,0.25);
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(0,0,0,0.2);
       border-top-color: #000;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       display: none;
+      flex-shrink: 0;
     }
 
     #analyze-btn.loading .spinner { display: block; }
-    #analyze-btn.loading .btn-label { opacity: 0.6; }
+    #analyze-btn.loading .btn-label { opacity: 0.7; }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Error banner ────────────────────────────────────── */
+    /* Error */
     #error-banner {
       display: none;
-      margin-top: 20px;
-      padding: 14px 18px;
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.35);
-      border-radius: var(--radius);
-      color: #fca5a5;
-      font-size: 14px;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--red-glow);
+      border: 1px solid rgba(226,75,74,0.3);
+      border-radius: 8px;
+      color: #f87171;
+      font-size: 12px;
       line-height: 1.5;
     }
 
-    /* ── Results ─────────────────────────────────────────── */
-    #results {
+    /* ── Loading state ───────────────────────────────────────── */
+    #loading-view {
       display: none;
-      margin-top: 40px;
+      max-width: 640px;
+      margin: 60px auto 0;
+      text-align: center;
     }
 
-    .section-title {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-
-    /* Score card */
-    .score-row {
+    .loading-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
       display: flex;
-      gap: 16px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
     }
 
-    .score-card {
+    .loading-sub {
+      font-size: 11px;
+      color: var(--text-sec);
+      margin-bottom: 32px;
+      letter-spacing: 0.04em;
+    }
+
+    .loading-spinner {
+      width: 36px; height: 36px;
+      border: 2px solid rgba(110,204,114,0.15);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .skeleton-card {
+      height: 120px;
+      border-radius: var(--radius);
       background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 24px 28px;
+      border: 1px solid var(--card-border);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .skeleton-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
+      animation: shimmer 1.6s infinite;
+    }
+
+    @keyframes shimmer {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(100%); }
+    }
+
+    /* ── Results View ────────────────────────────────────────── */
+    #results-view {
+      display: none;
+    }
+
+    /* Status banner */
+    .status-banner {
+      border-radius: 10px;
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .status-banner.normal {
+      background: rgba(99,153,34,0.1);
+      border: 1px solid rgba(99,153,34,0.3);
+      color: var(--green);
+    }
+
+    .status-banner.crashed {
+      background: var(--red-glow);
+      border: 1px solid rgba(226,75,74,0.3);
+      color: var(--red);
+      animation: pulse-border 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(226,75,74,0); }
+      50%       { box-shadow: 0 0 0 3px rgba(226,75,74,0.1); }
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-banner.normal .status-dot  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-banner.crashed .status-dot { background: var(--red);   box-shadow: 0 0 6px var(--red); animation: dot-pulse 1s ease-in-out infinite; }
+
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .status-details { margin-left: auto; font-size: 11px; font-weight: 500; opacity: 0.6; letter-spacing: 0.04em; text-transform: none; }
+
+    /* 3-col results grid */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 260px 1fr 320px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+    }
+
+    .card-body { padding: 16px; }
+
+    /* ── Score ring ──────────────────────────────────────────── */
+    .score-ring-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 20px;
+    }
+
+    .score-ring-svg {
+      width: 140px;
+      height: 140px;
+      transform: rotate(-90deg);
+    }
+
+    .score-ring-track {
+      fill: none;
+      stroke: rgba(255,255,255,0.05);
+      stroke-width: 8;
+    }
+
+    .score-ring-fill {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1), stroke 0.6s;
+    }
+
+    .score-ring-center {
+      position: absolute;
+      inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-width: 140px;
+    }
+
+    .score-ring-container {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+
+    .score-ring-number {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    .score-ring-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .score-grade {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 10px;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    /* ── Crash card ──────────────────────────────────────────── */
+    .crash-card {
+      background: var(--red-glow);
+      border-color: rgba(226,75,74,0.25);
+    }
+
+    .crash-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--red);
+      background: rgba(226,75,74,0.15);
+      border: 1px solid rgba(226,75,74,0.3);
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+
+    .crash-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 12px 0 6px;
+      line-height: 1.3;
+    }
+
+    .crash-desc {
+      font-size: 11px;
+      color: var(--text-sec);
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .crash-confidence {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .confidence-bar-wrap {
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .confidence-bar {
+      height: 100%;
+      background: var(--red);
+      border-radius: 2px;
+      transition: width 1s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .confidence-pct {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--red);
       flex-shrink: 0;
     }
 
-    .score-number {
-      font-size: 64px;
-      font-weight: 800;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: -2px;
+    .inspect-list {
+      list-style: none;
     }
 
-    .score-label {
+    .inspect-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-sec);
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .inspect-item:last-child { border-bottom: none; }
+
+    .inspect-cb {
+      width: 13px; height: 13px;
+      border: 1px solid rgba(226,75,74,0.4);
+      border-radius: 3px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Flight stats ────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--card-border);
+    }
+
+    .stat-item {
+      background: var(--bg);
+      padding: 11px 14px;
+    }
+
+    .stat-key {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+
+    .stat-val {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ── Timeline ────────────────────────────────────────────── */
+    .timeline-wrap {
+      padding: 12px 16px 16px;
+    }
+
+    .timeline-track {
+      position: relative;
+      height: 28px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .timeline-event {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 16px;
+      min-width: 4px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: height 0.15s, opacity 0.15s;
+    }
+
+    .timeline-event:hover { height: 24px; opacity: 0.9; }
+
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Plugin bars ─────────────────────────────────────────── */
+    .plugin-bars { padding: 12px 16px 16px; }
+
+    .plugin-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+
+    .plugin-bar-row:last-child { margin-bottom: 0; }
+
+    .plugin-bar-name {
+      font-size: 10px;
+      color: var(--text-sec);
+      width: 130px;
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .plugin-bar-track {
+      flex: 1;
+      height: 5px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .plugin-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 1s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .plugin-bar-score {
+      font-size: 10px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      width: 28px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ── Findings list ───────────────────────────────────────── */
+    .findings-col { max-height: calc(100vh - 140px); display: flex; flex-direction: column; }
+
+    .findings-scroll {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .finding-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--card-border);
+      cursor: pointer;
+      transition: background 0.12s;
+      position: relative;
+    }
+
+    .finding-row:last-child { border-bottom: none; }
+
+    .finding-row:hover { background: var(--card-hover); }
+    .finding-row.active { background: rgba(110,204,114,0.05); }
+    .finding-row.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--green);
+      border-radius: 0 2px 2px 0;
+    }
+
+    .finding-sev-icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 900;
+      margin-top: 1px;
+    }
+
+    .sev-icon-critical { background: rgba(226,75,74,0.2);  color: var(--red);   border: 1px solid rgba(226,75,74,0.35); }
+    .sev-icon-warning  { background: rgba(239,159,39,0.2); color: var(--amber); border: 1px solid rgba(239,159,39,0.35); }
+    .sev-icon-info     { background: rgba(99,153,34,0.15); color: #a3c44a;      border: 1px solid rgba(99,153,34,0.3); }
+    .sev-icon-pass     { background: rgba(110,204,114,0.1); color: var(--green); border: 1px solid rgba(110,204,114,0.25); }
+
+    .finding-row-body { flex: 1; min-width: 0; }
+
+    .finding-row-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+      margin-bottom: 2px;
+    }
+
+    .finding-row-meta {
+      font-size: 10px;
+      color: var(--text-sec);
+    }
+
+    .finding-score {
+      flex-shrink: 0;
       font-size: 11px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-top: 6px;
+      font-variant-numeric: tabular-nums;
     }
 
-    /* Severity chips row */
-    .severity-strip {
+    /* Finding detail panel */
+    .finding-detail {
+      display: none;
+      border-top: 1px solid var(--card-border);
+      background: rgba(0,0,0,0.2);
+      padding: 14px 16px;
+    }
+
+    .finding-detail.visible { display: block; }
+
+    .detail-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      margin-top: 10px;
+    }
+
+    .detail-label:first-child { margin-top: 0; }
+
+    .detail-value {
+      font-size: 11px;
+      color: var(--text-sec);
+      line-height: 1.6;
+    }
+
+    .detail-evidence {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 10px;
+      color: var(--text-sec);
+      line-height: 1.7;
+    }
+
+    .detail-evidence .ev-key { color: var(--text-muted); }
+    .detail-evidence .ev-val { color: var(--text); font-weight: 600; }
+
+    .detail-timestamps {
       display: flex;
-      gap: 10px;
+      gap: 16px;
       flex-wrap: wrap;
-      flex: 1;
-      align-items: center;
+    }
+
+    .detail-ts-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    /* ── Severity colors (shared) ────────────────────────────── */
+    .col-critical { color: var(--red); }
+    .col-warning  { color: var(--amber); }
+    .col-pass     { color: var(--green); }
+    .col-info     { color: #a3c44a; }
+
+    .bg-critical  { background: var(--red); }
+    .bg-warning   { background: var(--amber); }
+    .bg-pass      { background: var(--green-pass); }
+    .bg-info      { background: #a3c44a; }
+
+    /* ── New analysis button ─────────────────────────────────── */
+    .new-analysis-btn {
+      padding: 6px 14px;
+      background: none;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      font-family: var(--font);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .new-analysis-btn:hover { border-color: var(--green); color: var(--green); }
+
+    /* ── Summary chips row ───────────────────────────────────── */
+    .summary-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .sev-chip {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 12px 20px;
-      border-radius: var(--radius);
-      border: 1px solid transparent;
-      min-width: 80px;
-      font-weight: 700;
-    }
-
-    .sev-chip .chip-count {
-      font-size: 28px;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .sev-chip .chip-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-top: 4px;
-      opacity: 0.8;
-    }
-
-    .sev-critical  { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.3);  color: #f87171; }
-    .sev-warning   { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: #fbbf24; }
-    .sev-info      { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); color: #60a5fa; }
-    .sev-pass      { background: rgba(34,197,94,0.10);  border-color: rgba(34,197,94,0.25); color: #4ade80; }
-
-    /* Metadata grid */
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 10px;
-      margin-bottom: 24px;
-    }
-
-    .meta-item {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-    }
-
-    .meta-item .meta-key {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-
-    .meta-item .meta-val {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-      word-break: break-all;
-    }
-
-    .badge-crashed {
-      display: inline-block;
-      padding: 2px 8px;
-      background: rgba(239,68,68,0.15);
-      border: 1px solid rgba(239,68,68,0.4);
-      border-radius: 999px;
-      color: #f87171;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
       font-size: 11px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
     }
 
-    /* Findings table */
-    .findings-table-wrap {
-      overflow-x: auto;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    .sev-chip-count {
       font-size: 14px;
-    }
-
-    thead th {
-      background: var(--surface);
-      padding: 12px 14px;
-      text-align: left;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-
-    tbody tr {
-      border-bottom: 1px solid var(--border-soft);
-      transition: background 0.1s;
-    }
-
-    tbody tr:last-child { border-bottom: none; }
-
-    tbody tr:hover { background: var(--card-hover); }
-
-    tbody td {
-      padding: 12px 14px;
-      vertical-align: top;
-    }
-
-    .sev-badge {
-      display: inline-block;
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      white-space: nowrap;
-    }
-
-    .badge-critical { background: rgba(239,68,68,0.15);  color: #f87171; }
-    .badge-warning  { background: rgba(245,158,11,0.15); color: #fbbf24; }
-    .badge-info     { background: rgba(59,130,246,0.15); color: #60a5fa; }
-    .badge-pass     { background: rgba(34,197,94,0.12);  color: #4ade80; }
-
-    .score-cell {
       font-variant-numeric: tabular-nums;
+    }
+
+    .sev-chip-label {
+      font-size: 9px;
       font-weight: 700;
-      font-size: 15px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.7;
     }
 
-    .score-green  { color: var(--accent); }
-    .score-amber  { color: #f59e0b; }
-    .score-red    { color: var(--red); }
+    .chip-critical { background: rgba(226,75,74,0.1);  border: 1px solid rgba(226,75,74,0.2);  color: var(--red); }
+    .chip-warning  { background: rgba(239,159,39,0.1); border: 1px solid rgba(239,159,39,0.2); color: var(--amber); }
+    .chip-info     { background: rgba(99,153,34,0.1);  border: 1px solid rgba(99,153,34,0.2);  color: #a3c44a; }
+    .chip-pass     { background: rgba(110,204,114,0.08); border: 1px solid rgba(110,204,114,0.15); color: var(--green); }
 
-    .finding-title { font-weight: 600; color: var(--text); }
-    .finding-desc  { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
-    .finding-plugin {
-      font-size: 11px;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 6px;
-      display: inline-block;
-      white-space: nowrap;
+    /* ── Filter tabs in findings header ──────────────────────── */
+    .findings-filter-tabs {
+      display: flex;
+      gap: 2px;
     }
 
-    /* Empty state */
+    .ftab {
+      padding: 3px 9px;
+      font-family: var(--font);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      background: none;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: color 0.12s, background 0.12s;
+    }
+
+    .ftab:hover { color: var(--text); background: var(--card-hover); }
+    .ftab.active { color: var(--green); background: var(--green-glow); }
+
+    /* ── Empty state ─────────────────────────────────────────── */
     .empty-state {
       text-align: center;
-      padding: 40px;
-      color: var(--muted);
-      font-size: 14px;
+      padding: 32px 16px;
+      color: var(--text-muted);
+      font-size: 11px;
     }
 
-    .empty-state .empty-icon { font-size: 32px; display: block; margin-bottom: 10px; }
-
-    /* Filter row */
-    .filter-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 1200px) {
+      .results-grid { grid-template-columns: 240px 1fr 280px; }
+      .plugin-bar-name { width: 100px; }
     }
 
-    .filter-btn {
-      padding: 5px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
+    @media (max-width: 960px) {
+      .results-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .findings-col { grid-column: 1 / -1; max-height: 420px; }
     }
 
-    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
-
-    /* Score ring coloring based on value */
-    .score-excellent { color: var(--accent); }
-    .score-good      { color: #a3e635; }
-    .score-fair      { color: #f59e0b; }
-    .score-poor      { color: #f97316; }
-    .score-critical  { color: var(--red); }
-
-    /* ── Responsive ─────────────────────────────────────── */
     @media (max-width: 640px) {
-      header { padding: 16px 20px; }
-      main { padding: 24px 16px 60px; }
-      .score-number { font-size: 48px; }
-      thead th:nth-child(4),
-      tbody td:nth-child(4) { display: none; }
+      header { padding: 0 16px; }
+      main { padding: 20px 12px 60px; }
+      .results-grid { grid-template-columns: 1fr; }
+      .findings-col { grid-column: unset; }
+      .header-meta { display: none; }
+      nav { gap: 0; }
+      .nav-tab { padding: 5px 8px; }
     }
   </style>
 </head>
 <body>
 
+<!-- ── Header ────────────────────────────────────────────────── -->
 <header>
-  <div class="logo" aria-hidden="true">&#x1FABF;</div>
-  <div>
-    <h1>Goose</h1>
-    <div class="tagline">Drone flight log analyzer</div>
+  <div class="logo-group">
+    <div class="logo-icon" aria-hidden="true">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 3C8.48 3 4 7.48 4 13c0 3.12 1.38 5.91 3.56 7.82L6 25l4.63-1.54A9.93 9.93 0 0 0 14 24c5.52 0 10-4.48 10-10S19.52 3 14 3z" fill="none" stroke="#6ECC72" stroke-width="1.5"/>
+        <path d="M9 13.5l3 3 7-7" stroke="#6ECC72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="14" cy="13" r="1.5" fill="#6ECC72" opacity="0.4"/>
+      </svg>
+    </div>
+    <span class="logo-text">Goose</span>
+    <span class="version-badge">v1.0.0</span>
   </div>
+
+  <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
+
+  <nav>
+    <button class="nav-tab active" onclick="switchTab('analyze')">Analyze</button>
+    <button class="nav-tab active" id="tab-crash" onclick="switchTab('crash')" style="display:none">Crash</button>
+    <button class="nav-tab disabled">Plugins</button>
+    <button class="nav-tab disabled">History</button>
+  </nav>
 </header>
 
+<!-- ── Main ──────────────────────────────────────────────────── -->
 <main>
 
-  <!-- Upload -->
-  <div id="upload-zone"
-       role="region"
-       aria-label="File upload area"
-       ondragover="handleDragOver(event)"
-       ondragleave="handleDragLeave(event)"
-       ondrop="handleDrop(event)">
-    <input type="file"
-           id="file-input"
-           accept=".ulg,.bin,.log,.tlog,.csv"
-           aria-label="Choose flight log file"
-           onchange="handleFileSelect(event)" />
-    <span class="upload-icon" aria-hidden="true">&#x1F4C2;</span>
-    <div class="upload-title">Drop a flight log here or click to browse</div>
-    <div class="upload-sub">Supports .ulg &middot; .bin &middot; .log &middot; .tlog &middot; .csv</div>
-    <div id="file-pill-container"></div>
-  </div>
+  <!-- Upload view -->
+  <div id="upload-view">
+    <div class="upload-heading">
+      <h2>Flight Log Analysis</h2>
+      <p>Upload a flight log to run the full analysis pipeline</p>
+    </div>
 
-  <div id="actions">
-    <button id="analyze-btn" disabled onclick="runAnalysis()">
-      <div class="spinner" aria-hidden="true"></div>
-      <span class="btn-label">Analyze Flight</span>
-    </button>
-  </div>
+    <div id="upload-zone"
+         role="region"
+         aria-label="File upload area"
+         ondragover="handleDragOver(event)"
+         ondragleave="handleDragLeave(event)"
+         ondrop="handleDrop(event)">
+      <input type="file"
+             id="file-input"
+             accept=".ulg,.bin,.log,.tlog,.csv"
+             aria-label="Choose flight log file"
+             onchange="handleFileSelect(event)" />
 
-  <div id="error-banner" role="alert" aria-live="polite"></div>
-
-  <!-- Results -->
-  <section id="results" aria-live="polite">
-
-    <!-- Score + summary chips -->
-    <div class="section-title">Analysis Result</div>
-    <div class="score-row">
-      <div class="score-card">
-        <div id="overall-score" class="score-number">&mdash;</div>
-        <div class="score-label">Overall Score</div>
+      <div class="upload-icon-ring" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6ECC72" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
       </div>
-      <div class="severity-strip" id="severity-strip"></div>
+
+      <div class="upload-title">Drop a flight log here</div>
+      <div class="upload-sub">or click to browse your filesystem</div>
+
+      <div class="upload-formats">
+        <span class="fmt-tag">.ulg</span>
+        <span class="fmt-tag">.bin</span>
+        <span class="fmt-tag">.log</span>
+        <span class="fmt-tag">.tlog</span>
+        <span class="fmt-tag">.csv</span>
+      </div>
+
+      <div id="file-pill-container" class="file-pill-wrap" style="display:none"></div>
     </div>
 
-    <!-- Metadata -->
-    <div class="section-title" style="margin-top: 8px;">Flight Metadata</div>
-    <div class="meta-grid" id="meta-grid"></div>
-
-    <!-- Findings -->
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-      <div class="section-title" style="margin-bottom:0;">Findings</div>
-      <div class="filter-row" id="filter-row"></div>
-    </div>
-    <div class="findings-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:90px">Severity</th>
-            <th style="width:64px">Score</th>
-            <th>Finding</th>
-            <th style="width:110px">Plugin</th>
-          </tr>
-        </thead>
-        <tbody id="findings-body"></tbody>
-      </table>
+    <div id="actions">
+      <button id="analyze-btn" disabled onclick="runAnalysis()">
+        <div class="spinner" aria-hidden="true"></div>
+        <span class="btn-label">Run Analysis</span>
+      </button>
     </div>
 
-  </section>
+    <div id="error-banner" role="alert" aria-live="polite"></div>
+  </div>
+
+  <!-- Loading view -->
+  <div id="loading-view" aria-live="polite">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <div class="loading-title">Analyzing flight data&hellip;</div>
+    <div class="loading-sub">Running plugin pipeline &mdash; this may take a moment</div>
+    <div class="skeleton-grid" aria-hidden="true">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card" style="height:80px;grid-column:1/-1"></div>
+    </div>
+  </div>
+
+  <!-- Results view -->
+  <div id="results-view" aria-live="polite">
+
+    <!-- Status banner -->
+    <div id="status-banner" class="status-banner">
+      <div class="status-dot"></div>
+      <span id="status-text">FLIGHT NORMAL</span>
+      <span class="status-details" id="status-details"></span>
+      <button class="new-analysis-btn" onclick="resetToUpload()">+ New Analysis</button>
+    </div>
+
+    <!-- 3-col grid -->
+    <div class="results-grid">
+
+      <!-- Left column -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Score ring -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Overall Score</span>
+            <span id="score-grade-header" class="score-grade" style="font-size:9px;padding:2px 7px;border-radius:4px;"></span>
+          </div>
+          <div class="score-ring-wrap">
+            <div class="score-ring-container">
+              <svg class="score-ring-svg" viewBox="0 0 140 140">
+                <circle class="score-ring-track" cx="70" cy="70" r="56"/>
+                <circle id="score-ring-fill" class="score-ring-fill" cx="70" cy="70" r="56"
+                        stroke-dasharray="351.86"
+                        stroke-dashoffset="351.86"/>
+              </svg>
+              <div class="score-ring-center">
+                <span id="score-ring-number" class="score-ring-number">—</span>
+                <span class="score-ring-label">/ 100</span>
+              </div>
+            </div>
+            <div id="summary-chips" class="summary-chips" style="margin-top:16px;justify-content:center;"></div>
+          </div>
+        </div>
+
+        <!-- Crash card (shown only when crashed) -->
+        <div id="crash-card" class="card crash-card" style="display:none">
+          <div class="card-body">
+            <div class="crash-badge">
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
+              CRASH DETECTED
+            </div>
+            <div class="crash-title" id="crash-title">—</div>
+            <div class="crash-desc" id="crash-desc">—</div>
+            <div class="crash-confidence">
+              <div class="confidence-bar-wrap">
+                <div class="confidence-bar" id="confidence-bar" style="width:0%"></div>
+              </div>
+              <span class="confidence-pct" id="confidence-pct">—%</span>
+            </div>
+            <div class="card-title" style="margin-bottom:8px;">INSPECT CHECKLIST</div>
+            <ul class="inspect-list" id="inspect-list"></ul>
+          </div>
+        </div>
+
+        <!-- Flight stats -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Flight Stats</span></div>
+          <div class="stats-grid" id="stats-grid"></div>
+        </div>
+
+      </div>
+
+      <!-- Center column -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Findings timeline -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Findings Timeline</span><span id="timeline-duration" class="card-title" style="color:var(--text-muted);"></span></div>
+          <div class="timeline-wrap">
+            <div class="timeline-track" id="timeline-track" aria-label="Findings timeline">
+              <!-- events injected by JS -->
+            </div>
+            <div class="timeline-labels">
+              <span>0s</span>
+              <span id="timeline-end-label">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plugin scores -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Plugin Scores</span></div>
+          <div class="plugin-bars" id="plugin-bars-container"></div>
+        </div>
+
+        <!-- Summary table -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Analysis Summary</span></div>
+          <div class="card-body" id="summary-table-body" style="padding:0;"></div>
+        </div>
+
+      </div>
+
+      <!-- Right column: Findings list -->
+      <div class="card findings-col">
+        <div class="card-header">
+          <span class="card-title">Findings</span>
+          <div class="findings-filter-tabs" id="findings-filter-tabs"></div>
+        </div>
+        <div class="findings-scroll" id="findings-scroll">
+          <!-- rows injected by JS -->
+        </div>
+        <div class="finding-detail" id="finding-detail"></div>
+      </div>
+
+    </div>
+  </div>
 
 </main>
 
 <script>
-  // ── State ────────────────────────────────────────────────
+  /* ════════════════════════════════════════════════════════════
+     State
+  ════════════════════════════════════════════════════════════ */
   let selectedFile = null;
-  let lastResults = null;
+  let lastResults  = null;
   let activeFilter = 'all';
+  let activeFinding = null;
 
-  // ── File handling ─────────────────────────────────────────
+  /* ════════════════════════════════════════════════════════════
+     File handling
+  ════════════════════════════════════════════════════════════ */
   function handleFileSelect(e) {
-    const file = e.target.files[0];
-    if (file) setFile(file);
+    const f = e.target.files[0];
+    if (f) setFile(f);
   }
 
   function handleDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     document.getElementById('upload-zone').classList.add('drag-over');
   }
 
@@ -576,23 +1248,23 @@
   }
 
   function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     document.getElementById('upload-zone').classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) setFile(file);
+    const f = e.dataTransfer.files[0];
+    if (f) setFile(f);
   }
 
   function setFile(file) {
     selectedFile = file;
     hideError();
-    hideResults();
 
-    const pill = document.getElementById('file-pill-container');
-    pill.innerHTML = `
+    const pillWrap = document.getElementById('file-pill-container');
+    pillWrap.style.display = 'flex';
+    pillWrap.innerHTML = `
       <div class="file-pill">
-        <span>&#x1F4C4; ${escHtml(file.name)}</span>
-        <span class="remove-file" title="Remove file" onclick="clearFile()">&#x2715;</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="file-pill-name">${escHtml(file.name)}</span>
+        <span class="remove-file" title="Remove" onclick="clearFile()">&#x2715;</span>
       </div>`;
 
     document.getElementById('analyze-btn').disabled = false;
@@ -600,14 +1272,17 @@
 
   function clearFile() {
     selectedFile = null;
-    document.getElementById('file-pill-container').innerHTML = '';
+    const pillWrap = document.getElementById('file-pill-container');
+    pillWrap.style.display = 'none';
+    pillWrap.innerHTML = '';
     document.getElementById('file-input').value = '';
     document.getElementById('analyze-btn').disabled = true;
     hideError();
-    hideResults();
   }
 
-  // ── Analysis ──────────────────────────────────────────────
+  /* ════════════════════════════════════════════════════════════
+     Analysis
+  ════════════════════════════════════════════════════════════ */
   async function runAnalysis() {
     if (!selectedFile) return;
 
@@ -615,149 +1290,425 @@
     btn.disabled = true;
     btn.classList.add('loading');
     hideError();
-    hideResults();
+
+    showView('loading');
 
     try {
       const form = new FormData();
       form.append('file', selectedFile);
 
-      const res = await fetch('/api/analyze', { method: 'POST', body: form });
+      const res  = await fetch('/api/analyze', { method: 'POST', body: form });
       const data = await res.json();
 
       if (!res.ok) {
-        const msg = data.detail || `Server error ${res.status}`;
+        const msg = (data && data.detail) ? data.detail : `Server error ${res.status}`;
+        showView('upload');
         showError(msg);
         return;
       }
 
-      lastResults = data;
+      lastResults  = data;
       activeFilter = 'all';
+      activeFinding = null;
       renderResults(data);
+      showView('results');
+
     } catch (err) {
-      showError('Network error: ' + err.message);
+      showView('upload');
+      showError('Network error: ' + escHtml(err.message));
     } finally {
       btn.classList.remove('loading');
       btn.disabled = false;
     }
   }
 
-  // ── Rendering ─────────────────────────────────────────────
-  function renderResults(data) {
-    const meta = data.metadata;
-    const summary = data.summary;
-    const findings = data.findings || [];
+  /* ════════════════════════════════════════════════════════════
+     View management
+  ════════════════════════════════════════════════════════════ */
+  function showView(which) {
+    document.getElementById('upload-view').style.display   = which === 'upload'  ? '' : 'none';
+    document.getElementById('loading-view').style.display  = which === 'loading' ? '' : 'none';
+    document.getElementById('results-view').style.display  = which === 'results' ? '' : 'none';
+    document.getElementById('tab-crash').style.display = (which === 'results' && lastResults && lastResults.metadata && lastResults.metadata.crashed) ? '' : 'none';
+  }
 
-    // Overall score
-    const scoreEl = document.getElementById('overall-score');
-    scoreEl.textContent = data.overall_score;
-    scoreEl.className = 'score-number ' + scoreColorClass(data.overall_score);
+  function resetToUpload() {
+    lastResults = null;
+    activeFilter = 'all';
+    activeFinding = null;
+    clearFile();
+    showView('upload');
+  }
 
-    // Severity strip
-    const strip = document.getElementById('severity-strip');
-    const sums = summary.by_severity || {};
-    strip.innerHTML = ['critical', 'warning', 'info', 'pass'].map(sev => `
-      <div class="sev-chip sev-${sev}">
-        <span class="chip-count">${sums[sev] || 0}</span>
-        <span class="chip-label">${sev}</span>
-      </div>`).join('');
-
-    // Metadata grid
-    const grid = document.getElementById('meta-grid');
-    const metaItems = [
-      { key: 'File', val: escHtml(meta.filename || '\u2014') },
-      { key: 'Autopilot', val: escHtml(capitalize(meta.autopilot || '\u2014')) },
-      { key: 'Vehicle', val: escHtml(capitalize(meta.vehicle_type || '\u2014')) },
-      { key: 'Duration', val: escHtml(meta.duration_str || formatDuration(meta.duration_sec)) },
-      { key: 'Firmware', val: escHtml(meta.firmware_version || '\u2014') },
-      { key: 'Hardware', val: escHtml(meta.hardware || '\u2014') },
-      { key: 'Primary Mode', val: escHtml(capitalize(meta.primary_mode || '\u2014')) },
-      { key: 'Motor Count', val: escHtml(String(meta.motor_count || '\u2014')) },
-      { key: 'Log Format', val: escHtml(String(meta.log_format || '\u2014').toUpperCase()) },
-      { key: 'Status', val: meta.crashed
-          ? '<span class="badge-crashed">Crash Detected</span>'
-          : '<span style="color:#4ade80;font-weight:600;">Normal</span>' },
-    ];
-
-    if (meta.start_time_utc) {
-      try {
-        const dt = new Date(meta.start_time_utc);
-        metaItems.push({ key: 'Flight Date', val: escHtml(dt.toLocaleString()) });
-      } catch (_) {}
+  function switchTab(tab) {
+    if (tab === 'analyze') {
+      if (lastResults) showView('results');
+      else resetToUpload();
     }
-
-    grid.innerHTML = metaItems.map(item => `
-      <div class="meta-item">
-        <div class="meta-key">${item.key}</div>
-        <div class="meta-val">${item.val}</div>
-      </div>`).join('');
-
-    // Filter buttons
-    buildFilterRow(findings);
-
-    // Findings table
-    renderFindings(findings, activeFilter);
-
-    document.getElementById('results').style.display = 'block';
-    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function buildFilterRow(findings) {
-    const row = document.getElementById('filter-row');
-    const counts = { all: findings.length, critical: 0, warning: 0, info: 0, pass: 0 };
-    findings.forEach(f => { if (f.severity in counts) counts[f.severity]++; });
+  /* ════════════════════════════════════════════════════════════
+     Render
+  ════════════════════════════════════════════════════════════ */
+  function renderResults(data) {
+    const meta     = data.metadata    || {};
+    const summary  = data.summary     || {};
+    const findings = data.findings    || [];
+    const score    = data.overall_score != null ? data.overall_score : null;
 
-    const buttons = ['all', 'critical', 'warning', 'info', 'pass'].map(key => {
-      const label = key === 'all' ? `All (${counts.all})` : `${capitalize(key)} (${counts[key]})`;
-      const isActive = activeFilter === key ? ' active' : '';
-      return `<button class="filter-btn${isActive}" onclick="setFilter('${key}')">${label}</button>`;
-    });
+    /* Status banner */
+    const banner   = document.getElementById('status-banner');
+    const crashed  = !!meta.crashed;
+    banner.className = 'status-banner ' + (crashed ? 'crashed' : 'normal');
+    document.getElementById('status-text').textContent = crashed ? 'CRASH DETECTED' : 'FLIGHT NORMAL';
+    document.getElementById('status-details').textContent =
+      escHtml(meta.filename || '') +
+      (meta.duration_str ? ' \u00b7 ' + escHtml(meta.duration_str) : '') +
+      (meta.firmware_version ? ' \u00b7 fw ' + escHtml(meta.firmware_version) : '');
 
-    row.innerHTML = buttons.join('');
+    /* Score ring */
+    renderScoreRing(score);
+
+    /* Summary chips */
+    const sevCounts = (summary.by_severity) || {};
+    const chipsEl   = document.getElementById('summary-chips');
+    chipsEl.innerHTML = ['critical','warning','info','pass'].map(sev => {
+      const n = sevCounts[sev] || 0;
+      return `<div class="sev-chip chip-${sev}">
+        <span class="sev-chip-count">${n}</span>
+        <span class="sev-chip-label">${sev}</span>
+      </div>`;
+    }).join('');
+
+    /* Crash card */
+    renderCrashCard(findings, crashed);
+
+    /* Flight stats */
+    renderFlightStats(meta);
+
+    /* Timeline */
+    renderTimeline(findings, meta.duration_sec);
+
+    /* Plugin bars */
+    renderPluginBars(findings);
+
+    /* Summary table */
+    renderSummaryTable(summary, meta);
+
+    /* Findings list */
+    buildFindingsTabs(findings);
+    renderFindingsList(findings, 'all');
   }
 
-  function setFilter(sev) {
-    activeFilter = sev;
-    if (!lastResults) return;
-    buildFilterRow(lastResults.findings);
-    renderFindings(lastResults.findings, sev);
-  }
+  /* ── Score ring ────────────────────────────────────────────── */
+  function renderScoreRing(score) {
+    const numEl  = document.getElementById('score-ring-number');
+    const fillEl = document.getElementById('score-ring-fill');
+    const gradeEl = document.getElementById('score-grade-header');
 
-  function renderFindings(findings, filter) {
-    const tbody = document.getElementById('findings-body');
-    const filtered = filter === 'all' ? findings : findings.filter(f => f.severity === filter);
-
-    if (filtered.length === 0) {
-      tbody.innerHTML = `
-        <tr><td colspan="4">
-          <div class="empty-state">
-            <span class="empty-icon">&#x2705;</span>
-            ${filter === 'all' ? 'No findings \u2014 flight looks clean.' : `No ${filter} findings.`}
-          </div>
-        </td></tr>`;
+    if (score == null) {
+      numEl.textContent = '—';
+      fillEl.style.strokeDashoffset = '351.86';
       return;
     }
 
-    // Sort: critical -> warning -> info -> pass, then by score asc
-    const order = { critical: 0, warning: 1, info: 2, pass: 3 };
-    const sorted = [...filtered].sort((a, b) => {
-      const sevDiff = (order[a.severity] || 2) - (order[b.severity] || 2);
-      if (sevDiff !== 0) return sevDiff;
-      return a.score - b.score;
+    const pct = Math.min(Math.max(score, 0), 100);
+    const circumference = 351.86;
+    const offset = circumference - (pct / 100) * circumference;
+
+    const { color, grade, bg } = scoreStyle(pct);
+    numEl.textContent = pct;
+    numEl.style.color = color;
+
+    fillEl.style.stroke = color;
+    /* Animate: start from full offset, transition to target */
+    fillEl.style.transition = 'none';
+    fillEl.style.strokeDashoffset = '351.86';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        fillEl.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1), stroke 0.6s';
+        fillEl.style.strokeDashoffset = offset;
+      });
     });
 
-    tbody.innerHTML = sorted.map(f => `
-      <tr>
-        <td><span class="sev-badge badge-${f.severity}">${escHtml(f.severity)}</span></td>
-        <td><span class="score-cell ${scoreColorClass(f.score)}">${f.score}</span></td>
-        <td>
-          <div class="finding-title">${escHtml(f.title)}</div>
-          <div class="finding-desc">${escHtml(f.description)}</div>
-        </td>
-        <td><span class="finding-plugin">${escHtml(f.plugin_name)}</span></td>
-      </tr>`).join('');
+    gradeEl.textContent = grade;
+    gradeEl.style.color = color;
+    gradeEl.style.background = bg;
+    gradeEl.style.border = `1px solid ${color}40`;
   }
 
-  // ── Helpers ───────────────────────────────────────────────
+  function scoreStyle(pct) {
+    if (pct >= 80) return { color: 'var(--green)',  grade: 'NOMINAL',  bg: 'rgba(110,204,114,0.1)' };
+    if (pct >= 50) return { color: 'var(--amber)',  grade: 'DEGRADED', bg: 'rgba(239,159,39,0.1)'  };
+    return              { color: 'var(--red)',    grade: 'CRITICAL', bg: 'rgba(226,75,74,0.1)'   };
+  }
+
+  /* ── Crash card ────────────────────────────────────────────── */
+  function renderCrashCard(findings, crashed) {
+    const card = document.getElementById('crash-card');
+    if (!crashed) { card.style.display = 'none'; return; }
+    card.style.display = '';
+
+    const sevOrder = { critical: 0, warning: 1, info: 2, pass: 3 };
+    const sorted   = [...findings].sort((a,b) => (sevOrder[a.severity]||2) - (sevOrder[b.severity]||2));
+    const top      = sorted[0] || null;
+
+    document.getElementById('crash-title').textContent = top ? top.title : 'Unknown cause';
+    document.getElementById('crash-desc').textContent  = top ? top.description : 'Insufficient data to determine root cause.';
+
+    // Confidence: infer from score (lower score = higher confidence of problem)
+    const conf = top ? Math.round(100 - (top.score / 100) * 60) : 70;
+    document.getElementById('confidence-bar').style.width = conf + '%';
+    document.getElementById('confidence-pct').textContent = conf + '%';
+
+    // Inspect checklist
+    const checkItems = [
+      'Check motor & ESC connections',
+      'Review battery voltage logs',
+      'Inspect props for damage',
+      'Check vibration levels',
+      'Review GPS signal quality',
+    ];
+    const list = document.getElementById('inspect-list');
+    list.innerHTML = checkItems.map(item => `
+      <li class="inspect-item">
+        <div class="inspect-cb" aria-hidden="true"></div>
+        <span>${escHtml(item)}</span>
+      </li>`).join('');
+  }
+
+  /* ── Flight stats ──────────────────────────────────────────── */
+  function renderFlightStats(meta) {
+    const items = [
+      { k: 'Duration',   v: meta.duration_str   || formatDuration(meta.duration_sec) },
+      { k: 'Mode',       v: capitalize(meta.primary_mode || '—') },
+      { k: 'Motors',     v: meta.motor_count != null ? String(meta.motor_count) : '—' },
+      { k: 'Format',     v: String(meta.log_format || '—').toUpperCase() },
+      { k: 'Firmware',   v: meta.firmware_version || '—' },
+      { k: 'Hardware',   v: meta.hardware || '—' },
+      { k: 'Autopilot',  v: capitalize(meta.autopilot || '—') },
+      { k: 'Vehicle',    v: capitalize(meta.vehicle_type || '—') },
+    ];
+
+    document.getElementById('stats-grid').innerHTML = items.map(i => `
+      <div class="stat-item">
+        <div class="stat-key">${escHtml(i.k)}</div>
+        <div class="stat-val">${escHtml(i.v)}</div>
+      </div>`).join('');
+  }
+
+  /* ── Timeline ──────────────────────────────────────────────── */
+  function renderTimeline(findings, durationSec) {
+    const track    = document.getElementById('timeline-track');
+    const endLabel = document.getElementById('timeline-end-label');
+    const durLabel = document.getElementById('timeline-duration');
+
+    const dur = durationSec || 0;
+    endLabel.textContent = dur ? formatDuration(dur) : '—';
+    durLabel.textContent = dur ? formatDuration(dur) : '';
+
+    if (!dur || findings.length === 0) {
+      track.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:10px;color:var(--text-muted);">No timeline data</div>';
+      return;
+    }
+
+    const sevColor = { critical: 'var(--red)', warning: 'var(--amber)', info: '#a3c44a', pass: 'var(--green-pass)' };
+
+    track.innerHTML = findings.filter(f => f.timestamp_start != null).map(f => {
+      const pct   = Math.min((f.timestamp_start / dur) * 100, 100);
+      const width = f.timestamp_end != null
+        ? Math.max(((f.timestamp_end - f.timestamp_start) / dur) * 100, 0.5)
+        : 0.8;
+      const color = sevColor[f.severity] || 'rgba(255,255,255,0.3)';
+      return `<div class="timeline-event"
+                style="left:${pct}%;width:${width}%;background:${color};opacity:0.8"
+                title="${escAttr(f.title)} (${escAttr(f.severity)}, t=${f.timestamp_start}s)"
+                aria-label="${escAttr(f.title)}"></div>`;
+    }).join('');
+  }
+
+  /* ── Plugin bars ───────────────────────────────────────────── */
+  function renderPluginBars(findings) {
+    const container = document.getElementById('plugin-bars-container');
+    if (!findings.length) {
+      container.innerHTML = '<div class="empty-state">No plugin data</div>';
+      return;
+    }
+
+    // Aggregate worst (lowest) score per plugin
+    const pluginMap = {};
+    findings.forEach(f => {
+      const name = f.plugin_name || 'unknown';
+      if (!(name in pluginMap) || f.score < pluginMap[name].score) {
+        pluginMap[name] = { score: f.score, severity: f.severity };
+      }
+    });
+
+    const sevColor = { critical: 'var(--red)', warning: 'var(--amber)', info: '#a3c44a', pass: 'var(--green-pass)' };
+    const sevOrder = { critical: 0, warning: 1, info: 2, pass: 3 };
+
+    const entries = Object.entries(pluginMap).sort((a,b) =>
+      (sevOrder[a[1].severity]||2) - (sevOrder[b[1].severity]||2));
+
+    container.innerHTML = entries.map(([name, { score, severity }]) => {
+      const color = sevColor[severity] || 'rgba(255,255,255,0.3)';
+      const colClass = 'col-' + (severity || 'pass');
+      const pct = Math.min(Math.max(score, 0), 100);
+      return `<div class="plugin-bar-row">
+        <span class="plugin-bar-name">${escHtml(name)}</span>
+        <div class="plugin-bar-track">
+          <div class="plugin-bar-fill" data-target-width="${pct}" style="width:0%;background:${color}"></div>
+        </div>
+        <span class="plugin-bar-score ${colClass}">${pct}</span>
+      </div>`;
+    }).join('');
+
+    // Animate bars
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        container.querySelectorAll('.plugin-bar-fill').forEach(el => {
+          el.style.width = el.dataset.targetWidth + '%';
+        });
+      });
+    });
+  }
+
+  /* ── Summary table ─────────────────────────────────────────── */
+  function renderSummaryTable(summary, meta) {
+    const el = document.getElementById('summary-table-body');
+    const rows = [
+      { k: 'Total Findings', v: summary.total_findings != null ? String(summary.total_findings) : '—' },
+      { k: 'Plugins Run',    v: summary.plugins_run    != null ? String(summary.plugins_run)    : '—' },
+      { k: 'Plugin Errors',  v: (summary.plugin_errors || []).length === 0 ? 'None' : (summary.plugin_errors || []).join(', ') },
+      { k: 'Flight Date',    v: meta.start_time_utc ? formatDate(meta.start_time_utc) : '—' },
+    ];
+
+    el.innerHTML = rows.map((r, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;${i < rows.length-1 ? 'border-bottom:1px solid var(--card-border);' : ''}">
+        <span style="font-size:10px;color:var(--text-sec);letter-spacing:0.04em;">${escHtml(r.k)}</span>
+        <span style="font-size:11px;font-weight:600;color:var(--text);">${escHtml(r.v)}</span>
+      </div>`).join('');
+  }
+
+  /* ── Findings filter tabs ──────────────────────────────────── */
+  function buildFindingsTabs(findings) {
+    const counts = { all: findings.length, critical: 0, warning: 0, info: 0, pass: 0 };
+    findings.forEach(f => { if (f.severity in counts) counts[f.severity]++; });
+
+    const tabs = document.getElementById('findings-filter-tabs');
+    tabs.innerHTML = ['all','critical','warning','info','pass'].map(k => {
+      const isActive = (activeFilter === k) ? ' active' : '';
+      const label    = k === 'all' ? `All (${counts.all})` : `${capitalize(k)} (${counts[k]})`;
+      return `<button class="ftab${isActive}" onclick="setFindingsFilter('${k}',event)">${label}</button>`;
+    }).join('');
+  }
+
+  function setFindingsFilter(filter, e) {
+    activeFilter  = filter;
+    activeFinding = null;
+    document.getElementById('finding-detail').classList.remove('visible');
+    if (lastResults) {
+      buildFindingsTabs(lastResults.findings);
+      renderFindingsList(lastResults.findings, filter);
+    }
+  }
+
+  /* ── Findings list ─────────────────────────────────────────── */
+  function renderFindingsList(findings, filter) {
+    const container = document.getElementById('findings-scroll');
+    const sevOrder  = { critical: 0, warning: 1, info: 2, pass: 3 };
+    const sevIcon   = { critical: '!!', warning: '!', info: 'i', pass: '&#x2713;' };
+    const colClass  = { critical: 'col-critical', warning: 'col-warning', info: 'col-info', pass: 'col-pass' };
+
+    const filtered  = filter === 'all' ? findings : findings.filter(f => f.severity === filter);
+    const sorted    = [...filtered].sort((a,b) => {
+      const d = (sevOrder[a.severity]||2) - (sevOrder[b.severity]||2);
+      return d !== 0 ? d : a.score - b.score;
+    });
+
+    if (sorted.length === 0) {
+      container.innerHTML = `<div class="empty-state">No ${filter === 'all' ? '' : filter + ' '}findings.</div>`;
+      return;
+    }
+
+    container.innerHTML = sorted.map((f, idx) => {
+      const scoreColor = scoreStyle(f.score).color;
+      const phase = f.phase ? escHtml(capitalize(f.phase)) : '';
+      const ts    = f.timestamp_start != null ? `t=${f.timestamp_start}s` : '';
+      const meta  = [f.plugin_name, phase, ts].filter(Boolean).join(' \u00b7 ');
+      return `<div class="finding-row" id="finding-row-${idx}" onclick="toggleFinding(${idx})" role="button" tabindex="0" aria-expanded="false">
+        <div class="finding-sev-icon sev-icon-${f.severity}">${sevIcon[f.severity] || '?'}</div>
+        <div class="finding-row-body">
+          <div class="finding-row-title">${escHtml(f.title)}</div>
+          <div class="finding-row-meta">${escHtml(meta)}</div>
+        </div>
+        <span class="finding-score ${colClass[f.severity]||''}">${f.score}</span>
+      </div>`;
+    }).join('');
+
+    // Store sorted findings for detail lookup
+    container._sortedFindings = sorted;
+  }
+
+  function toggleFinding(idx) {
+    const container  = document.getElementById('findings-scroll');
+    const detailPane = document.getElementById('finding-detail');
+    const findings   = container._sortedFindings || [];
+    const f          = findings[idx];
+    if (!f) return;
+
+    const row = document.getElementById('finding-row-' + idx);
+
+    if (activeFinding === idx) {
+      activeFinding = null;
+      row.classList.remove('active');
+      row.setAttribute('aria-expanded', 'false');
+      detailPane.classList.remove('visible');
+      return;
+    }
+
+    // Deactivate previous
+    if (activeFinding != null) {
+      const prev = document.getElementById('finding-row-' + activeFinding);
+      if (prev) { prev.classList.remove('active'); prev.setAttribute('aria-expanded','false'); }
+    }
+
+    activeFinding = idx;
+    row.classList.add('active');
+    row.setAttribute('aria-expanded', 'true');
+
+    // Build detail panel
+    const evidenceHtml = f.evidence && typeof f.evidence === 'object' && Object.keys(f.evidence).length > 0
+      ? `<div class="detail-evidence">${
+          Object.entries(f.evidence).map(([k,v]) =>
+            `<div><span class="ev-key">${escHtml(k)}</span>  <span class="ev-val">${escHtml(String(v))}</span></div>`
+          ).join('')
+        }</div>`
+      : '<span style="color:var(--text-muted);font-size:11px;">No evidence data</span>';
+
+    const tsHtml = (f.timestamp_start != null || f.timestamp_end != null)
+      ? `<div class="detail-timestamps">
+          ${f.timestamp_start != null ? `<div class="detail-ts-item"><div class="detail-label" style="margin-top:0;">Start</div><div class="detail-value">${escHtml(String(f.timestamp_start))}s</div></div>` : ''}
+          ${f.timestamp_end   != null ? `<div class="detail-ts-item"><div class="detail-label" style="margin-top:0;">End</div><div class="detail-value">${escHtml(String(f.timestamp_end))}s</div></div>` : ''}
+          ${f.phase ? `<div class="detail-ts-item"><div class="detail-label" style="margin-top:0;">Phase</div><div class="detail-value">${escHtml(capitalize(f.phase))}</div></div>` : ''}
+        </div>`
+      : '';
+
+    detailPane.innerHTML = `
+      <div class="detail-label">Description</div>
+      <div class="detail-value">${escHtml(f.description)}</div>
+      ${f.evidence && Object.keys(f.evidence||{}).length ? '<div class="detail-label">Evidence</div>' + evidenceHtml : ''}
+      ${tsHtml ? '<div class="detail-label">Timestamps</div>' + tsHtml : ''}
+    `;
+    detailPane.classList.add('visible');
+
+    // Scroll row into view
+    row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Helpers
+  ════════════════════════════════════════════════════════════ */
   function showError(msg) {
     const el = document.getElementById('error-banner');
     el.textContent = msg;
@@ -768,18 +1719,23 @@
     document.getElementById('error-banner').style.display = 'none';
   }
 
-  function hideResults() {
-    document.getElementById('results').style.display = 'none';
-    lastResults = null;
-  }
-
   function escHtml(str) {
     if (str == null) return '\u2014';
     return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  }
+
+  function escAttr(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   function capitalize(str) {
@@ -797,13 +1753,21 @@
     return `${s}s`;
   }
 
-  function scoreColorClass(score) {
-    if (score >= 90) return 'score-excellent';
-    if (score >= 70) return 'score-good';
-    if (score >= 50) return 'score-fair';
-    if (score >= 30) return 'score-poor';
-    return 'score-critical';
+  function formatDate(iso) {
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch(_) { return iso; }
   }
+
+  /* Keyboard accessibility for finding rows */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.classList.contains('finding-row')) {
+      e.target.click();
+    }
+  });
 </script>
 </body>
 </html>

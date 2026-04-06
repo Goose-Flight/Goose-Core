@@ -1,14 +1,14 @@
-"""goose analyze — run all plugins against a flight log."""
+"""goose analyze — full flight log analysis (all plugins)."""
 
 from __future__ import annotations
 
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 from rich.console import Console
-from rich.table import Table
 
 from goose import __version__
 from goose.core.finding import Finding
@@ -17,82 +17,104 @@ from goose.parsers.ulog import ULogParser
 from goose.plugins.registry import load_plugins
 
 
-@click.command()
-@click.argument("logfile", type=click.Path(exists=True))
-@click.option("-o", "--output", type=click.Path(), help="Save JSON report to file")
-@click.option("-f", "--format", "fmt", type=click.Choice(["text", "json"]), default="text")
-@click.option("--no-color", is_flag=True, help="Disable colored output")
-def analyze(logfile: str, output: str | None, fmt: str, no_color: bool) -> None:
-    """Analyze a flight log with all available plugins."""
-    console = Console(force_terminal=not no_color, no_color=no_color)
-    path = Path(logfile)
+def _parse_log(filepath: Path) -> Flight:
+    """Parse a log file, auto-detecting format."""
+    ext = filepath.suffix.lower()
+    if ext == ".ulg":
+        parser = ULogParser()
+        return parser.parse(filepath)
+    raise click.ClickException(f"Unsupported log format: {ext}")
 
-    parser = ULogParser()
-    if not parser.can_parse(path):
-        console.print(f"[red]Unsupported file format: {path.suffix}[/red]")
-        sys.exit(1)
+
+@click.command()
+@click.argument("logfile", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("-o", "--output", type=click.Path(path_type=Path), default=None, help="Save report to file")
+@click.option("-f", "--format", "fmt", type=click.Choice(["text", "json"]), default="text", help="Output format")
+@click.option("-v", "--verbose", is_flag=True, default=False, help="Show detailed evidence per finding")
+@click.option("--plugin", "plugin_filter", multiple=True, help="Run only named plugins (repeatable)")
+@click.option("--no-color", is_flag=True, default=False, help="Disable colored output")
+def analyze(
+    logfile: Path,
+    output: Path | None,
+    fmt: str,
+    verbose: bool,
+    plugin_filter: tuple[str, ...],
+    no_color: bool,
+) -> None:
+    """Run all analysis plugins against a flight log.
+
+    Unlike ``crash`` (which focuses on crash root-cause), ``analyze`` runs
+    every registered plugin and reports each finding individually.
+    """
+    console = Console(no_color=no_color, stderr=False)
 
     try:
-        flight = parser.parse(path)
+        flight = _parse_log(logfile)
     except Exception as e:
-        console.print(f"[red]Parse error: {e}[/red]")
-        sys.exit(1)
+        raise click.ClickException(f"Failed to parse {logfile}: {e}") from e
 
     plugins = load_plugins()
-    all_findings: list[Finding] = []
+    if plugin_filter:
+        plugins = [p for p in plugins if p.name in plugin_filter]
 
+    findings: list[Finding] = []
     for plugin in plugins:
+        if not plugin.applicable(flight):
+            continue
         try:
-            findings = plugin.analyze(flight, {})
-            all_findings.extend(findings)
-        except Exception as e:
-            all_findings.append(Finding(
+            findings.extend(plugin.analyze(flight, {}))
+        except Exception as exc:
+            findings.append(Finding(
                 plugin_name=plugin.name,
-                title=f"Plugin error: {e}",
-                severity="warning",
+                title=f"{plugin.name} plugin error",
+                severity="info",
                 score=50,
-                description=f"Plugin {plugin.name} raised an exception: {e}",
+                description=str(exc),
             ))
 
-    avg_score = sum(f.score for f in all_findings) / len(all_findings) if all_findings else 100
-
     if fmt == "json":
-        report = {
+        report: dict[str, Any] = {
             "version": __version__,
-            "file": str(path.name),
-            "duration_sec": flight.metadata.duration_sec,
-            "autopilot": flight.metadata.autopilot,
-            "vehicle_type": flight.metadata.vehicle_type,
-            "overall_score": round(avg_score),
-            "total_findings": len(all_findings),
+            "file": str(logfile),
+            "plugins_run": [p.name for p in plugins],
             "findings": [
-                {"plugin": f.plugin_name, "title": f.title, "severity": f.severity,
-                 "score": f.score, "description": f.description, "phase": f.phase}
-                for f in all_findings
+                {
+                    "plugin": f.plugin_name,
+                    "title": f.title,
+                    "severity": f.severity,
+                    "score": f.score,
+                    "description": f.description,
+                    **({"evidence": f.evidence} if verbose and f.evidence else {}),
+                }
+                for f in findings
             ],
         }
-        text = json.dumps(report, indent=2)
+        json_str = json.dumps(report, indent=2, default=str)
         if output:
-            Path(output).write_text(text)
-            console.print(f"Report saved to {output}")
+            output.write_text(json_str)
+            console.print(f"Report saved: {output}")
         else:
-            click.echo(text)
+            click.echo(json_str)
     else:
-        console.print(f"\n[bold]Goose v{__version__} — Flight Analysis[/bold]\n")
-        console.print(f"  File: {path.name}")
-        console.print(f"  Duration: {flight.metadata.duration_sec:.0f}s")
-        console.print(f"  Overall Score: {avg_score:.0f}/100")
-        console.print(f"  Plugins: {len(plugins)} loaded, {len(all_findings)} findings\n")
+        console.print()
+        console.print(f"Goose v{__version__} -- Full Analysis", style="bold")
+        console.print(f"  File: {logfile.name}")
+        console.print(f"  Plugins run: {len(plugins)}")
+        console.print()
 
-        if all_findings:
-            table = Table(title="Findings")
-            table.add_column("Plugin", style="cyan")
-            table.add_column("Severity", style="bold")
-            table.add_column("Score", justify="right")
-            table.add_column("Title")
-            for f in sorted(all_findings, key=lambda x: x.score):
-                sev_color = {"critical": "red", "warning": "yellow", "info": "blue", "pass": "green"}.get(f.severity, "white")
-                table.add_row(f.plugin_name, f"[{sev_color}]{f.severity}[/{sev_color}]", str(f.score), f.title)
-            console.print(table)
-        else:
-            console.print("  [green]No findings — flight looks clean![/green]")
+        for f in sorted(findings, key=lambda x: x.score):
+            icon = "+" if f.score >= 90 else ("!" if f.score >= 60 else "x")
+            style = "green" if f.score >= 90 else ("yellow" if f.score >= 60 else "red")
+            console.print(f"  [{style}]{icon}[/{style}] {f.plugin_name}: {f.title} (score {f.score})")
+            if verbose:
+                console.print(f"    {f.description}")
+                if f.evidence:
+                    for k, v in f.evidence.items():
+                        console.print(f"      {k}: {v}")
+        console.print()
+
+        if output:
+            file_console = Console(no_color=True, file=output.open("w"))
+            for f in sorted(findings, key=lambda x: x.score):
+                file_console.print(f"{f.plugin_name}: {f.title} (score {f.score})")
+            console.print(f"  Report saved: {output}")

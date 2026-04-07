@@ -1,0 +1,9 @@
+{
+  "log_id": "84db4c44-212d-49fd-977a-ff54d1e8ea45",
+  "vehicle": "Quadrotor",
+  "airframe": "Generic 250 Racer",
+  "hw": "HOLYBRO_KAKUTEH7",
+  "fw": "v2.0.1 (2fb709)",
+  "duration": "11s",
+  "search": "crash"
+}

@@ -1,0 +1,9 @@
+{
+  "log_id": "41573442-d05e-4b37-9bb1-ebfa9b5e8ef3",
+  "vehicle": "Tiltrotor VTOL",
+  "airframe": "Generic Tiltrotor VTOL",
+  "hw": "PX4_FMU_V6C",
+  "fw": "v1.16.1-rc",
+  "duration": "54s",
+  "search": "crash"
+}

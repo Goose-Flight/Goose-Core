@@ -1,0 +1,9 @@
+{
+  "log_id": "2a8c3d90-6b99-4755-82f0-02f0f5d931d1",
+  "vehicle": "Quadrotor",
+  "airframe": "Generic Quadcopter",
+  "hw": "PX4_FMU_V6C",
+  "fw": "v1.17.0-beta",
+  "duration": "1m0s",
+  "search": "crash"
+}

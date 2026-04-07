@@ -1,0 +1,9 @@
+{
+  "log_id": "12299ac9-b4af-41a0-9807-42b077a397d8",
+  "vehicle": "VTOL Standard",
+  "airframe": "Generic Standard VTOL",
+  "hw": "PX4_FMU_V6C",
+  "fw": "v1.16.1-rc",
+  "duration": "33s",
+  "search": "crash"
+}

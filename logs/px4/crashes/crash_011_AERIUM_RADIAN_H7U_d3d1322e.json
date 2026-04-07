@@ -1,0 +1,9 @@
+{
+  "log_id": "d3d1322e-5616-4246-a4dd-4064eac4ba3d",
+  "vehicle": "Quadrotor",
+  "airframe": "Generic 250 Racer",
+  "hw": "AERIUM_RADIAN_H7U",
+  "fw": "v1.16.0-rc",
+  "duration": "3m26s",
+  "search": "crash"
+}

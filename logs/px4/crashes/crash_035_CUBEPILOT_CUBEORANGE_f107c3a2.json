@@ -1,0 +1,9 @@
+{
+  "log_id": "f107c3a2-122c-4807-8a04-f27bc3b75492",
+  "vehicle": "Quadrotor",
+  "airframe": "Generic Quadcopter",
+  "hw": "CUBEPILOT_CUBEORANGE",
+  "fw": "v1.16.0",
+  "duration": "27s",
+  "search": "crash"
+}

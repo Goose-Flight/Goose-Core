@@ -1,0 +1,9 @@
+{
+  "log_id": "813f10f9-1702-492b-9cab-05ca17b8feca",
+  "vehicle": "Hexarotor",
+  "airframe": "Generic Hexarotor coaxial geometry",
+  "hw": "MICOAIR_H743_V2",
+  "fw": "v1.16.1",
+  "duration": "10s",
+  "search": "crash"
+}

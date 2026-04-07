@@ -1,0 +1,9 @@
+{
+  "log_id": "7de0b3ec-acbf-4430-98db-82845cb8e555",
+  "vehicle": "Fixed Wing",
+  "airframe": "Generic Standard Plane",
+  "hw": "PX4_FMU_V6X",
+  "fw": "v1.16.1-rc",
+  "duration": "2m31s",
+  "search": "crash"
+}

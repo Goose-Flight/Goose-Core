@@ -1,0 +1,9 @@
+{
+  "log_id": "0ee80ded-cbcd-4676-a5e5-0cd1228bc691",
+  "vehicle": "Quadrotor",
+  "airframe": "Holybro Kopis 2",
+  "hw": "CUBEPILOT_CUBEORANGEPLUS",
+  "fw": "v1.17.0-beta",
+  "duration": "24s",
+  "search": "crash"
+}

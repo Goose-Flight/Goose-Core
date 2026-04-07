@@ -1,0 +1,9 @@
+{
+  "log_id": "3ba02486-f3c9-401b-a551-a3506d3f645b",
+  "vehicle": "Quadrotor",
+  "airframe": "Generic Quadcopter",
+  "hw": "SCUMAKER_PILOTPI",
+  "fw": "v1.17.0-alpha",
+  "duration": "26s",
+  "search": "crash"
+}

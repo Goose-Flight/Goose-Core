@@ -1,0 +1,9 @@
+{
+  "log_id": "e406eec2-5da8-4d7e-968f-5c5edc511f44",
+  "vehicle": "Hexarotor",
+  "airframe": "Generic Hexarotor x geometry",
+  "hw": "PX4_FMU_V5",
+  "fw": "v1.13.3",
+  "duration": "21m16s",
+  "search": "crash"
+}

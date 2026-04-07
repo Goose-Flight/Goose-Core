@@ -1,0 +1,9 @@
+{
+  "log_id": "5686cd9b-d70f-484e-9e4c-6851a76cdc6b",
+  "vehicle": "Quadrotor",
+  "airframe": "Generic Quadcopter",
+  "hw": "MODALAI_VOXL2",
+  "fw": "v1.14.0 (f64563)",
+  "duration": "4m49s",
+  "search": "crash"
+}

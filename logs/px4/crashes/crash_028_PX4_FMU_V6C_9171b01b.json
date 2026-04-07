@@ -1,0 +1,9 @@
+{
+  "log_id": "9171b01b-90f7-49c4-9a4d-7b970e9d55c2",
+  "vehicle": "Quadrotor",
+  "airframe": "Holybro S500",
+  "hw": "PX4_FMU_V6C",
+  "fw": "v1.15.1",
+  "duration": "1m45s",
+  "search": "crash"
+}

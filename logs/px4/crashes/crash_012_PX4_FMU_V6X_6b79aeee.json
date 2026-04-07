@@ -1,0 +1,9 @@
+{
+  "log_id": "6b79aeee-f670-477d-bb71-c4b65f94298d",
+  "vehicle": "Octorotor",
+  "airframe": "Generic 10\" Octo coaxial geometry",
+  "hw": "PX4_FMU_V6X",
+  "fw": "v1.16.0",
+  "duration": "44s",
+  "search": "crash"
+}

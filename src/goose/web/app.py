@@ -16,6 +16,152 @@ logger = logging.getLogger(__name__)
 _STATIC_DIR = Path(__file__).parent / "static"
 
 
+def _downsample(arr: list, max_points: int = 2000) -> list:
+    """Downsample a list to max_points using stride-based selection."""
+    if len(arr) <= max_points:
+        return arr
+    stride = len(arr) / max_points
+    return [arr[int(i * stride)] for i in range(max_points)]
+
+
+def _safe_val(v: Any) -> Any:
+    """Convert numpy/pandas values to JSON-safe Python types."""
+    if v is None:
+        return None
+    try:
+        import numpy as np
+        if isinstance(v, (np.integer,)):
+            return int(v)
+        if isinstance(v, (np.floating,)):
+            if np.isnan(v) or np.isinf(v):
+                return None
+            return float(v)
+        if isinstance(v, (np.bool_,)):
+            return bool(v)
+    except (ImportError, TypeError, ValueError):
+        pass
+    if isinstance(v, float):
+        if math.isnan(v) or math.isinf(v):
+            return None
+    return v
+
+
+def _df_to_series(df: Any, columns: list[str] | None = None, max_points: int = 2000) -> dict[str, list] | None:
+    """Convert a pandas DataFrame to JSON-ready dict of downsampled arrays.
+
+    Returns {"timestamps": [...], "col1": [...], "col2": [...]} or None if empty.
+    """
+    if df is None or df.empty:
+        return None
+
+    if columns is None:
+        columns = [c for c in df.columns if c != "timestamp"]
+
+    if "timestamp" not in df.columns or not columns:
+        return None
+
+    result: dict[str, list] = {}
+    ts = df["timestamp"].tolist()
+    ts_ds = _downsample(ts, max_points)
+    result["timestamps"] = [_safe_val(t) for t in ts_ds]
+
+    stride = len(ts) / len(ts_ds) if len(ts) > max_points else 1
+    indices = [int(i * stride) for i in range(len(ts_ds))] if stride > 1 else list(range(len(ts)))
+
+    for col in columns:
+        if col in df.columns:
+            vals = df[col].tolist()
+            result[col] = [_safe_val(vals[i]) for i in indices]
+
+    return result
+
+
+def _extract_timeseries(flight: Any) -> dict[str, Any]:
+    """Extract downsampled time-series data from a Flight for frontend charting."""
+    ts: dict[str, Any] = {}
+
+    # Altitude
+    pos = _df_to_series(flight.position, ["alt_rel", "alt_msl", "lat", "lon"])
+    if pos:
+        ts["altitude"] = pos
+
+    # Battery
+    bat = _df_to_series(flight.battery, ["voltage", "current", "remaining_pct"])
+    if bat:
+        ts["battery"] = bat
+
+    # Motors
+    if not flight.motors.empty:
+        motor_cols = [c for c in flight.motors.columns if c.startswith("output_")]
+        mot = _df_to_series(flight.motors, motor_cols)
+        if mot:
+            ts["motors"] = mot
+
+    # Attitude (convert radians to degrees for display)
+    if not flight.attitude.empty:
+        import numpy as np
+        att_df = flight.attitude.copy()
+        for col in ["roll", "pitch", "yaw"]:
+            if col in att_df.columns:
+                att_df[col] = np.degrees(att_df[col])
+        att = _df_to_series(att_df, ["roll", "pitch", "yaw"])
+        if att:
+            ts["attitude"] = att
+
+    # Attitude setpoint
+    if not flight.attitude_setpoint.empty:
+        import numpy as np
+        sp_df = flight.attitude_setpoint.copy()
+        for col in ["roll", "pitch", "yaw"]:
+            if col in sp_df.columns:
+                sp_df[col] = np.degrees(sp_df[col])
+        sp = _df_to_series(sp_df, ["roll", "pitch", "yaw"])
+        if sp:
+            ts["attitude_setpoint"] = sp
+
+    # Vibration
+    vib = _df_to_series(flight.vibration, ["accel_x", "accel_y", "accel_z"])
+    if vib:
+        ts["vibration"] = vib
+
+    # GPS
+    gps = _df_to_series(flight.gps, ["satellites", "hdop", "fix_type"])
+    if gps:
+        ts["gps"] = gps
+
+    # EKF
+    if not flight.ekf.empty:
+        ekf_cols = [c for c in flight.ekf.columns if c != "timestamp"][:8]  # limit columns
+        ekf = _df_to_series(flight.ekf, ekf_cols)
+        if ekf:
+            ts["ekf"] = ekf
+
+    # RC signal
+    if not flight.rc_input.empty:
+        rc = _df_to_series(flight.rc_input, ["rssi"])
+        if rc:
+            ts["rc"] = rc
+
+    # Velocity
+    vel = _df_to_series(flight.velocity, ["vx", "vy", "vz"])
+    if vel:
+        ts["velocity"] = vel
+
+    # Mode changes
+    ts["mode_changes"] = [
+        {"timestamp": mc.timestamp, "from_mode": mc.from_mode, "to_mode": mc.to_mode}
+        for mc in flight.mode_changes
+    ]
+
+    # Events
+    ts["events"] = [
+        {"timestamp": ev.timestamp, "type": ev.event_type, "severity": ev.severity, "message": ev.message}
+        for ev in flight.events
+    ]
+
+    return ts
+
+
 def _finding_to_dict(finding: Any) -> dict[str, Any]:
     """Serialize a Finding dataclass to a JSON-safe dict."""
     evidence = finding.evidence or {}
@@ -199,9 +345,37 @@ def create_app():
                 sev = f.severity if f.severity in findings_by_severity else "info"
                 findings_by_severity[sev] += 1
 
+            # Extract time-series for cockpit charts
+            try:
+                timeseries = _extract_timeseries(flight)
+            except Exception as ts_exc:
+                logger.warning("Time-series extraction failed: %s", ts_exc)
+                timeseries = {}
+
+            # Generate flight narrative
+            try:
+                from goose.core.narrative import generate_narrative
+                narrative = generate_narrative(
+                    all_findings,
+                    metadata={
+                        "duration_str": duration_str,
+                        "vehicle_type": meta.vehicle_type,
+                        "primary_mode": flight.primary_mode,
+                        "firmware_version": meta.firmware_version,
+                        "hardware": meta.hardware,
+                        "crashed": flight.crashed,
+                    },
+                    overall_score=overall_score,
+                )
+            except Exception as narr_exc:
+                logger.warning("Narrative generation failed: %s", narr_exc)
+                narrative = None
+
             return JSONResponse({
                 "ok": True,
                 "overall_score": overall_score,
+                "narrative": narrative,
+                "timeseries": timeseries,
                 "metadata": {
                     "filename": original_name.name,
                     "autopilot": meta.autopilot,

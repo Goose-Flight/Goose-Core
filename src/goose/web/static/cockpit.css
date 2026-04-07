@@ -1,0 +1,303 @@
+/* ══════════════════════════════════════════════════════════
+   Goose Cockpit — Data Visualization Styles
+   ══════════════════════════════════════════════════════════ */
+
+#cockpit-view {
+  padding: 20px 28px 40px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.cockpit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cockpit-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--green);
+}
+
+.cockpit-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cockpit-btn {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  color: var(--text-sec);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cockpit-btn:hover {
+  color: var(--text);
+  background: var(--card-hover);
+}
+
+.cockpit-btn.active {
+  color: var(--green);
+  border-color: var(--green);
+  background: var(--green-glow);
+}
+
+/* ── Timeline Scrubber ──────────────────────────────────── */
+.cockpit-timeline {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.timeline-scrubber-label {
+  font-size: 11px;
+  color: var(--text-sec);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.timeline-cursor-time {
+  color: var(--green);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.timeline-modes-bar {
+  position: relative;
+  height: 24px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  cursor: crosshair;
+}
+
+.mode-band {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 1px solid rgba(0,0,0,0.3);
+}
+
+.timeline-slider-wrap {
+  position: relative;
+  height: 8px;
+  cursor: crosshair;
+}
+
+.timeline-slider-track {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 1px;
+}
+
+.timeline-slider-cursor {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 1px;
+  pointer-events: none;
+  transition: left 0.05s;
+  box-shadow: 0 0 6px var(--green);
+}
+
+.timeline-event-markers {
+  position: relative;
+  height: 12px;
+  margin-top: 4px;
+}
+
+.timeline-evt-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+}
+
+/* ── Chart Grid ────────────────────────────────────────── */
+.cockpit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.cockpit-grid.single-col {
+  grid-template-columns: 1fr;
+}
+
+.chart-panel {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.chart-panel:hover {
+  border-color: rgba(255,255,255,0.08);
+}
+
+.chart-panel.full-width {
+  grid-column: 1 / -1;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 6px;
+}
+
+.chart-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-sec);
+  text-transform: uppercase;
+}
+
+.chart-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-body {
+  padding: 0 6px 6px;
+  position: relative;
+  min-height: 180px;
+}
+
+.chart-body .uplot {
+  width: 100% !important;
+}
+
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── uPlot theme overrides ─────────────────────────────── */
+.uplot .u-title {
+  display: none;
+}
+
+.uplot .u-legend {
+  font-family: var(--font) !important;
+  font-size: 12px !important;
+  padding: 4px 8px !important;
+}
+
+.uplot .u-legend .u-series {
+  padding: 1px 4px;
+}
+
+.uplot .u-legend .u-label {
+  color: var(--text-sec) !important;
+}
+
+.uplot .u-legend .u-value {
+  color: var(--text) !important;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.uplot .u-cursor-pt {
+  border-color: var(--green) !important;
+}
+
+/* Axis labels */
+.uplot .u-axis .u-label {
+  font-size: 11px !important;
+  color: var(--text-muted) !important;
+}
+
+/* chart-body inside inline chart-container */
+.chart-container .chart-body {
+  min-height: 220px;
+}
+
+.chart-container .chart-empty {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ── No-data overlay ───────────────────────────────────── */
+.cockpit-no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.cockpit-no-data-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.cockpit-no-data-text {
+  font-size: 14px;
+  color: var(--text-sec);
+  max-width: 360px;
+  line-height: 1.6;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .cockpit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  #cockpit-view {
+    padding: 12px 12px 30px;
+  }
+}

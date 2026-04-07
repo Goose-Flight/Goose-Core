@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GOOSE — Flight Log Analyzer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
+  <link rel="stylesheet" href="/static/cockpit.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -245,7 +247,7 @@
     }
 
     .fmt-tag {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.08em;
       color: var(--text-muted);
@@ -270,7 +272,7 @@
       background: rgba(110,204,114,0.08);
       border: 1px solid rgba(110,204,114,0.25);
       border-radius: 8px;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--green);
     }
@@ -299,7 +301,7 @@
       border: none;
       border-radius: 8px;
       font-family: var(--font);
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -343,7 +345,7 @@
       border: 1px solid rgba(226,75,74,0.3);
       border-radius: 8px;
       color: #f87171;
-      font-size: 12px;
+      font-size: 14px;
       line-height: 1.5;
     }
 
@@ -462,12 +464,112 @@
 
     .status-details { margin-left: auto; font-size: 13px; font-weight: 500; opacity: 0.6; letter-spacing: 0.04em; text-transform: none; }
 
-    /* 3-col results grid */
+    /* Full-width single-column results layout */
     .results-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Hero row: score ring left + stat cards right */
+    .hero-row {
       display: grid;
-      grid-template-columns: 260px 1fr 320px;
-      gap: 16px;
+      grid-template-columns: auto 1fr;
+      gap: 20px;
       align-items: start;
+    }
+
+    .hero-score-side {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Stat cards grid — 3x2 */
+    .stat-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-card-key {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .stat-card-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+
+    /* Chart sections */
+    .chart-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chart-section-header {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 2px;
+    }
+
+    .chart-section-header::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(110,204,114,0.15);
+    }
+
+    .chart-container {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      min-height: 220px;
+    }
+
+    .chart-container .chart-body {
+      min-height: 220px;
+    }
+
+    /* Navigation charts (GPS + Velocity) side by side */
+    .nav-charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Diagnostics section */
+    .diagnostics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 4px;
     }
 
     /* Cards */
@@ -488,7 +590,7 @@
     }
 
     .card-title {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -506,8 +608,8 @@
     }
 
     .score-ring-svg {
-      width: 140px;
-      height: 140px;
+      width: 160px;
+      height: 160px;
       transform: rotate(-90deg);
     }
 
@@ -535,12 +637,12 @@
 
     .score-ring-container {
       position: relative;
-      width: 140px;
-      height: 140px;
+      width: 160px;
+      height: 160px;
     }
 
     .score-ring-number {
-      font-size: 38px;
+      font-size: 44px;
       font-weight: 800;
       letter-spacing: -1px;
       font-variant-numeric: tabular-nums;
@@ -548,7 +650,7 @@
     }
 
     .score-ring-label {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -576,7 +678,7 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -588,7 +690,7 @@
     }
 
     .crash-title {
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 700;
       color: var(--text);
       margin: 12px 0 6px;
@@ -596,7 +698,7 @@
     }
 
     .crash-desc {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text-sec);
       line-height: 1.6;
       margin-bottom: 12px;
@@ -625,7 +727,7 @@
     }
 
     .confidence-pct {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--red);
       flex-shrink: 0;
@@ -637,7 +739,7 @@
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text-sec);
       padding: 4px 0;
       border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -670,7 +772,7 @@
     }
 
     .stat-key {
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -679,8 +781,8 @@
     }
 
     .stat-val {
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 20px;
+      font-weight: 700;
       color: var(--text);
     }
 
@@ -712,7 +814,7 @@
     .timeline-labels {
       display: flex;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text-muted);
       letter-spacing: 0.04em;
     }
@@ -730,7 +832,7 @@
     .plugin-bar-row:last-child { margin-bottom: 0; }
 
     .plugin-bar-name {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text-sec);
       width: 130px;
       flex-shrink: 0;
@@ -754,7 +856,7 @@
     }
 
     .plugin-bar-score {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       width: 28px;
@@ -763,7 +865,7 @@
     }
 
     /* ── Findings list ───────────────────────────────────────── */
-    .findings-col { max-height: calc(100vh - 140px); display: flex; flex-direction: column; }
+    .findings-col { display: flex; flex-direction: column; }
 
     .findings-scroll {
       overflow-y: auto;
@@ -801,7 +903,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 900;
       margin-top: 1px;
     }
@@ -814,7 +916,7 @@
     .finding-row-body { flex: 1; min-width: 0; }
 
     .finding-row-title {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--text);
       line-height: 1.3;
@@ -822,13 +924,13 @@
     }
 
     .finding-row-meta {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text-sec);
     }
 
     .finding-score {
       flex-shrink: 0;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
@@ -844,7 +946,7 @@
     .finding-detail.visible { display: block; }
 
     .detail-label {
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -856,7 +958,7 @@
     .detail-label:first-child { margin-top: 0; }
 
     .detail-value {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--text-sec);
       line-height: 1.6;
     }
@@ -866,7 +968,7 @@
       border: 1px solid var(--card-border);
       border-radius: 6px;
       padding: 8px 10px;
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text-sec);
       line-height: 1.7;
     }
@@ -904,7 +1006,7 @@
       border: 1px solid var(--card-border);
       border-radius: 6px;
       font-family: var(--font);
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -933,12 +1035,12 @@
     }
 
     .sev-chip-count {
-      font-size: 13px;
+      font-size: 14px;
       font-variant-numeric: tabular-nums;
     }
 
     .sev-chip-label {
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -959,7 +1061,7 @@
     .ftab {
       padding: 3px 9px;
       font-family: var(--font);
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
@@ -995,7 +1097,7 @@
     .sev-breakdown-row:last-child { margin-bottom: 0; }
 
     .sev-bd-label {
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -1018,10 +1120,10 @@
     }
 
     .sev-bd-count {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
-      width: 22px;
+      width: 28px;
       text-align: right;
       flex-shrink: 0;
     }
@@ -1037,7 +1139,7 @@
       border-radius: 6px;
       background: rgba(255,255,255,0.04);
       border: 1px solid var(--card-border);
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text-sec);
       transition: border-color 0.12s;
     }
@@ -1079,7 +1181,7 @@
       gap: 6px;
       padding: 4px 10px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.04em;
     }
@@ -1181,7 +1283,7 @@
       gap: 4px;
       padding: 2px 8px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -1212,7 +1314,7 @@
     }
 
     .plugins-section-label {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -1267,7 +1369,7 @@
       border: 1px solid rgba(226,75,74,0.3);
       border-radius: 6px;
       font-family: var(--font);
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -1328,7 +1430,7 @@
     }
 
     .history-meta {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text-sec);
       display: flex;
       flex-wrap: wrap;
@@ -1339,7 +1441,7 @@
 
     .history-status {
       flex-shrink: 0;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -1367,7 +1469,7 @@
       border: 1px solid var(--card-border);
       border-radius: 5px;
       font-family: var(--font);
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -1430,7 +1532,7 @@
     }
 
     .footer-left {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text-muted);
       display: flex;
       align-items: center;
@@ -1449,7 +1551,7 @@
     .footer-sep { color: rgba(255,255,255,0.1); }
 
     .footer-right {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--text-muted);
       display: flex;
       align-items: center;
@@ -1465,32 +1567,32 @@
       background: rgba(110,204,114,0.06);
       border: 1px solid rgba(110,204,114,0.12);
       color: rgba(110,204,114,0.6);
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.06em;
     }
 
     /* ── Responsive ──────────────────────────────────────────── */
-    @media (max-width: 1200px) {
-      .results-grid { grid-template-columns: 240px 1fr 280px; }
+    @media (max-width: 1100px) {
+      .stat-cards-grid { grid-template-columns: repeat(2, 1fr); }
+      .nav-charts-grid { grid-template-columns: 1fr; }
+      .diagnostics-row { grid-template-columns: 1fr; }
       .plugin-bar-name { width: 100px; }
     }
 
-    @media (max-width: 960px) {
-      .results-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-      .findings-col { grid-column: 1 / -1; max-height: 420px; }
+    @media (max-width: 768px) {
+      .hero-row { grid-template-columns: 1fr; }
+      .hero-score-side { flex-direction: row; align-items: center; gap: 20px; }
+      .stat-cards-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
     @media (max-width: 640px) {
       header { padding: 0 16px; }
       main { padding: 20px 12px 32px; }
-      .results-grid { grid-template-columns: 1fr; }
-      .findings-col { grid-column: unset; }
+      .stat-cards-grid { grid-template-columns: 1fr; }
       .header-meta { display: none; }
       nav { gap: 0; }
-      .nav-tab { padding: 5px 8px; font-size: 12px; }
+      .nav-tab { padding: 5px 8px; font-size: 14px; }
       footer { padding: 12px 16px; }
       .footer-right { display: none; }
     }
@@ -1519,7 +1621,7 @@
       </svg>
     </div>
     <span class="logo-text">Goose</span>
-    <span class="version-badge">v1.0.0</span>
+    <span class="version-badge">v1.2.0</span>
   </div>
 
   <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
@@ -1610,118 +1712,214 @@
       <button class="new-analysis-btn" onclick="resetToUpload()">+ New Analysis</button>
     </div>
 
-    <!-- 3-col grid -->
+    <!-- Full-width stacked layout -->
     <div class="results-grid">
 
-      <!-- Left column -->
-      <div style="display:flex;flex-direction:column;gap:16px;">
-
-        <!-- Score ring -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Overall Score</span>
-            <span id="score-grade-header" class="score-grade" style="font-size:9px;padding:2px 7px;border-radius:4px;"></span>
-          </div>
-          <div class="score-ring-wrap">
-            <div class="score-ring-container">
-              <svg class="score-ring-svg" viewBox="0 0 140 140">
-                <circle class="score-ring-track" cx="70" cy="70" r="56"/>
-                <circle id="score-ring-fill" class="score-ring-fill" cx="70" cy="70" r="56"
-                        stroke-dasharray="351.86"
-                        stroke-dashoffset="351.86"/>
-              </svg>
-              <div class="score-ring-center">
-                <span id="score-ring-number" class="score-ring-number">&#8212;</span>
-                <span class="score-ring-label">/ 100</span>
-              </div>
-            </div>
-            <div id="summary-chips" class="summary-chips" style="margin-top:16px;justify-content:center;"></div>
-          </div>
-        </div>
-
-        <!-- Crash card (shown only when crashed) -->
-        <div id="crash-card" class="card crash-card" style="display:none">
-          <div class="card-body">
-            <div class="crash-badge">
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
-              CRASH DETECTED
-            </div>
-            <div class="crash-title" id="crash-title">&#8212;</div>
-            <div class="crash-desc" id="crash-desc">&#8212;</div>
-            <div class="crash-confidence">
-              <div class="confidence-bar-wrap">
-                <div class="confidence-bar" id="confidence-bar" style="width:0%"></div>
-              </div>
-              <span class="confidence-pct" id="confidence-pct">&#8212;%</span>
-            </div>
-            <div class="card-title" style="margin-bottom:8px;">INSPECT CHECKLIST</div>
-            <ul class="inspect-list" id="inspect-list"></ul>
-          </div>
-        </div>
-
-        <!-- Flight stats -->
-        <div class="card">
-          <div class="card-header"><span class="card-title">Flight Stats</span></div>
-          <div class="stats-grid" id="stats-grid"></div>
-        </div>
-
+      <!-- Hero row: score ring + stat cards -->
+      <!-- Flight Narrative -->
+      <div id="narrative-card" class="card" style="display:none;padding:16px 20px;">
+        <div style="font-size:14px;font-weight:700;color:var(--green);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Flight Analysis Summary</div>
+        <div id="narrative-text" style="font-size:15px;line-height:1.7;color:var(--text);"></div>
       </div>
 
-      <!-- Center column -->
-      <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="hero-row">
+        <div class="hero-score-side">
+          <!-- Score ring -->
+          <div class="score-ring-container">
+            <svg class="score-ring-svg" viewBox="0 0 160 160">
+              <circle class="score-ring-track" cx="80" cy="80" r="64"/>
+              <circle id="score-ring-fill" class="score-ring-fill" cx="80" cy="80" r="64"
+                      stroke-dasharray="402.12"
+                      stroke-dashoffset="402.12"/>
+            </svg>
+            <div class="score-ring-center">
+              <span id="score-ring-number" class="score-ring-number">&#8212;</span>
+              <span class="score-ring-label">/ 100</span>
+            </div>
+          </div>
+          <span id="score-grade-header" class="score-grade"></span>
+          <div id="summary-chips" class="summary-chips" style="justify-content:center;flex-wrap:wrap;max-width:180px;"></div>
+        </div>
 
-        <!-- Findings timeline -->
-        <div class="card">
-          <div class="card-header"><span class="card-title">Findings Timeline</span><span id="timeline-duration" class="card-title" style="color:var(--text-muted);"></span></div>
-          <div class="timeline-wrap">
-            <div class="timeline-track" id="timeline-track" aria-label="Findings timeline"></div>
-            <div class="timeline-labels">
-              <span>0s</span>
-              <span id="timeline-end-label">&#8212;</span>
+        <!-- Stat cards 3x2 -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="stat-cards-grid" id="stat-cards-grid"></div>
+          <!-- Mini gauges row -->
+          <div id="gauges-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;"></div>
+          <!-- Crash card (shown only when crashed) -->
+          <div id="crash-card" class="card crash-card" style="display:none">
+            <div class="card-body">
+              <div class="crash-badge">
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
+                CRASH DETECTED
+              </div>
+              <div class="crash-title" id="crash-title">&#8212;</div>
+              <div class="crash-desc" id="crash-desc">&#8212;</div>
+              <div class="crash-confidence">
+                <div class="confidence-bar-wrap">
+                  <div class="confidence-bar" id="confidence-bar" style="width:0%"></div>
+                </div>
+                <span class="confidence-pct" id="confidence-pct">&#8212;%</span>
+              </div>
+              <div class="card-title" style="margin-bottom:8px;">INSPECT CHECKLIST</div>
+              <ul class="inspect-list" id="inspect-list"></ul>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Severity breakdown chart -->
+      <!-- Flight Timeline (mode bands) -->
+      <div id="results-cockpit-timeline" class="cockpit-timeline" style="display:none">
+        <div class="timeline-scrubber-label">
+          <span>FLIGHT TIMELINE</span>
+          <span class="timeline-cursor-time" id="inline-cursor-time">--</span>
+        </div>
+        <div class="timeline-modes-bar" id="inline-modes-bar"></div>
+        <div class="timeline-slider-wrap">
+          <div class="timeline-slider-track"></div>
+          <div class="timeline-slider-cursor" id="inline-slider-cursor" style="left:0%"></div>
+        </div>
+        <div class="timeline-event-markers" id="inline-event-markers"></div>
+      </div>
+
+      <!-- Findings timeline (simple bar) -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Findings Timeline</span>
+          <span id="timeline-duration" class="card-title" style="color:var(--text-muted);font-size:13px;"></span>
+        </div>
+        <div class="timeline-wrap">
+          <div class="timeline-track" id="timeline-track" aria-label="Findings timeline"></div>
+          <div class="timeline-labels">
+            <span>0s</span>
+            <span id="timeline-end-label">&#8212;</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIAGNOSTIC FINDINGS (first — this is what users came for) -->
+      <div class="chart-section-header">Flight Analysis</div>
+
+      <!-- Severity breakdown + plugin scores row -->
+      <div class="diagnostics-row">
         <div class="card">
           <div class="card-header"><span class="card-title">Severity Breakdown</span></div>
           <div class="sev-breakdown" id="sev-breakdown"></div>
         </div>
-
-        <!-- Plugin scores (enhanced) -->
         <div class="card">
-          <div class="card-header"><span class="card-title">Plugin Scores</span><span id="plugin-scores-subtitle" style="font-size:11px;color:var(--text-muted);"></span></div>
+          <div class="card-header">
+            <span class="card-title">Plugin Scores</span>
+            <span id="plugin-scores-subtitle" style="font-size:14px;color:var(--text-muted);"></span>
+          </div>
           <div class="plugin-bars" id="plugin-bars-container"></div>
         </div>
-
-        <!-- Findings by phase -->
-        <div class="card" id="phase-card" style="display:none">
-          <div class="card-header"><span class="card-title">Findings by Phase</span></div>
-          <div class="phase-chips" id="phase-chips"></div>
-        </div>
-
-        <!-- Summary table -->
-        <div class="card">
-          <div class="card-header"><span class="card-title">Analysis Summary</span></div>
-          <div class="card-body" id="summary-table-body" style="padding:0;"></div>
-        </div>
-
       </div>
 
-      <!-- Right column: Findings list -->
+      <!-- Findings list full-width -->
       <div class="card findings-col">
         <div class="card-header">
           <span class="card-title">Findings</span>
           <div class="findings-filter-tabs" id="findings-filter-tabs"></div>
         </div>
         <div class="findings-scroll" id="findings-scroll"></div>
-        <div class="finding-detail" id="finding-detail"></div>
+      </div>
+
+      <!-- FLIGHT DATA (charts below findings) -->
+      <div class="chart-section-header" style="margin-top:8px;">Flight Data</div>
+
+      <!-- ALTITUDE & POSITION -->
+      <div class="chart-section" id="chart-section-altitude">
+        <div class="chart-section-header">Altitude &amp; Position</div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Altitude</span>
+          </div>
+          <div class="chart-body" id="inline-chart-altitude"></div>
+        </div>
+      </div>
+
+      <!-- POWER SYSTEM -->
+      <div class="chart-section" id="chart-section-battery">
+        <div class="chart-section-header">Power System</div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Battery</span>
+          </div>
+          <div class="chart-body" id="inline-chart-battery"></div>
+        </div>
+      </div>
+
+      <!-- MOTOR OUTPUTS -->
+      <div class="chart-section" id="chart-section-motors">
+        <div class="chart-section-header">Motor Outputs</div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Motor Outputs</span>
+          </div>
+          <div class="chart-body" id="inline-chart-motors"></div>
+        </div>
+      </div>
+
+      <!-- FLIGHT DYNAMICS -->
+      <div class="chart-section" id="chart-section-attitude">
+        <div class="chart-section-header">Flight Dynamics</div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Attitude</span>
+          </div>
+          <div class="chart-body" id="inline-chart-attitude"></div>
+        </div>
+      </div>
+
+      <!-- VIBRATION -->
+      <div class="chart-section" id="chart-section-vibration">
+        <div class="chart-section-header">Vibration</div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Vibration</span>
+          </div>
+          <div class="chart-body" id="inline-chart-vibration"></div>
+        </div>
+      </div>
+
+      <!-- NAVIGATION -->
+      <div class="chart-section" id="chart-section-nav">
+        <div class="chart-section-header">Navigation</div>
+        <div class="nav-charts-grid">
+          <div class="chart-container">
+            <div class="chart-header">
+              <span class="chart-title">GPS Health</span>
+            </div>
+            <div class="chart-body" id="inline-chart-gps"></div>
+          </div>
+          <div class="chart-container">
+            <div class="chart-header">
+              <span class="chart-title">Velocity</span>
+            </div>
+            <div class="chart-body" id="inline-chart-velocity"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- (findings moved above charts) -->
+
+      <!-- Phase chips + summary (below findings) -->
+      <div class="diagnostics-row">
+        <div class="card" id="phase-card" style="display:none">
+          <div class="card-header"><span class="card-title">Findings by Phase</span></div>
+          <div class="phase-chips" id="phase-chips"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Analysis Summary</span></div>
+          <div class="card-body" id="summary-table-body" style="padding:0;"></div>
+        </div>
       </div>
 
     </div>
   </div>
 
   <!-- ── Plugins view ────────────────────────────────────────── -->
+
   <div id="plugins-view" style="display:none" class="tab-view">
     <div class="plugins-header">
       <h2>Plugin Registry</h2>
@@ -1749,7 +1947,7 @@
 <!-- ── Footer ────────────────────────────────────────────────── -->
 <footer>
   <div class="footer-left">
-    <span>GOOSE v1.0.0</span>
+    <span>GOOSE v1.2.0</span>
     <span class="footer-sep">&middot;</span>
     <span>Open Source Flight Analysis</span>
     <span class="footer-sep">&middot;</span>
@@ -1762,7 +1960,7 @@
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       Air-gapped
     </span>
-    <span style="color:var(--text-muted);font-size:12px;">No data leaves your machine</span>
+    <span style="color:var(--text-muted);font-size:14px;">No data leaves your machine</span>
   </div>
 </footer>
 
@@ -1953,11 +2151,11 @@
     document.getElementById('nav-analyze').classList.add('active');
     document.getElementById('nav-plugins').classList.remove('active');
     document.getElementById('nav-history').classList.remove('active');
-    document.getElementById('tab-crash').style.display = 'none';
-    document.getElementById('results-view').style.display  = 'none';
-    document.getElementById('upload-view').style.display   = '';
-    document.getElementById('plugins-view').style.display  = 'none';
-    document.getElementById('history-view').style.display  = 'none';
+    document.getElementById('tab-crash').style.display    = 'none';
+    document.getElementById('results-view').style.display = 'none';
+    document.getElementById('upload-view').style.display  = '';
+    document.getElementById('plugins-view').style.display = 'none';
+    document.getElementById('history-view').style.display = 'none';
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -1990,8 +2188,26 @@
       </div>`;
     }).join('');
 
+    // Narrative
+    const narrativeCard = document.getElementById('narrative-card');
+    const narrativeText = document.getElementById('narrative-text');
+    if (data.narrative) {
+      narrativeCard.style.display = '';
+      // Highlight critical/warning keywords
+      let nt = escHtml(data.narrative);
+      nt = nt.replace(/CRITICAL/g, '<span style="color:var(--red);font-weight:700;">CRITICAL</span>');
+      nt = nt.replace(/CRASH DETECTED/g, '<span style="color:var(--red);font-weight:700;">CRASH DETECTED</span>');
+      nt = nt.replace(/Warning/g, '<span style="color:var(--amber);font-weight:700;">Warning</span>');
+      nt = nt.replace(/Nominal/g, '<span style="color:var(--green);font-weight:600;">Nominal</span>');
+      nt = nt.replace(/Degraded/g, '<span style="color:var(--amber);font-weight:600;">Degraded</span>');
+      narrativeText.innerHTML = nt;
+    } else {
+      narrativeCard.style.display = 'none';
+    }
+
     renderCrashCard(findings, crashed);
     renderFlightStats(meta);
+    renderGauges(findings);
     renderTimeline(findings, meta.duration_sec);
     renderSeverityBreakdown(sevCounts);
     renderPluginBars(findings);
@@ -1999,6 +2215,240 @@
     renderSummaryTable(summary, meta);
     buildFindingsTabs(findings);
     renderFindingsList(findings, 'all');
+
+    // Render inline charts if timeseries data available
+    renderInlineCharts(data);
+  }
+
+  /* ── Inline charts (uPlot) ─────────────────────────────────── */
+  function renderInlineCharts(data) {
+    const ts = data.timeseries || {};
+    const hasTs = Object.keys(ts).some(k =>
+      k !== 'mode_changes' && k !== 'events' && ts[k] && ts[k].timestamps
+    );
+
+    // Show/hide chart sections
+    const chartSections = [
+      'chart-section-altitude', 'chart-section-battery',
+      'chart-section-motors', 'chart-section-attitude',
+      'chart-section-vibration', 'chart-section-nav',
+    ];
+
+    if (!hasTs || typeof uPlot === 'undefined') {
+      chartSections.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      document.getElementById('results-cockpit-timeline').style.display = 'none';
+      return;
+    }
+
+    // Show inline flight timeline
+    const timelineEl = document.getElementById('results-cockpit-timeline');
+    if (timelineEl) {
+      timelineEl.style.display = '';
+      renderInlineTimeline(ts, data.metadata);
+    }
+
+    const duration = (data.metadata && data.metadata.duration_sec) || 0;
+
+    // Chart colors
+    const C = {
+      green: '#6ECC72', amber: '#EF9F27', red: '#E24B4A',
+      blue: '#5B9BD5', purple: '#A77BCA', cyan: '#5BC0BE',
+      orange: '#E8854A', pink: '#D46A9F', lime: '#A3C44A',
+      grid: 'rgba(255,255,255,0.04)', axis: 'rgba(255,255,255,0.15)',
+      text: 'rgba(216,213,206,0.4)',
+    };
+
+    function baseOpts(w, seriesDefs) {
+      return {
+        width: w,
+        height: 220,
+        cursor: { drag: { x: true, y: false, setScale: true } },
+        scales: { x: { time: false } },
+        axes: [
+          {
+            stroke: C.axis, grid: { stroke: C.grid, width: 1 },
+            ticks: { stroke: C.grid, width: 1 },
+            font: '11px JetBrains Mono, monospace',
+            values: (u, vals) => vals.map(v => {
+              if (v >= 3600) return Math.floor(v/3600) + 'h' + String(Math.floor((v%3600)/60)).padStart(2,'0') + 'm';
+              if (v >= 60) return Math.floor(v/60) + 'm' + String(Math.floor(v%60)).padStart(2,'0') + 's';
+              return v != null ? v.toFixed(0) + 's' : '';
+            }),
+          },
+          {
+            stroke: C.axis, grid: { stroke: C.grid, width: 1 },
+            ticks: { stroke: C.grid, width: 1 },
+            font: '11px JetBrains Mono, monospace', size: 55,
+          },
+        ],
+        legend: { show: true },
+        series: [{ label: 'Time' }, ...seriesDefs],
+      };
+    }
+
+    function sd(label, color, opts) {
+      return Object.assign({
+        label, stroke: color, width: 1.5, points: { show: false },
+      }, opts || {});
+    }
+
+    function buildChart(containerId, builder) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      try {
+        const chart = builder(el, ts, C, baseOpts, sd);
+        if (!chart) {
+          el.innerHTML = '<div class="chart-empty">No data available</div>';
+          const section = el.closest('.chart-section') || el.closest('.nav-charts-grid');
+          const parentSection = el.closest('[id^="chart-section-"]');
+          if (parentSection) parentSection.style.display = 'none';
+        }
+      } catch(err) {
+        console.error('Inline chart error ' + containerId + ':', err);
+        el.innerHTML = '<div class="chart-empty">Chart error</div>';
+      }
+    }
+
+    requestAnimationFrame(() => {
+      // Altitude
+      buildChart('inline-chart-altitude', (el, ts, C, base, sd) => {
+        const d = ts.altitude; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.alt_rel) { data.push(d.alt_rel); series.push(sd('Altitude (rel)', C.green, { fill: 'rgba(110,204,114,0.06)' })); }
+        if (d.alt_msl) { data.push(d.alt_msl); series.push(sd('Altitude (MSL)', C.blue, { width: 1 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 12, series);
+        opts.axes[1].label = 'Meters';
+        return new uPlot(opts, data, el);
+      });
+
+      // Battery
+      buildChart('inline-chart-battery', (el, ts, C, base, sd) => {
+        const d = ts.battery; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.voltage)       { data.push(d.voltage);        series.push(sd('Voltage', C.amber)); }
+        if (d.current)       { data.push(d.current);        series.push(sd('Current', C.red)); }
+        if (d.remaining_pct) { data.push(d.remaining_pct);  series.push(sd('Remaining %', C.green, { width: 1 })); }
+        if (!series.length) return null;
+        return new uPlot(base(el.clientWidth - 12, series), data, el);
+      });
+
+      // Motors
+      buildChart('inline-chart-motors', (el, ts, C, base, sd) => {
+        const d = ts.motors; if (!d) return null;
+        const motorKeys = Object.keys(d).filter(k => k.startsWith('output_')).sort();
+        if (!motorKeys.length) return null;
+        const colors = [C.green, C.red, C.blue, C.amber, C.purple, C.cyan, C.orange, C.pink];
+        const data = [d.timestamps]; const series = [];
+        motorKeys.forEach((key, i) => {
+          data.push(d[key]);
+          const idx = parseInt(key.replace('output_', ''));
+          series.push(sd('Motor ' + (idx + 1), colors[i % colors.length], { width: 1.2 }));
+        });
+        const opts = base(el.clientWidth - 12, series);
+        opts.height = 240;
+        opts.axes[1].label = 'Output (0-1)';
+        return new uPlot(opts, data, el);
+      });
+
+      // Attitude
+      buildChart('inline-chart-attitude', (el, ts, C, base, sd) => {
+        const d = ts.attitude; if (!d) return null;
+        const sp = ts.attitude_setpoint;
+        const data = [d.timestamps]; const series = [];
+        if (d.roll)  { data.push(d.roll);  series.push(sd('Roll',  C.red)); }
+        if (d.pitch) { data.push(d.pitch); series.push(sd('Pitch', C.green)); }
+        if (d.yaw)   { data.push(d.yaw);   series.push(sd('Yaw',   C.blue)); }
+        if (sp && sp.roll && sp.timestamps.length === d.timestamps.length) {
+          if (sp.roll)  { data.push(sp.roll);  series.push(sd('Roll SP',  C.red,   { width: 1, dash: [4,4] })); }
+          if (sp.pitch) { data.push(sp.pitch); series.push(sd('Pitch SP', C.green, { width: 1, dash: [4,4] })); }
+        }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 12, series);
+        opts.axes[1].label = 'Degrees';
+        return new uPlot(opts, data, el);
+      });
+
+      // Vibration
+      buildChart('inline-chart-vibration', (el, ts, C, base, sd) => {
+        const d = ts.vibration; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.accel_x) { data.push(d.accel_x); series.push(sd('X', C.red,   { width: 1 })); }
+        if (d.accel_y) { data.push(d.accel_y); series.push(sd('Y', C.green, { width: 1 })); }
+        if (d.accel_z) { data.push(d.accel_z); series.push(sd('Z', C.blue,  { width: 1 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 12, series);
+        opts.axes[1].label = 'm/s\u00B2';
+        return new uPlot(opts, data, el);
+      });
+
+      // GPS
+      buildChart('inline-chart-gps', (el, ts, C, base, sd) => {
+        const d = ts.gps; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.satellites) { data.push(d.satellites); series.push(sd('Satellites', C.green)); }
+        if (d.hdop)        { data.push(d.hdop);        series.push(sd('HDOP',       C.amber)); }
+        if (!series.length) return null;
+        return new uPlot(base(el.clientWidth - 12, series), data, el);
+      });
+
+      // Velocity
+      buildChart('inline-chart-velocity', (el, ts, C, base, sd) => {
+        const d = ts.velocity; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.vx) { data.push(d.vx); series.push(sd('Vx (North)', C.red,   { width: 1 })); }
+        if (d.vy) { data.push(d.vy); series.push(sd('Vy (East)',  C.green, { width: 1 })); }
+        if (d.vz) { data.push(d.vz); series.push(sd('Vz (Down)',  C.blue,  { width: 1 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 12, series);
+        opts.axes[1].label = 'm/s';
+        return new uPlot(opts, data, el);
+      });
+    });
+  }
+
+  /* ── Inline timeline ───────────────────────────────────────── */
+  function renderInlineTimeline(ts, meta) {
+    const modeChanges   = ts.mode_changes || [];
+    const events        = ts.events || [];
+    const duration      = (meta && meta.duration_sec) || 0;
+
+    if (!duration) return;
+
+    const MODE_COLORS = {
+      manual:'#5B9BD5', stabilized:'#A77BCA', altitude:'#5BC0BE',
+      position:'#6ECC72', mission:'#EF9F27', hold:'#E8854A',
+      return:'#D46A9F', land:'#A3C44A', takeoff:'#6ECC72',
+      acro:'#E24B4A', offboard:'#5B9BD5', orbit:'#5BC0BE',
+    };
+
+    const modesBar = document.getElementById('inline-modes-bar');
+    if (modesBar && modeChanges.length > 0) {
+      modesBar.innerHTML = modeChanges.map((m, i) => {
+        const start = m.timestamp / duration * 100;
+        const end   = i < modeChanges.length - 1 ? modeChanges[i+1].timestamp / duration * 100 : 100;
+        const width = end - start;
+        const color = MODE_COLORS[m.to_mode] || 'rgba(255,255,255,0.1)';
+        const label = width > 5 ? m.to_mode : '';
+        return `<div class="mode-band" style="left:${start}%;width:${width}%;background:${color}30;border-color:${color};">${escHtml(label)}</div>`;
+      }).join('');
+    }
+
+    const evtContainer = document.getElementById('inline-event-markers');
+    if (evtContainer && events.length > 0) {
+      const sevColor = { critical: '#E24B4A', warning: '#EF9F27', info: '#A3C44A' };
+      evtContainer.innerHTML = events
+        .filter(e => e.severity !== 'info')
+        .slice(0, 50)
+        .map(e => {
+          const pct = (e.timestamp / duration) * 100;
+          const col = sevColor[e.severity] || 'rgba(255,255,255,0.3)';
+          return `<div class="timeline-evt-dot" style="left:${pct}%;background:${col};" title="${escAttr(e.message || '')}"></div>`;
+        }).join('');
+    }
   }
 
   /* ── Score ring ────────────────────────────────────────────── */
@@ -2009,12 +2459,12 @@
 
     if (score == null) {
       numEl.textContent = '\u2014';
-      fillEl.style.strokeDashoffset = '351.86';
+      fillEl.style.strokeDashoffset = '402.12';
       return;
     }
 
     const pct = Math.min(Math.max(score, 0), 100);
-    const circumference = 351.86;
+    const circumference = 402.12;
     const offset = circumference - (pct / 100) * circumference;
 
     const { color, grade, bg } = scoreStyle(pct);
@@ -2023,7 +2473,7 @@
 
     fillEl.style.stroke = color;
     fillEl.style.transition = 'none';
-    fillEl.style.strokeDashoffset = '351.86';
+    fillEl.style.strokeDashoffset = '402.12';
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         fillEl.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1), stroke 0.6s';
@@ -2077,22 +2527,74 @@
 
   /* ── Flight stats ──────────────────────────────────────────── */
   function renderFlightStats(meta) {
-    const items = [
-      { k: 'Duration',   v: meta.duration_str   || formatDuration(meta.duration_sec) },
-      { k: 'Mode',       v: capitalize(meta.primary_mode || '\u2014') },
-      { k: 'Motors',     v: meta.motor_count != null ? String(meta.motor_count) : '\u2014' },
-      { k: 'Format',     v: String(meta.log_format || '\u2014').toUpperCase() },
-      { k: 'Firmware',   v: meta.firmware_version || '\u2014' },
-      { k: 'Hardware',   v: meta.hardware || '\u2014' },
-      { k: 'Autopilot',  v: capitalize(meta.autopilot || '\u2014') },
-      { k: 'Vehicle',    v: capitalize(meta.vehicle_type || '\u2014') },
+    // Hero stat cards (6 cards, 3x2 grid)
+    const heroItems = [
+      { k: 'Duration',     v: meta.duration_str || formatDuration(meta.duration_sec) },
+      { k: 'Max Altitude', v: meta.max_altitude_m != null ? meta.max_altitude_m.toFixed(1) + ' m' : '\u2014' },
+      { k: 'Battery Min',  v: meta.battery_min_v != null ? meta.battery_min_v.toFixed(2) + ' V' : '\u2014' },
+      { k: 'Motor Count',  v: meta.motor_count   != null ? String(meta.motor_count) : '\u2014' },
+      { k: 'Firmware',     v: meta.firmware_version || '\u2014' },
+      { k: 'Flight Mode',  v: capitalize(meta.primary_mode || '\u2014') },
     ];
 
-    document.getElementById('stats-grid').innerHTML = items.map(i => `
-      <div class="stat-item">
-        <div class="stat-key">${escHtml(i.k)}</div>
-        <div class="stat-val">${escHtml(i.v)}</div>
-      </div>`).join('');
+    const grid = document.getElementById('stat-cards-grid');
+    if (grid) {
+      grid.innerHTML = heroItems.map(i => `
+        <div class="stat-card">
+          <div class="stat-card-key">${escHtml(i.k)}</div>
+          <div class="stat-card-val">${escHtml(i.v)}</div>
+        </div>`).join('');
+    }
+  }
+
+  /* ── Mini Gauges ────────────────────────────────────────────── */
+  function renderGauges(findings) {
+    const row = document.getElementById('gauges-row');
+    if (!row) return;
+
+    // Extract per-plugin worst scores for gauge display
+    const pluginScores = {};
+    const skipKw = ['skipped', 'not available', 'not found', 'no data'];
+    findings.forEach(f => {
+      const isMissing = f.severity === 'info' && skipKw.some(kw => (f.description || '').toLowerCase().includes(kw));
+      if (isMissing) return;
+      const name = f.plugin_name;
+      if (!(name in pluginScores) || f.score < pluginScores[name]) {
+        pluginScores[name] = f.score;
+      }
+    });
+
+    // Define which gauges to show (map to plugin names)
+    const gauges = [
+      { label: 'Battery',   plugin: 'battery_sag',       icon: '&#x26A1;' },
+      { label: 'Vibration', plugin: 'vibration',          icon: '&#x2248;' },
+      { label: 'Motors',    plugin: 'motor_saturation',   icon: '&#x2699;' },
+      { label: 'Stability', plugin: 'attitude_tracking',  icon: '&#x2194;' },
+    ];
+
+    const circumference = 226.2; // 2 * PI * 36
+
+    row.innerHTML = gauges.map(g => {
+      const score = pluginScores[g.plugin];
+      const hasData = score !== undefined;
+      const pct = hasData ? Math.max(0, Math.min(100, score)) : 0;
+      const offset = circumference - (pct / 100) * circumference;
+      const { color } = hasData ? scoreStyle(pct) : { color: 'var(--text-muted)' };
+      const displayVal = hasData ? pct : 'N/A';
+
+      return `<div style="background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <svg width="80" height="80" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="5"/>
+          <circle cx="40" cy="40" r="36" fill="none" stroke="${color}" stroke-width="5"
+                  stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+                  stroke-linecap="round" transform="rotate(-90 40 40)"
+                  style="transition:stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1);"/>
+          <text x="40" y="36" text-anchor="middle" fill="${color}" font-family="var(--font)" font-size="20" font-weight="700">${displayVal}</text>
+          <text x="40" y="52" text-anchor="middle" fill="var(--text-muted)" font-family="var(--font)" font-size="10">${hasData ? '/100' : ''}</text>
+        </svg>
+        <div style="font-size:14px;font-weight:600;color:var(--text-sec);text-align:center;">${g.label}</div>
+      </div>`;
+    }).join('');
   }
 
   /* ── Timeline ──────────────────────────────────────────────── */
@@ -2106,7 +2608,7 @@
     durLabel.textContent = dur ? formatDuration(dur) : '';
 
     if (!dur || findings.length === 0) {
-      track.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--text-muted);">No timeline data</div>';
+      track.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:14px;color:var(--text-muted);">No timeline data</div>';
       return;
     }
 
@@ -2176,12 +2678,17 @@
     }
 
     // Aggregate worst (lowest) score per plugin
+    const skipWords2 = ['skipped', 'not available', 'not found', 'no data'];
     const pluginMap = {};
+    const pluginMissing = {};
     findings.forEach(f => {
       const name = f.plugin_name || 'unknown';
+      const isMissing = f.severity === 'info' && skipWords2.some(kw => (f.description || '').toLowerCase().includes(kw));
       if (!(name in pluginMap) || f.score < pluginMap[name].score) {
         pluginMap[name] = { score: f.score, severity: f.severity };
       }
+      if (isMissing && !(name in pluginMissing)) pluginMissing[name] = true;
+      if (!isMissing) pluginMissing[name] = false;
     });
 
     const sevOrder = { critical: 0, warning: 1, info: 2, pass: 3 };
@@ -2196,10 +2703,12 @@
     subtitle.textContent = `${entries.length} plugin${entries.length !== 1 ? 's' : ''}`;
 
     container.innerHTML = entries.map(([name, { score, severity }]) => {
-      const pct = Math.min(Math.max(score, 0), 100);
-      const { color } = scoreStyle(pct);
-      const icon = sevIcon[severity] || '?';
-      const iconCls = 'sev-icon-' + (severity || 'info');
+      const missing = pluginMissing[name] === true;
+      const pct = missing ? 0 : Math.min(Math.max(score, 0), 100);
+      const { color } = missing ? { color: 'var(--text-muted)' } : scoreStyle(pct);
+      const icon = missing ? '\u2014' : (sevIcon[severity] || '?');
+      const iconCls = missing ? '' : ('sev-icon-' + (severity || 'info'));
+      const scoreLabel = missing ? 'N/A' : pct;
       return `<div class="plugin-bar-row">
         <span class="finding-sev-icon ${iconCls}" style="flex-shrink:0;margin-right:2px;" aria-hidden="true">${icon}</span>
         <span class="plugin-bar-name" title="${escAttr(name)}">${escHtml(name)}</span>
@@ -2207,7 +2716,7 @@
           <div class="plugin-bar-fill" data-target-width="${pct}"
                style="width:0%;background:${color};"></div>
         </div>
-        <span class="plugin-bar-score" style="color:${color};">${pct}</span>
+        <span class="plugin-bar-score" style="color:${color};">${scoreLabel}</span>
       </div>`;
     }).join('');
 
@@ -2264,8 +2773,8 @@
 
     el.innerHTML = rows.map((r, i) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;${i < rows.length-1 ? 'border-bottom:1px solid var(--card-border);' : ''}">
-        <span style="font-size:11px;color:var(--text-sec);letter-spacing:0.04em;">${escHtml(r.k)}</span>
-        <span style="font-size:12px;font-weight:600;color:var(--text);">${r.v}</span>
+        <span style="font-size:14px;color:var(--text-sec);letter-spacing:0.04em;">${escHtml(r.k)}</span>
+        <span style="font-size:14px;font-weight:600;color:var(--text);">${r.v}</span>
       </div>`).join('');
   }
 
@@ -2310,8 +2819,17 @@
       return;
     }
 
+    const skipWords = ['skipped', 'not available', 'not found', 'no data', 'no battery', 'no attitude', 'no gps', 'no motor', 'no rc', 'no ekf', 'no position'];
+    function isDataMissing(f) {
+      if (f.severity !== 'info') return false;
+      const desc = (f.description || '').toLowerCase();
+      return skipWords.some(kw => desc.includes(kw));
+    }
+
     container.innerHTML = sorted.map((f, idx) => {
-      const scoreColor = scoreStyle(f.score).color;
+      const missing    = isDataMissing(f);
+      const scoreColor = missing ? 'var(--text-muted)' : scoreStyle(f.score).color;
+      const scoreText  = missing ? 'N/A' : f.score;
       const phase      = f.phase ? escHtml(capitalize(f.phase)) : '';
       const ts         = f.timestamp_start != null ? `t=${f.timestamp_start}s` : '';
       const metaStr    = [f.plugin_name ? escHtml(f.plugin_name) : null, phase, ts].filter(Boolean).join(' \u00b7 ');
@@ -2321,7 +2839,7 @@
           <div class="finding-row-title">${escHtml(f.title)}</div>
           <div class="finding-row-meta">${metaStr}</div>
         </div>
-        <span class="finding-score ${colClass[f.severity] || ''}" style="color:${scoreColor};">${f.score}</span>
+        <span class="finding-score ${colClass[f.severity] || ''}" style="color:${scoreColor};">${scoreText}</span>
       </div>`;
     }).join('');
 
@@ -2329,54 +2847,63 @@
   }
 
   function toggleFinding(idx) {
-    const container  = document.getElementById('findings-scroll');
-    const detailPane = document.getElementById('finding-detail');
-    const findings   = container._sortedFindings || [];
-    const f          = findings[idx];
+    const container = document.getElementById('findings-scroll');
+    const findings  = container._sortedFindings || [];
+    const f         = findings[idx];
     if (!f) return;
 
     const row = document.getElementById('finding-row-' + idx);
+    const existingDetail = document.getElementById('finding-inline-' + idx);
 
+    // Close if already open
     if (activeFinding === idx) {
       activeFinding = null;
       row.classList.remove('active');
       row.setAttribute('aria-expanded', 'false');
-      detailPane.classList.remove('visible');
+      if (existingDetail) existingDetail.remove();
       return;
     }
 
+    // Close previously open finding
     if (activeFinding != null) {
       const prev = document.getElementById('finding-row-' + activeFinding);
       if (prev) { prev.classList.remove('active'); prev.setAttribute('aria-expanded', 'false'); }
+      const prevDetail = document.getElementById('finding-inline-' + activeFinding);
+      if (prevDetail) prevDetail.remove();
     }
 
     activeFinding = idx;
     row.classList.add('active');
     row.setAttribute('aria-expanded', 'true');
 
+    // Build evidence table
     const evidenceHtml = f.evidence && typeof f.evidence === 'object' && Object.keys(f.evidence).length > 0
-      ? `<div class="detail-evidence">${
-          Object.entries(f.evidence).map(([k, v]) =>
-            `<div><span class="ev-key">${escHtml(k)}</span>  <span class="ev-val">${escHtml(String(v))}</span></div>`
-          ).join('')
-        }</div>`
-      : '<span style="color:var(--text-muted);font-size:11px;">No evidence data</span>';
-
-    const tsHtml = (f.timestamp_start != null || f.timestamp_end != null)
-      ? `<div class="detail-timestamps">
-          ${f.timestamp_start != null ? `<div class="detail-ts-item"><div class="detail-label" style="margin-top:0;">Start</div><div class="detail-value">${escHtml(String(f.timestamp_start))}s</div></div>` : ''}
-          ${f.timestamp_end   != null ? `<div class="detail-ts-item"><div class="detail-label" style="margin-top:0;">End</div><div class="detail-value">${escHtml(String(f.timestamp_end))}s</div></div>` : ''}
-          ${f.phase ? `<div class="detail-ts-item"><div class="detail-label" style="margin-top:0;">Phase</div><div class="detail-value">${escHtml(capitalize(f.phase))}</div></div>` : ''}
-        </div>`
+      ? Object.entries(f.evidence).map(([k, v]) =>
+          `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--card-border);">
+            <span style="color:var(--text-sec);font-size:14px;">${escHtml(k)}</span>
+            <span style="color:var(--text);font-size:14px;font-weight:600;">${escHtml(String(v))}</span>
+          </div>`
+        ).join('')
       : '';
 
-    detailPane.innerHTML = `
-      <div class="detail-label">Description</div>
-      <div class="detail-value">${escHtml(f.description)}</div>
-      ${f.evidence && Object.keys(f.evidence || {}).length ? '<div class="detail-label">Evidence</div>' + evidenceHtml : ''}
-      ${tsHtml ? '<div class="detail-label">Timestamps</div>' + tsHtml : ''}
+    // Build timestamp chips
+    const tsItems = [];
+    if (f.timestamp_start != null) tsItems.push(`<span style="color:var(--text-sec);">Start:</span> <span style="font-weight:600;">${f.timestamp_start}s</span>`);
+    if (f.timestamp_end != null) tsItems.push(`<span style="color:var(--text-sec);">End:</span> <span style="font-weight:600;">${f.timestamp_end}s</span>`);
+    if (f.phase) tsItems.push(`<span style="color:var(--text-sec);">Phase:</span> <span style="font-weight:600;">${escHtml(capitalize(f.phase))}</span>`);
+
+    // Create inline detail that expands under the finding
+    const detail = document.createElement('div');
+    detail.id = 'finding-inline-' + idx;
+    detail.style.cssText = 'background:rgba(255,255,255,0.02);border:1px solid var(--card-border);border-top:none;border-radius:0 0 8px 8px;padding:16px 20px;margin-top:-1px;';
+    detail.innerHTML = `
+      <div style="font-size:15px;line-height:1.7;color:var(--text);margin-bottom:${tsItems.length || evidenceHtml ? '12px' : '0'};">${escHtml(f.description)}</div>
+      ${tsItems.length ? `<div style="display:flex;gap:20px;font-size:14px;margin-bottom:${evidenceHtml ? '12px' : '0'};">${tsItems.join('<span style="color:var(--card-border);margin:0 4px;">|</span>')}</div>` : ''}
+      ${evidenceHtml ? `<div style="font-size:14px;font-weight:700;color:var(--text-sec);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Evidence</div><div style="background:var(--card);border-radius:8px;padding:10px 14px;">${evidenceHtml}</div>` : ''}
     `;
-    detailPane.classList.add('visible');
+
+    // Insert right after the clicked finding row
+    row.after(detail);
     row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
@@ -2451,7 +2978,7 @@
       content.innerHTML = `<div class="empty-state" style="color:var(--red);">
         Failed to load plugins: ${escHtml(err.message)}
         <br><br>
-        <button onclick="pluginsLoaded=false;loadPluginsTab()" style="margin-top:8px;padding:6px 14px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:12px;color:var(--text-sec);cursor:pointer;">Retry</button>
+        <button onclick="pluginsLoaded=false;loadPluginsTab()" style="margin-top:8px;padding:6px 14px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:14px;color:var(--text-sec);cursor:pointer;">Retry</button>
       </div>`;
     }
   }
@@ -2465,7 +2992,7 @@
         <div class="plugin-name">${escHtml(plugin.name)}</div>
         ${planned
           ? `<span class="plugin-badge badge-planned">Coming v1.1</span>`
-          : `<div class="plugin-status"><div class="status-dot-active" aria-hidden="true"></div><span style="font-size:11px;color:var(--green);font-weight:700;">Active</span></div>`
+          : `<div class="plugin-status"><div class="status-dot-active" aria-hidden="true"></div><span style="font-size:14px;color:var(--green);font-weight:700;">Active</span></div>`
         }
       </div>
       <div class="plugin-desc">${escHtml(plugin.description || 'No description available.')}</div>
@@ -2642,5 +3169,7 @@
     }
   });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+<script src="/static/cockpit.js"></script>
 </body>
 </html>

@@ -1748,12 +1748,7 @@
           <div class="stat-cards-grid" id="stat-cards-grid"></div>
           <!-- Mini gauges row -->
           <div id="gauges-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;"></div>
-          <!-- Flight path map -->
-          <div id="flight-map-card" style="display:none;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);overflow:hidden;">
-            <div style="padding:10px 14px 6px;font-size:14px;font-weight:700;color:var(--text-sec);letter-spacing:0.06em;text-transform:uppercase;">Flight Path</div>
-            <div id="flight-map" style="height:250px;background:#111;"></div>
-          </div>
-          <!-- Crash card (shown only when crashed) -->
+          <!-- Crash card (shown only when crashed — above flight path) -->
           <div id="crash-card" class="card crash-card" style="display:none">
             <div class="card-body">
               <div class="crash-badge">
@@ -1771,6 +1766,11 @@
               <div class="card-title" style="margin-bottom:8px;">INSPECT CHECKLIST</div>
               <ul class="inspect-list" id="inspect-list"></ul>
             </div>
+          </div>
+          <!-- Flight path map (below crash card) -->
+          <div id="flight-map-card" style="display:none;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);overflow:hidden;">
+            <div style="padding:10px 14px 6px;font-size:14px;font-weight:700;color:var(--text-sec);letter-spacing:0.06em;text-transform:uppercase;">Flight Path</div>
+            <div id="flight-map" style="height:250px;background:#111;"></div>
           </div>
         </div>
       </div>

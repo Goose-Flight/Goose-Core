@@ -168,3 +168,116 @@ def _format_key_evidence(evidence: dict[str, Any] | None) -> str:
                 selected.append(f"{k}={v}")
 
     return ", ".join(selected)
+
+
+# ══════════════════════════════════════════════════════════════
+# Human-readable "investigator" narrative
+# ══════════════════════════════════════════════════════════════
+
+def generate_human_narrative(
+    findings: list[Any],
+    metadata: dict[str, Any] | None = None,
+    overall_score: int | None = None,
+) -> str:
+    """Generate a conversational flight narrative — like an investigator telling the story.
+
+    No jargon, no scores, no thresholds. Just what happened in plain English.
+    """
+    meta = metadata or {}
+    parts: list[str] = []
+
+    # ── Opening — set the scene ──────────────────────────
+    duration = meta.get("duration_str", "unknown duration")
+    vehicle = (meta.get("vehicle_type") or "drone").replace("_", " ")
+    mode = (meta.get("primary_mode") or "manual").replace("_", " ")
+
+    parts.append(f"This was a {duration} flight of a {vehicle}, flying primarily in {mode} mode.")
+
+    # ── Crash or normal? ─────────────────────────────────
+    crashed = meta.get("crashed", False)
+    if crashed:
+        parts.append("The flight ended in a crash.")
+    else:
+        if overall_score is not None and overall_score >= 80:
+            parts.append("The flight completed without major incident.")
+        elif overall_score is not None and overall_score >= 50:
+            parts.append("The flight completed, but there were some concerns worth noting.")
+        elif overall_score is not None:
+            parts.append("The flight had significant issues that need attention.")
+
+    # ── Separate findings ────────────────────────────────
+    real = [f for f in findings if not _is_data_missing(f)]
+    criticals = [f for f in real if f.severity == "critical"]
+    warnings = [f for f in real if f.severity == "warning"]
+    passes = [f for f in real if f.severity == "pass"]
+
+    # ── Tell the story of critical issues ────────────────
+    for f in criticals:
+        ts = ""
+        if f.timestamp_start is not None:
+            mins = int(f.timestamp_start // 60)
+            secs = int(f.timestamp_start % 60)
+            if mins > 0:
+                ts = f" about {mins} minutes and {secs} seconds into the flight"
+            else:
+                ts = f" about {secs} seconds into the flight"
+
+        title = f.title.lower().rstrip(".")
+        desc = _simplify_description(f.description)
+        parts.append(f"The most significant issue: {title}{ts}. {desc}")
+
+    # ── Warnings as a group ──────────────────────────────
+    if warnings:
+        if len(warnings) == 1:
+            w = warnings[0]
+            parts.append(f"There was also a warning about {w.title.lower().rstrip('.')}. {_simplify_description(w.description)}")
+        elif len(warnings) <= 3:
+            names = [w.title.lower().rstrip(".") for w in warnings]
+            parts.append(f"Additionally, warnings were flagged for {_join_list(names)}.")
+        else:
+            names = [w.title.lower().rstrip(".") for w in warnings[:3]]
+            parts.append(f"There were {len(warnings)} warnings, including {_join_list(names)}, among others.")
+
+    # ── What looked good ─────────────────────────────────
+    if passes and not crashed:
+        pass_names = sorted(set(f.plugin_name.replace("_", " ") for f in passes))
+        if len(pass_names) <= 3:
+            parts.append(f"On the positive side, {_join_list(pass_names)} all checked out fine.")
+        else:
+            parts.append(f"{len(pass_names)} systems checked out fine, including {_join_list(pass_names[:3])}.")
+
+    # ── Missing data note ────────────────────────────────
+    missing = [f for f in findings if _is_data_missing(f)]
+    if missing:
+        names = sorted(set(f.plugin_name.replace("_", " ") for f in missing))
+        parts.append(f"We weren't able to check {_join_list(names)} due to missing sensor data in the log.")
+
+    # ── Closing ──────────────────────────────────────────
+    if crashed:
+        parts.append("This flight warrants a thorough inspection before the next flight.")
+    elif overall_score is not None and overall_score < 50:
+        parts.append("We'd recommend a careful review before flying again.")
+
+    return " ".join(parts)
+
+
+def _simplify_description(desc: str) -> str:
+    """Take the first sentence and strip technical jargon."""
+    sentence = _first_sentence(desc)
+    # Remove parenthetical technical details
+    import re
+    sentence = re.sub(r'\([^)]*\)', '', sentence).strip()
+    # Remove trailing periods if doubled
+    sentence = sentence.rstrip(".") + "."
+    return sentence
+
+
+def _join_list(items: list[str]) -> str:
+    """Join a list with commas and 'and': ['a', 'b', 'c'] -> 'a, b, and c'."""
+    if len(items) == 0:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f", and {items[-1]}"

@@ -354,27 +354,31 @@ def create_app():
 
             # Generate flight narrative
             try:
-                from goose.core.narrative import generate_narrative
+                from goose.core.narrative import generate_narrative, generate_human_narrative
+                narr_meta = {
+                    "duration_str": duration_str,
+                    "vehicle_type": meta.vehicle_type,
+                    "primary_mode": flight.primary_mode,
+                    "firmware_version": meta.firmware_version,
+                    "hardware": meta.hardware,
+                    "crashed": flight.crashed,
+                }
                 narrative = generate_narrative(
-                    all_findings,
-                    metadata={
-                        "duration_str": duration_str,
-                        "vehicle_type": meta.vehicle_type,
-                        "primary_mode": flight.primary_mode,
-                        "firmware_version": meta.firmware_version,
-                        "hardware": meta.hardware,
-                        "crashed": flight.crashed,
-                    },
-                    overall_score=overall_score,
+                    all_findings, metadata=narr_meta, overall_score=overall_score,
+                )
+                narrative_human = generate_human_narrative(
+                    all_findings, metadata=narr_meta, overall_score=overall_score,
                 )
             except Exception as narr_exc:
                 logger.warning("Narrative generation failed: %s", narr_exc)
                 narrative = None
+                narrative_human = None
 
             return JSONResponse({
                 "ok": True,
                 "overall_score": overall_score,
                 "narrative": narrative,
+                "narrative_human": narrative_human,
                 "timeseries": timeseries,
                 "metadata": {
                     "filename": original_name.name,

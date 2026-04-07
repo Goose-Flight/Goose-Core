@@ -1622,7 +1622,7 @@
       </svg>
     </div>
     <span class="logo-text">Goose</span>
-    <span class="version-badge">v1.3.2</span>
+    <span class="version-badge">v1.3.3</span>
   </div>
 
   <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
@@ -1720,7 +1720,13 @@
       <!-- Hero row: score ring + stat cards -->
       <!-- Flight Narrative -->
       <div id="narrative-card" class="card" style="display:none;padding:16px 20px;">
-        <div style="font-size:14px;font-weight:700;color:var(--green);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Flight Analysis Summary</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:700;color:var(--green);letter-spacing:0.06em;text-transform:uppercase;">Flight Analysis Summary</div>
+          <div style="display:flex;gap:4px;">
+            <button id="narr-btn-human" onclick="setNarrativeMode('human')" style="padding:4px 12px;font-family:var(--font);font-size:14px;font-weight:600;border:1px solid var(--green);border-radius:6px;background:var(--green-glow);color:var(--green);cursor:pointer;">Story</button>
+            <button id="narr-btn-tech" onclick="setNarrativeMode('tech')" style="padding:4px 12px;font-family:var(--font);font-size:14px;font-weight:600;border:1px solid var(--card-border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;">Technical</button>
+          </div>
+        </div>
         <div id="narrative-text" style="font-size:15px;line-height:1.7;color:var(--text);"></div>
       </div>
 
@@ -1961,7 +1967,7 @@
 <!-- ── Footer ────────────────────────────────────────────────── -->
 <footer>
   <div class="footer-left">
-    <span>GOOSE v1.3.2</span>
+    <span>GOOSE v1.3.3</span>
     <span class="footer-sep">&middot;</span>
     <span>Open Source Flight Analysis</span>
     <span class="footer-sep">&middot;</span>
@@ -2205,18 +2211,13 @@
     }).join('');
 
     // Narrative
+    // Narrative — store both versions, default to human/story mode
+    window._narrativeTech = data.narrative || null;
+    window._narrativeHuman = data.narrative_human || null;
     const narrativeCard = document.getElementById('narrative-card');
-    const narrativeText = document.getElementById('narrative-text');
-    if (data.narrative) {
+    if (window._narrativeHuman || window._narrativeTech) {
       narrativeCard.style.display = '';
-      // Highlight critical/warning keywords
-      let nt = escHtml(data.narrative);
-      nt = nt.replace(/CRITICAL/g, '<span style="color:var(--red);font-weight:700;">CRITICAL</span>');
-      nt = nt.replace(/CRASH DETECTED/g, '<span style="color:var(--red);font-weight:700;">CRASH DETECTED</span>');
-      nt = nt.replace(/Warning/g, '<span style="color:var(--amber);font-weight:700;">Warning</span>');
-      nt = nt.replace(/Nominal/g, '<span style="color:var(--green);font-weight:600;">Nominal</span>');
-      nt = nt.replace(/Degraded/g, '<span style="color:var(--amber);font-weight:600;">Degraded</span>');
-      narrativeText.innerHTML = nt;
+      setNarrativeMode('human');
     } else {
       narrativeCard.style.display = 'none';
     }
@@ -2513,6 +2514,35 @@
           syncInlineCharts(t);
         });
       }
+    }
+  }
+
+  /* ── Narrative mode toggle ──────────────────────────────────── */
+  function setNarrativeMode(mode) {
+    const textEl = document.getElementById('narrative-text');
+    const btnHuman = document.getElementById('narr-btn-human');
+    const btnTech = document.getElementById('narr-btn-tech');
+    if (!textEl) return;
+
+    const raw = mode === 'tech' ? window._narrativeTech : window._narrativeHuman;
+    if (!raw) { textEl.innerHTML = '<span style="color:var(--text-muted);">No narrative available.</span>'; return; }
+
+    let nt = escHtml(raw);
+    if (mode === 'tech') {
+      nt = nt.replace(/CRITICAL/g, '<span style="color:var(--red);font-weight:700;">CRITICAL</span>');
+      nt = nt.replace(/CRASH DETECTED/g, '<span style="color:var(--red);font-weight:700;">CRASH DETECTED</span>');
+      nt = nt.replace(/Warning/g, '<span style="color:var(--amber);font-weight:700;">Warning</span>');
+      nt = nt.replace(/Nominal/g, '<span style="color:var(--green);font-weight:600;">Nominal</span>');
+      nt = nt.replace(/Degraded/g, '<span style="color:var(--amber);font-weight:600;">Degraded</span>');
+    }
+    textEl.innerHTML = nt;
+
+    // Toggle button styles
+    if (btnHuman && btnTech) {
+      const active = 'border:1px solid var(--green);background:var(--green-glow);color:var(--green);';
+      const inactive = 'border:1px solid var(--card-border);background:transparent;color:var(--text-sec);';
+      btnHuman.style.cssText = 'padding:4px 12px;font-family:var(--font);font-size:14px;font-weight:600;border-radius:6px;cursor:pointer;' + (mode === 'human' ? active : inactive);
+      btnTech.style.cssText = 'padding:4px 12px;font-family:var(--font);font-size:14px;font-weight:600;border-radius:6px;cursor:pointer;' + (mode === 'tech' ? active : inactive);
     }
   }
 

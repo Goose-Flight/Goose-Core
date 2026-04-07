@@ -1622,7 +1622,7 @@
       </svg>
     </div>
     <span class="logo-text">Goose</span>
-    <span class="version-badge">v1.3.3</span>
+    <span class="version-badge">v1.3.4</span>
   </div>
 
   <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
@@ -1967,7 +1967,7 @@
 <!-- ── Footer ────────────────────────────────────────────────── -->
 <footer>
   <div class="footer-left">
-    <span>GOOSE v1.3.3</span>
+    <span>GOOSE v1.3.4</span>
     <span class="footer-sep">&middot;</span>
     <span>Open Source Flight Analysis</span>
     <span class="footer-sep">&middot;</span>
@@ -2651,13 +2651,36 @@
     document.getElementById('confidence-bar').style.width = conf + '%';
     document.getElementById('confidence-pct').textContent = conf + '%';
 
-    const checkItems = [
-      'Check motor & ESC connections',
-      'Review battery voltage logs',
-      'Inspect props for damage',
-      'Check vibration levels',
-      'Review GPS signal quality',
-    ];
+    // Build dynamic checklist based on what actually failed
+    const checkItems = [];
+    const pluginChecks = {
+      crash_detection:   ['Inspect airframe for structural damage', 'Document crash site and impact angle', 'Check flight controller mount and connections'],
+      vibration:         ['Check propeller balance and condition', 'Inspect motor bearings for play', 'Verify flight controller mounting isolation'],
+      battery_sag:       ['Load-test battery pack', 'Check cell balance and internal resistance', 'Inspect power wiring and connectors'],
+      motor_saturation:  ['Test each motor individually at full throttle', 'Check ESC calibration and firmware', 'Verify motor-to-ESC wiring'],
+      gps_health:        ['Check GPS antenna placement and orientation', 'Inspect for magnetic interference near GPS', 'Verify GPS module connections'],
+      ekf_consistency:   ['Calibrate magnetometer away from metal', 'Check accelerometer calibration', 'Verify sensor wiring and grounding'],
+      rc_signal:         ['Check RC transmitter battery and antenna', 'Inspect receiver antenna placement', 'Test failsafe configuration'],
+      attitude_tracking: ['Review PID tuning parameters', 'Check for mechanical binding on frame', 'Verify CG position and motor alignment'],
+      position_tracking: ['Verify GPS fix quality before flight', 'Check wind conditions vs vehicle capability', 'Review position controller gains'],
+      failsafe_events:   ['Review failsafe configuration settings', 'Test failsafe triggers on the ground', 'Verify return-to-launch altitude setting'],
+    };
+    const seen = new Set();
+    // Add checks for critical/warning findings
+    [...findings].sort((a,b) => {
+      const sev = {critical:0, warning:1, info:2, pass:3};
+      return (sev[a.severity]||2) - (sev[b.severity]||2);
+    }).forEach(f => {
+      const checks = pluginChecks[f.plugin_name];
+      if (checks && (f.severity === 'critical' || f.severity === 'warning') && !seen.has(f.plugin_name)) {
+        seen.add(f.plugin_name);
+        checks.forEach(c => checkItems.push(c));
+      }
+    });
+    // If nothing specific, add generic post-crash items
+    if (checkItems.length === 0) {
+      checkItems.push('Full airframe inspection required', 'Test all motors and ESCs individually', 'Verify sensor calibrations');
+    }
     const list = document.getElementById('inspect-list');
     list.innerHTML = checkItems.map(item => `
       <li class="inspect-item">

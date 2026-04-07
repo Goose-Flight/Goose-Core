@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GOOSE — Flight Log Analyzer</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="/static/cockpit.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1668,12 +1669,13 @@
       <div class="upload-sub">or click to browse your filesystem</div>
 
       <div class="upload-formats">
-        <span class="fmt-tag">.ulg</span>
-        <span class="fmt-tag">.bin</span>
-        <span class="fmt-tag">.log</span>
-        <span class="fmt-tag">.tlog</span>
-        <span class="fmt-tag">.csv</span>
+        <span class="fmt-tag" style="background:var(--green-glow);border-color:var(--green);color:var(--green);">.ulg</span>
+        <span class="fmt-tag" style="opacity:0.4;">.bin</span>
+        <span class="fmt-tag" style="opacity:0.4;">.log</span>
+        <span class="fmt-tag" style="opacity:0.4;">.tlog</span>
+        <span class="fmt-tag" style="opacity:0.4;">.csv</span>
       </div>
+      <div style="font-size:14px;color:var(--text-muted);margin-top:6px;">PX4 ULog (.ulg) fully supported &mdash; other formats coming soon</div>
 
       <div id="file-pill-container" class="file-pill-wrap" style="display:none"></div>
     </div>
@@ -1746,6 +1748,11 @@
           <div class="stat-cards-grid" id="stat-cards-grid"></div>
           <!-- Mini gauges row -->
           <div id="gauges-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;"></div>
+          <!-- Flight path map -->
+          <div id="flight-map-card" style="display:none;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);overflow:hidden;">
+            <div style="padding:10px 14px 6px;font-size:14px;font-weight:700;color:var(--text-sec);letter-spacing:0.06em;text-transform:uppercase;">Flight Path</div>
+            <div id="flight-map" style="height:250px;background:#111;"></div>
+          </div>
           <!-- Crash card (shown only when crashed) -->
           <div id="crash-card" class="card crash-card" style="display:none">
             <div class="card-body">
@@ -2171,7 +2178,9 @@
     const banner  = document.getElementById('status-banner');
     const crashed = !!meta.crashed;
     banner.className = 'status-banner ' + (crashed ? 'crashed' : 'normal');
-    document.getElementById('status-text').textContent = crashed ? 'CRASH DETECTED' : 'FLIGHT NORMAL';
+    document.getElementById('status-text').innerHTML = crashed
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>CRASH DETECTED'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>FLIGHT NORMAL';
     document.getElementById('status-details').textContent =
       escHtml(meta.filename || '') +
       (meta.duration_str ? ' \u00b7 ' + escHtml(meta.duration_str) : '') +
@@ -2208,6 +2217,7 @@
     renderCrashCard(findings, crashed);
     renderFlightStats(meta);
     renderGauges(findings);
+    renderFlightMap(data);
     renderTimeline(findings, meta.duration_sec);
     renderSeverityBreakdown(sevCounts);
     renderPluginBars(findings);
@@ -2449,6 +2459,43 @@
           return `<div class="timeline-evt-dot" style="left:${pct}%;background:${col};" title="${escAttr(e.message || '')}"></div>`;
         }).join('');
     }
+
+    // Wire up slider interaction
+    const sliderWrap = document.querySelector('#results-cockpit-timeline .timeline-slider-wrap');
+    const cursorEl   = document.getElementById('inline-slider-cursor');
+    const timeLabel  = document.getElementById('inline-cursor-time');
+    if (sliderWrap && cursorEl) {
+      let dragging = false;
+      function updateSlider(e) {
+        const rect = sliderWrap.getBoundingClientRect();
+        const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        cursorEl.style.left = (pct * 100) + '%';
+        const t = pct * duration;
+        const m = Math.floor(t / 60);
+        const s = Math.floor(t % 60);
+        if (timeLabel) timeLabel.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
+        // Move map position marker
+        updateMapPosition(t);
+      }
+      sliderWrap.addEventListener('mousedown', e => { dragging = true; updateSlider(e); });
+      sliderWrap.addEventListener('click', updateSlider);
+      document.addEventListener('mousemove', e => { if (dragging) updateSlider(e); });
+      document.addEventListener('mouseup', () => { dragging = false; });
+      // Also make modes bar clickable
+      if (modesBar) {
+        modesBar.style.cursor = 'crosshair';
+        modesBar.addEventListener('click', e => {
+          const rect = modesBar.getBoundingClientRect();
+          const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          cursorEl.style.left = (pct * 100) + '%';
+          const t = pct * duration;
+          const m2 = Math.floor(t / 60);
+          const s2 = Math.floor(t % 60);
+          if (timeLabel) timeLabel.textContent = (m2 > 0 ? m2 + 'm ' : '') + s2 + 's';
+          updateMapPosition(t);
+        });
+      }
+    }
   }
 
   /* ── Score ring ────────────────────────────────────────────── */
@@ -2527,11 +2574,24 @@
 
   /* ── Flight stats ──────────────────────────────────────────── */
   function renderFlightStats(meta) {
+    // Compute max altitude and battery min from timeseries
+    const ts = (lastResults && lastResults.timeseries) || {};
+    let maxAlt = null;
+    if (ts.altitude && ts.altitude.alt_rel) {
+      const vals = ts.altitude.alt_rel.filter(v => v != null);
+      if (vals.length) maxAlt = Math.max(...vals);
+    }
+    let batMin = null;
+    if (ts.battery && ts.battery.voltage) {
+      const vals = ts.battery.voltage.filter(v => v != null && v > 0);
+      if (vals.length) batMin = Math.min(...vals);
+    }
+
     // Hero stat cards (6 cards, 3x2 grid)
     const heroItems = [
       { k: 'Duration',     v: meta.duration_str || formatDuration(meta.duration_sec) },
-      { k: 'Max Altitude', v: meta.max_altitude_m != null ? meta.max_altitude_m.toFixed(1) + ' m' : '\u2014' },
-      { k: 'Battery Min',  v: meta.battery_min_v != null ? meta.battery_min_v.toFixed(2) + ' V' : '\u2014' },
+      { k: 'Max Altitude', v: maxAlt != null ? maxAlt.toFixed(1) + ' m' : '\u2014' },
+      { k: 'Battery Min',  v: batMin != null ? batMin.toFixed(2) + ' V' : '\u2014' },
       { k: 'Motor Count',  v: meta.motor_count   != null ? String(meta.motor_count) : '\u2014' },
       { k: 'Firmware',     v: meta.firmware_version || '\u2014' },
       { k: 'Flight Mode',  v: capitalize(meta.primary_mode || '\u2014') },
@@ -2545,6 +2605,91 @@
           <div class="stat-card-val">${escHtml(i.v)}</div>
         </div>`).join('');
     }
+  }
+
+  /* ── Flight Path Map ────────────────────────────────────────── */
+  let flightMap = null;
+  let flightPath = null;
+  let positionMarker = null;
+  let mapPoints = [];
+
+  function renderFlightMap(data) {
+    const card = document.getElementById('flight-map-card');
+    const ts = (data && data.timeseries) || {};
+    const alt = ts.altitude;
+
+    if (!alt || !alt.lat || !alt.lon) {
+      if (card) card.style.display = 'none';
+      return;
+    }
+
+    // Build lat/lon points, filtering out nulls and zeros
+    mapPoints = [];
+    for (let i = 0; i < alt.timestamps.length; i++) {
+      const lat = alt.lat[i];
+      const lon = alt.lon[i];
+      if (lat != null && lon != null && (Math.abs(lat) > 0.001 || Math.abs(lon) > 0.001)) {
+        mapPoints.push({ lat, lon, t: alt.timestamps[i], altRel: alt.alt_rel ? alt.alt_rel[i] : null });
+      }
+    }
+
+    if (mapPoints.length < 2) {
+      if (card) card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = '';
+
+    // Clean up old map
+    if (flightMap) { flightMap.remove(); flightMap = null; }
+
+    // Create map
+    flightMap = L.map('flight-map', {
+      zoomControl: true,
+      attributionControl: false,
+    });
+
+    // Dark tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+    }).addTo(flightMap);
+
+    // Draw flight path with altitude coloring
+    const latlngs = mapPoints.map(p => [p.lat, p.lon]);
+    flightPath = L.polyline(latlngs, {
+      color: '#6ECC72',
+      weight: 3,
+      opacity: 0.8,
+    }).addTo(flightMap);
+
+    // Start marker (green)
+    L.circleMarker(latlngs[0], {
+      radius: 6, color: '#6ECC72', fillColor: '#6ECC72', fillOpacity: 1, weight: 2,
+    }).addTo(flightMap).bindTooltip('START', { permanent: false, direction: 'top' });
+
+    // End marker (red)
+    L.circleMarker(latlngs[latlngs.length - 1], {
+      radius: 6, color: '#E24B4A', fillColor: '#E24B4A', fillOpacity: 1, weight: 2,
+    }).addTo(flightMap).bindTooltip('END', { permanent: false, direction: 'top' });
+
+    // Position marker (moves with timeline)
+    positionMarker = L.circleMarker(latlngs[0], {
+      radius: 5, color: '#EF9F27', fillColor: '#EF9F27', fillOpacity: 1, weight: 2,
+    }).addTo(flightMap);
+
+    // Fit bounds
+    flightMap.fitBounds(flightPath.getBounds().pad(0.1));
+  }
+
+  function updateMapPosition(timeSec) {
+    if (!positionMarker || mapPoints.length === 0) return;
+    // Find nearest point to timeSec
+    let nearest = mapPoints[0];
+    for (const p of mapPoints) {
+      if (p.t <= timeSec) nearest = p;
+      else break;
+    }
+    positionMarker.setLatLng([nearest.lat, nearest.lon]);
   }
 
   /* ── Mini Gauges ────────────────────────────────────────────── */
@@ -3170,6 +3315,7 @@
   });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/static/cockpit.js"></script>
 </body>
 </html>

@@ -27,7 +27,7 @@
       --font:         'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
     }
 
-    html { font-size: 14px; scroll-behavior: smooth; }
+    html { font-size: 15px; scroll-behavior: smooth; }
 
     body {
       background: var(--bg);
@@ -36,6 +36,8 @@
       min-height: 100vh;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
     }
 
     /* ── Scrollbar ─────────────────────────────────────────── */
@@ -82,7 +84,7 @@
     }
 
     .logo-text {
-      font-size: 15px;
+      font-size: 18px;
       font-weight: 700;
       letter-spacing: 0.18em;
       color: var(--green);
@@ -90,7 +92,7 @@
     }
 
     .version-badge {
-      font-size: 10px;
+      font-size: 13px;
       font-weight: 600;
       letter-spacing: 0.06em;
       color: var(--green);
@@ -101,7 +103,7 @@
     }
 
     .header-meta {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--text-muted);
       letter-spacing: 0.04em;
       border-left: 1px solid var(--card-border);
@@ -119,7 +121,7 @@
     .nav-tab {
       padding: 5px 12px;
       font-family: var(--font);
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -133,13 +135,14 @@
 
     .nav-tab:hover { color: var(--text); background: var(--card); }
     .nav-tab.active { color: var(--green); background: var(--green-glow); }
-    .nav-tab.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
 
     /* ── Layout ──────────────────────────────────────────────── */
     main {
+      flex: 1;
       max-width: 1440px;
       margin: 0 auto;
-      padding: 32px 24px 80px;
+      width: 100%;
+      padding: 32px 24px 40px;
     }
 
     /* ── Upload View ─────────────────────────────────────────── */
@@ -162,7 +165,7 @@
     }
 
     .upload-heading p {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--text-sec);
     }
 
@@ -228,7 +231,7 @@
     }
 
     .upload-sub {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--text-sec);
       letter-spacing: 0.04em;
     }
@@ -242,7 +245,7 @@
     }
 
     .fmt-tag {
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.08em;
       color: var(--text-muted);
@@ -314,7 +317,6 @@
     }
 
     #analyze-btn:active:not(:disabled) { transform: scale(0.98); }
-
     #analyze-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .spinner {
@@ -365,7 +367,7 @@
     }
 
     .loading-sub {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--text-sec);
       margin-bottom: 32px;
       letter-spacing: 0.04em;
@@ -410,9 +412,7 @@
     }
 
     /* ── Results View ────────────────────────────────────────── */
-    #results-view {
-      display: none;
-    }
+    #results-view { display: none; }
 
     /* Status banner */
     .status-banner {
@@ -460,7 +460,7 @@
       50%       { opacity: 0.3; }
     }
 
-    .status-details { margin-left: auto; font-size: 11px; font-weight: 500; opacity: 0.6; letter-spacing: 0.04em; text-transform: none; }
+    .status-details { margin-left: auto; font-size: 13px; font-weight: 500; opacity: 0.6; letter-spacing: 0.04em; text-transform: none; }
 
     /* 3-col results grid */
     .results-grid {
@@ -488,7 +488,7 @@
     }
 
     .card-title {
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -540,7 +540,7 @@
     }
 
     .score-ring-number {
-      font-size: 32px;
+      font-size: 38px;
       font-weight: 800;
       letter-spacing: -1px;
       font-variant-numeric: tabular-nums;
@@ -548,7 +548,7 @@
     }
 
     .score-ring-label {
-      font-size: 9px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -557,7 +557,7 @@
     }
 
     .score-grade {
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -576,7 +576,7 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      font-size: 9px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -596,7 +596,7 @@
     }
 
     .crash-desc {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--text-sec);
       line-height: 1.6;
       margin-bottom: 12px;
@@ -625,21 +625,19 @@
     }
 
     .confidence-pct {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
       color: var(--red);
       flex-shrink: 0;
     }
 
-    .inspect-list {
-      list-style: none;
-    }
+    .inspect-list { list-style: none; }
 
     .inspect-item {
       display: flex;
       align-items: flex-start;
       gap: 8px;
-      font-size: 11px;
+      font-size: 13px;
       color: var(--text-sec);
       padding: 4px 0;
       border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -672,7 +670,7 @@
     }
 
     .stat-key {
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -687,9 +685,7 @@
     }
 
     /* ── Timeline ────────────────────────────────────────────── */
-    .timeline-wrap {
-      padding: 12px 16px 16px;
-    }
+    .timeline-wrap { padding: 12px 16px 16px; }
 
     .timeline-track {
       position: relative;
@@ -716,12 +712,12 @@
     .timeline-labels {
       display: flex;
       justify-content: space-between;
-      font-size: 9px;
+      font-size: 12px;
       color: var(--text-muted);
       letter-spacing: 0.04em;
     }
 
-    /* ── Plugin bars ─────────────────────────────────────────── */
+    /* ── Plugin bars (results view) ─────────────────────────── */
     .plugin-bars { padding: 12px 16px 16px; }
 
     .plugin-bar-row {
@@ -734,7 +730,7 @@
     .plugin-bar-row:last-child { margin-bottom: 0; }
 
     .plugin-bar-name {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text-sec);
       width: 130px;
       flex-shrink: 0;
@@ -758,7 +754,7 @@
     }
 
     .plugin-bar-score {
-      font-size: 10px;
+      font-size: 13px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       width: 28px;
@@ -786,7 +782,6 @@
     }
 
     .finding-row:last-child { border-bottom: none; }
-
     .finding-row:hover { background: var(--card-hover); }
     .finding-row.active { background: rgba(110,204,114,0.05); }
     .finding-row.active::before {
@@ -806,7 +801,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 900;
       margin-top: 1px;
     }
@@ -827,13 +822,13 @@
     }
 
     .finding-row-meta {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text-sec);
     }
 
     .finding-score {
       flex-shrink: 0;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
@@ -849,7 +844,7 @@
     .finding-detail.visible { display: block; }
 
     .detail-label {
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -861,7 +856,7 @@
     .detail-label:first-child { margin-top: 0; }
 
     .detail-value {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--text-sec);
       line-height: 1.6;
     }
@@ -871,7 +866,7 @@
       border: 1px solid var(--card-border);
       border-radius: 6px;
       padding: 8px 10px;
-      font-size: 10px;
+      font-size: 12px;
       color: var(--text-sec);
       line-height: 1.7;
     }
@@ -909,7 +904,7 @@
       border: 1px solid var(--card-border);
       border-radius: 6px;
       font-family: var(--font);
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -933,17 +928,17 @@
       gap: 5px;
       padding: 4px 10px;
       border-radius: 6px;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
     }
 
     .sev-chip-count {
-      font-size: 14px;
+      font-size: 13px;
       font-variant-numeric: tabular-nums;
     }
 
     .sev-chip-label {
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -964,7 +959,7 @@
     .ftab {
       padding: 3px 9px;
       font-family: var(--font);
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
@@ -984,7 +979,495 @@
       text-align: center;
       padding: 32px 16px;
       color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ── Severity breakdown chart ────────────────────────────── */
+    .sev-breakdown { padding: 14px 16px; }
+
+    .sev-breakdown-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .sev-breakdown-row:last-child { margin-bottom: 0; }
+
+    .sev-bd-label {
       font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      width: 60px;
+      flex-shrink: 0;
+    }
+
+    .sev-bd-bar-track {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .sev-bd-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .sev-bd-count {
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      width: 22px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ── Phase chips ─────────────────────────────────────────── */
+    .phase-chips { padding: 12px 16px 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .phase-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--card-border);
+      font-size: 12px;
+      color: var(--text-sec);
+      transition: border-color 0.12s;
+    }
+
+    .phase-chip:hover { border-color: rgba(255,255,255,0.12); color: var(--text); }
+
+    .phase-chip-count {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── Plugins Tab ─────────────────────────────────────────── */
+    #plugins-view { display: none; }
+
+    .plugins-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .plugins-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+
+    .plugins-meta-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .meta-chip-active {
+      background: rgba(110,204,114,0.1);
+      border: 1px solid rgba(110,204,114,0.2);
+      color: var(--green);
+    }
+
+    .meta-chip-planned {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+    }
+
+    .meta-chip-total {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--card-border);
+      color: var(--text-sec);
+    }
+
+    .plugins-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .plugin-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+
+    .plugin-card:hover {
+      border-color: rgba(110,204,114,0.25);
+      background: rgba(110,204,114,0.02);
+    }
+
+    .plugin-card.planned {
+      opacity: 0.5;
+    }
+
+    .plugin-card.planned:hover {
+      border-color: rgba(255,255,255,0.1);
+      background: var(--card);
+    }
+
+    .plugin-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .plugin-name {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .plugin-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .status-dot-active {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: dot-pulse 2s ease-in-out infinite;
+    }
+
+    .plugin-desc {
+      font-size: 13px;
+      color: var(--text-sec);
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+
+    .plugin-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .plugin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .badge-version {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-sec);
+    }
+
+    .badge-mode {
+      background: rgba(239,159,39,0.1);
+      border: 1px solid rgba(239,159,39,0.2);
+      color: var(--amber);
+    }
+
+    .badge-active {
+      background: rgba(110,204,114,0.1);
+      border: 1px solid rgba(110,204,114,0.2);
+      color: var(--green);
+    }
+
+    .badge-planned {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--text-muted);
+    }
+
+    .plugins-section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 28px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .plugins-section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--card-border);
+    }
+
+    /* Plugin loading/error */
+    .plugins-loading {
+      text-align: center;
+      padding: 60px 16px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .plugins-loading .loading-spinner {
+      margin-bottom: 16px;
+    }
+
+    /* ── History Tab ─────────────────────────────────────────── */
+    #history-view { display: none; }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .history-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+
+    .clear-history-btn {
+      padding: 6px 14px;
+      background: none;
+      border: 1px solid rgba(226,75,74,0.3);
+      border-radius: 6px;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(226,75,74,0.6);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    .clear-history-btn:hover {
+      border-color: var(--red);
+      color: var(--red);
+      background: var(--red-glow);
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .history-item {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .history-item:hover {
+      border-color: rgba(110,204,114,0.25);
+      background: rgba(110,204,114,0.02);
+    }
+
+    .history-score-ring {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      border: 2px solid currentColor;
+    }
+
+    .history-item-body { flex: 1; min-width: 0; }
+
+    .history-filename {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+
+    .history-meta {
+      font-size: 12px;
+      color: var(--text-sec);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .history-meta-sep { color: var(--text-muted); }
+
+    .history-status {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .history-status.crash {
+      background: rgba(226,75,74,0.1);
+      border: 1px solid rgba(226,75,74,0.2);
+      color: var(--red);
+    }
+
+    .history-status.normal {
+      background: rgba(99,153,34,0.1);
+      border: 1px solid rgba(99,153,34,0.2);
+      color: var(--green);
+    }
+
+    .history-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    .history-replay-btn {
+      padding: 4px 10px;
+      background: none;
+      border: 1px solid var(--card-border);
+      border-radius: 5px;
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s;
+    }
+
+    .history-replay-btn:hover { border-color: var(--green); color: var(--green); }
+
+    .history-delete-btn {
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 14px;
+      transition: color 0.12s, border-color 0.12s;
+    }
+
+    .history-delete-btn:hover { color: var(--red); border-color: rgba(226,75,74,0.3); }
+
+    .history-empty {
+      text-align: center;
+      padding: 80px 24px;
+      color: var(--text-muted);
+    }
+
+    .history-empty-icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+      opacity: 0.3;
+    }
+
+    .history-empty-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-sec);
+      margin-bottom: 6px;
+    }
+
+    .history-empty-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--card-border);
+      background: rgba(11,13,16,0.7);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .footer-left {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .footer-left a {
+      color: rgba(110,204,114,0.6);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-left a:hover { color: var(--green); }
+
+    .footer-sep { color: rgba(255,255,255,0.1); }
+
+    .footer-right {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .footer-airgap {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(110,204,114,0.06);
+      border: 1px solid rgba(110,204,114,0.12);
+      color: rgba(110,204,114,0.6);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
     }
 
     /* ── Responsive ──────────────────────────────────────────── */
@@ -1002,12 +1485,24 @@
 
     @media (max-width: 640px) {
       header { padding: 0 16px; }
-      main { padding: 20px 12px 60px; }
+      main { padding: 20px 12px 32px; }
       .results-grid { grid-template-columns: 1fr; }
       .findings-col { grid-column: unset; }
       .header-meta { display: none; }
       nav { gap: 0; }
-      .nav-tab { padding: 5px 8px; }
+      .nav-tab { padding: 5px 8px; font-size: 12px; }
+      footer { padding: 12px 16px; }
+      .footer-right { display: none; }
+    }
+
+    /* ── Transition between tab views ───────────────────────── */
+    .tab-view {
+      animation: fadeInUp 0.2s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
@@ -1030,18 +1525,18 @@
   <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
 
   <nav>
-    <button class="nav-tab active" onclick="switchTab('analyze')">Analyze</button>
-    <button class="nav-tab active" id="tab-crash" onclick="switchTab('crash')" style="display:none">Crash</button>
-    <button class="nav-tab disabled">Plugins</button>
-    <button class="nav-tab disabled">History</button>
+    <button class="nav-tab active" id="nav-analyze" onclick="switchTab('analyze')">Analyze</button>
+    <button class="nav-tab" id="tab-crash" onclick="switchTab('crash')" style="display:none">Crash</button>
+    <button class="nav-tab" id="nav-plugins" onclick="switchTab('plugins')">Plugins</button>
+    <button class="nav-tab" id="nav-history" onclick="switchTab('history')">History</button>
   </nav>
 </header>
 
 <!-- ── Main ──────────────────────────────────────────────────── -->
 <main>
 
-  <!-- Upload view -->
-  <div id="upload-view">
+  <!-- ── Upload view ─────────────────────────────────────────── -->
+  <div id="upload-view" class="tab-view">
     <div class="upload-heading">
       <h2>Flight Log Analysis</h2>
       <p>Upload a flight log to run the full analysis pipeline</p>
@@ -1091,8 +1586,8 @@
     <div id="error-banner" role="alert" aria-live="polite"></div>
   </div>
 
-  <!-- Loading view -->
-  <div id="loading-view" aria-live="polite">
+  <!-- ── Loading view ────────────────────────────────────────── -->
+  <div id="loading-view" aria-live="polite" style="display:none">
     <div class="loading-spinner" aria-hidden="true"></div>
     <div class="loading-title">Analyzing flight data&hellip;</div>
     <div class="loading-sub">Running plugin pipeline &mdash; this may take a moment</div>
@@ -1104,8 +1599,8 @@
     </div>
   </div>
 
-  <!-- Results view -->
-  <div id="results-view" aria-live="polite">
+  <!-- ── Results view ────────────────────────────────────────── -->
+  <div id="results-view" aria-live="polite" style="display:none">
 
     <!-- Status banner -->
     <div id="status-banner" class="status-banner">
@@ -1136,7 +1631,7 @@
                         stroke-dashoffset="351.86"/>
               </svg>
               <div class="score-ring-center">
-                <span id="score-ring-number" class="score-ring-number">—</span>
+                <span id="score-ring-number" class="score-ring-number">&#8212;</span>
                 <span class="score-ring-label">/ 100</span>
               </div>
             </div>
@@ -1151,13 +1646,13 @@
               <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
               CRASH DETECTED
             </div>
-            <div class="crash-title" id="crash-title">—</div>
-            <div class="crash-desc" id="crash-desc">—</div>
+            <div class="crash-title" id="crash-title">&#8212;</div>
+            <div class="crash-desc" id="crash-desc">&#8212;</div>
             <div class="crash-confidence">
               <div class="confidence-bar-wrap">
                 <div class="confidence-bar" id="confidence-bar" style="width:0%"></div>
               </div>
-              <span class="confidence-pct" id="confidence-pct">—%</span>
+              <span class="confidence-pct" id="confidence-pct">&#8212;%</span>
             </div>
             <div class="card-title" style="margin-bottom:8px;">INSPECT CHECKLIST</div>
             <ul class="inspect-list" id="inspect-list"></ul>
@@ -1179,20 +1674,30 @@
         <div class="card">
           <div class="card-header"><span class="card-title">Findings Timeline</span><span id="timeline-duration" class="card-title" style="color:var(--text-muted);"></span></div>
           <div class="timeline-wrap">
-            <div class="timeline-track" id="timeline-track" aria-label="Findings timeline">
-              <!-- events injected by JS -->
-            </div>
+            <div class="timeline-track" id="timeline-track" aria-label="Findings timeline"></div>
             <div class="timeline-labels">
               <span>0s</span>
-              <span id="timeline-end-label">—</span>
+              <span id="timeline-end-label">&#8212;</span>
             </div>
           </div>
         </div>
 
-        <!-- Plugin scores -->
+        <!-- Severity breakdown chart -->
         <div class="card">
-          <div class="card-header"><span class="card-title">Plugin Scores</span></div>
+          <div class="card-header"><span class="card-title">Severity Breakdown</span></div>
+          <div class="sev-breakdown" id="sev-breakdown"></div>
+        </div>
+
+        <!-- Plugin scores (enhanced) -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Plugin Scores</span><span id="plugin-scores-subtitle" style="font-size:11px;color:var(--text-muted);"></span></div>
           <div class="plugin-bars" id="plugin-bars-container"></div>
+        </div>
+
+        <!-- Findings by phase -->
+        <div class="card" id="phase-card" style="display:none">
+          <div class="card-header"><span class="card-title">Findings by Phase</span></div>
+          <div class="phase-chips" id="phase-chips"></div>
         </div>
 
         <!-- Summary table -->
@@ -1209,25 +1714,116 @@
           <span class="card-title">Findings</span>
           <div class="findings-filter-tabs" id="findings-filter-tabs"></div>
         </div>
-        <div class="findings-scroll" id="findings-scroll">
-          <!-- rows injected by JS -->
-        </div>
+        <div class="findings-scroll" id="findings-scroll"></div>
         <div class="finding-detail" id="finding-detail"></div>
       </div>
 
     </div>
   </div>
 
+  <!-- ── Plugins view ────────────────────────────────────────── -->
+  <div id="plugins-view" style="display:none" class="tab-view">
+    <div class="plugins-header">
+      <h2>Plugin Registry</h2>
+      <div class="plugins-meta-chips" id="plugins-meta-chips"></div>
+    </div>
+    <div id="plugins-content">
+      <div class="plugins-loading">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <div>Loading plugins&hellip;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── History view ────────────────────────────────────────── -->
+  <div id="history-view" style="display:none" class="tab-view">
+    <div class="history-header">
+      <h2>Analysis History</h2>
+      <button class="clear-history-btn" onclick="clearHistory()">Clear History</button>
+    </div>
+    <div id="history-content"></div>
+  </div>
+
 </main>
+
+<!-- ── Footer ────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-left">
+    <span>GOOSE v1.0.0</span>
+    <span class="footer-sep">&middot;</span>
+    <span>Open Source Flight Analysis</span>
+    <span class="footer-sep">&middot;</span>
+    <span>Apache 2.0</span>
+    <span class="footer-sep">&middot;</span>
+    <a href="https://github.com/Goose-Flight/Goose-Core" target="_blank" rel="noopener noreferrer">GitHub &#x2197;</a>
+  </div>
+  <div class="footer-right">
+    <span class="footer-airgap">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Air-gapped
+    </span>
+    <span style="color:var(--text-muted);font-size:12px;">No data leaves your machine</span>
+  </div>
+</footer>
 
 <script>
   /* ════════════════════════════════════════════════════════════
      State
   ════════════════════════════════════════════════════════════ */
-  let selectedFile = null;
-  let lastResults  = null;
-  let activeFilter = 'all';
-  let activeFinding = null;
+  let selectedFile   = null;
+  let lastResults    = null;
+  let activeFilter   = 'all';
+  let activeFinding  = null;
+  let currentTab     = 'analyze'; // 'analyze' | 'plugins' | 'history'
+
+  const HISTORY_KEY  = 'goose_history';
+  const HISTORY_MAX  = 50;
+
+  /* ════════════════════════════════════════════════════════════
+     Tab navigation
+  ════════════════════════════════════════════════════════════ */
+  function switchTab(tab) {
+    currentTab = tab;
+
+    // Update nav highlights
+    document.getElementById('nav-analyze').classList.toggle('active', tab === 'analyze');
+    document.getElementById('nav-plugins').classList.toggle('active', tab === 'plugins');
+    document.getElementById('nav-history').classList.toggle('active', tab === 'history');
+
+    // Hide all views
+    document.getElementById('upload-view').style.display    = 'none';
+    document.getElementById('loading-view').style.display   = 'none';
+    document.getElementById('results-view').style.display   = 'none';
+    document.getElementById('plugins-view').style.display   = 'none';
+    document.getElementById('history-view').style.display   = 'none';
+
+    if (tab === 'analyze') {
+      // Show whichever analyze sub-view is appropriate
+      if (lastResults) {
+        document.getElementById('results-view').style.display = '';
+        const crashed = !!(lastResults.metadata && lastResults.metadata.crashed);
+        document.getElementById('tab-crash').style.display = crashed ? '' : 'none';
+      } else {
+        document.getElementById('upload-view').style.display = '';
+        document.getElementById('tab-crash').style.display = 'none';
+      }
+    } else if (tab === 'plugins') {
+      document.getElementById('plugins-view').style.display = '';
+      document.getElementById('tab-crash').style.display = 'none';
+      loadPluginsTab();
+    } else if (tab === 'history') {
+      document.getElementById('history-view').style.display = '';
+      document.getElementById('tab-crash').style.display = 'none';
+      renderHistoryTab();
+    } else if (tab === 'crash') {
+      // Crash tab just scrolls to crash card within results view
+      document.getElementById('results-view').style.display = '';
+      document.getElementById('nav-analyze').classList.add('active');
+      currentTab = 'analyze';
+      const card = document.getElementById('crash-card');
+      if (card) setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+  }
 
   /* ════════════════════════════════════════════════════════════
      File handling
@@ -1291,7 +1887,9 @@
     btn.classList.add('loading');
     hideError();
 
-    showView('loading');
+    // Show loading
+    document.getElementById('upload-view').style.display  = 'none';
+    document.getElementById('loading-view').style.display = '';
 
     try {
       const form = new FormData();
@@ -1302,20 +1900,41 @@
 
       if (!res.ok) {
         const msg = (data && data.detail) ? data.detail : `Server error ${res.status}`;
-        showView('upload');
+        document.getElementById('loading-view').style.display = 'none';
+        document.getElementById('upload-view').style.display  = '';
         showError(msg);
         return;
       }
 
-      lastResults  = data;
-      activeFilter = 'all';
+      lastResults   = data;
+      activeFilter  = 'all';
       activeFinding = null;
-      renderResults(data);
-      showView('results');
+
+      try {
+        renderResults(data);
+      } catch (renderErr) {
+        console.error('renderResults error:', renderErr);
+      }
+
+      try {
+        saveToHistory(data);
+      } catch (histErr) {
+        console.error('saveToHistory error:', histErr);
+      }
+
+      document.getElementById('loading-view').style.display  = 'none';
+      document.getElementById('results-view').style.display  = '';
+
+      const crashed = !!(data.metadata && data.metadata.crashed);
+      document.getElementById('tab-crash').style.display = crashed ? '' : 'none';
+      document.getElementById('nav-analyze').classList.add('active');
+      currentTab = 'analyze';
 
     } catch (err) {
-      showView('upload');
-      showError('Network error: ' + escHtml(err.message));
+      console.error('runAnalysis error:', err);
+      document.getElementById('loading-view').style.display = 'none';
+      document.getElementById('upload-view').style.display  = '';
+      showError('Analysis error: ' + escHtml(err.message));
     } finally {
       btn.classList.remove('loading');
       btn.disabled = false;
@@ -1325,30 +1944,24 @@
   /* ════════════════════════════════════════════════════════════
      View management
   ════════════════════════════════════════════════════════════ */
-  function showView(which) {
-    document.getElementById('upload-view').style.display   = which === 'upload'  ? '' : 'none';
-    document.getElementById('loading-view').style.display  = which === 'loading' ? '' : 'none';
-    document.getElementById('results-view').style.display  = which === 'results' ? '' : 'none';
-    document.getElementById('tab-crash').style.display = (which === 'results' && lastResults && lastResults.metadata && lastResults.metadata.crashed) ? '' : 'none';
-  }
-
   function resetToUpload() {
-    lastResults = null;
-    activeFilter = 'all';
+    lastResults   = null;
+    activeFilter  = 'all';
     activeFinding = null;
     clearFile();
-    showView('upload');
-  }
-
-  function switchTab(tab) {
-    if (tab === 'analyze') {
-      if (lastResults) showView('results');
-      else resetToUpload();
-    }
+    currentTab = 'analyze';
+    document.getElementById('nav-analyze').classList.add('active');
+    document.getElementById('nav-plugins').classList.remove('active');
+    document.getElementById('nav-history').classList.remove('active');
+    document.getElementById('tab-crash').style.display = 'none';
+    document.getElementById('results-view').style.display  = 'none';
+    document.getElementById('upload-view').style.display   = '';
+    document.getElementById('plugins-view').style.display  = 'none';
+    document.getElementById('history-view').style.display  = 'none';
   }
 
   /* ════════════════════════════════════════════════════════════
-     Render
+     Render Results
   ════════════════════════════════════════════════════════════ */
   function renderResults(data) {
     const meta     = data.metadata    || {};
@@ -1357,8 +1970,8 @@
     const score    = data.overall_score != null ? data.overall_score : null;
 
     /* Status banner */
-    const banner   = document.getElementById('status-banner');
-    const crashed  = !!meta.crashed;
+    const banner  = document.getElementById('status-banner');
+    const crashed = !!meta.crashed;
     banner.className = 'status-banner ' + (crashed ? 'crashed' : 'normal');
     document.getElementById('status-text').textContent = crashed ? 'CRASH DETECTED' : 'FLIGHT NORMAL';
     document.getElementById('status-details').textContent =
@@ -1366,10 +1979,7 @@
       (meta.duration_str ? ' \u00b7 ' + escHtml(meta.duration_str) : '') +
       (meta.firmware_version ? ' \u00b7 fw ' + escHtml(meta.firmware_version) : '');
 
-    /* Score ring */
     renderScoreRing(score);
-
-    /* Summary chips */
     const sevCounts = (summary.by_severity) || {};
     const chipsEl   = document.getElementById('summary-chips');
     chipsEl.innerHTML = ['critical','warning','info','pass'].map(sev => {
@@ -1380,34 +1990,25 @@
       </div>`;
     }).join('');
 
-    /* Crash card */
     renderCrashCard(findings, crashed);
-
-    /* Flight stats */
     renderFlightStats(meta);
-
-    /* Timeline */
     renderTimeline(findings, meta.duration_sec);
-
-    /* Plugin bars */
+    renderSeverityBreakdown(sevCounts);
     renderPluginBars(findings);
-
-    /* Summary table */
+    renderPhaseChips(findings);
     renderSummaryTable(summary, meta);
-
-    /* Findings list */
     buildFindingsTabs(findings);
     renderFindingsList(findings, 'all');
   }
 
   /* ── Score ring ────────────────────────────────────────────── */
   function renderScoreRing(score) {
-    const numEl  = document.getElementById('score-ring-number');
-    const fillEl = document.getElementById('score-ring-fill');
+    const numEl   = document.getElementById('score-ring-number');
+    const fillEl  = document.getElementById('score-ring-fill');
     const gradeEl = document.getElementById('score-grade-header');
 
     if (score == null) {
-      numEl.textContent = '—';
+      numEl.textContent = '\u2014';
       fillEl.style.strokeDashoffset = '351.86';
       return;
     }
@@ -1421,7 +2022,6 @@
     numEl.style.color = color;
 
     fillEl.style.stroke = color;
-    /* Animate: start from full offset, transition to target */
     fillEl.style.transition = 'none';
     fillEl.style.strokeDashoffset = '351.86';
     requestAnimationFrame(() => {
@@ -1438,9 +2038,9 @@
   }
 
   function scoreStyle(pct) {
-    if (pct >= 80) return { color: 'var(--green)',  grade: 'NOMINAL',  bg: 'rgba(110,204,114,0.1)' };
-    if (pct >= 50) return { color: 'var(--amber)',  grade: 'DEGRADED', bg: 'rgba(239,159,39,0.1)'  };
-    return              { color: 'var(--red)',    grade: 'CRITICAL', bg: 'rgba(226,75,74,0.1)'   };
+    if (pct >= 80) return { color: 'var(--green)', grade: 'NOMINAL',  bg: 'rgba(110,204,114,0.1)' };
+    if (pct >= 50) return { color: 'var(--amber)', grade: 'DEGRADED', bg: 'rgba(239,159,39,0.1)'  };
+    return              { color: 'var(--red)',   grade: 'CRITICAL', bg: 'rgba(226,75,74,0.1)'   };
   }
 
   /* ── Crash card ────────────────────────────────────────────── */
@@ -1456,12 +2056,10 @@
     document.getElementById('crash-title').textContent = top ? top.title : 'Unknown cause';
     document.getElementById('crash-desc').textContent  = top ? top.description : 'Insufficient data to determine root cause.';
 
-    // Confidence: infer from score (lower score = higher confidence of problem)
     const conf = top ? Math.round(100 - (top.score / 100) * 60) : 70;
     document.getElementById('confidence-bar').style.width = conf + '%';
     document.getElementById('confidence-pct').textContent = conf + '%';
 
-    // Inspect checklist
     const checkItems = [
       'Check motor & ESC connections',
       'Review battery voltage logs',
@@ -1481,13 +2079,13 @@
   function renderFlightStats(meta) {
     const items = [
       { k: 'Duration',   v: meta.duration_str   || formatDuration(meta.duration_sec) },
-      { k: 'Mode',       v: capitalize(meta.primary_mode || '—') },
-      { k: 'Motors',     v: meta.motor_count != null ? String(meta.motor_count) : '—' },
-      { k: 'Format',     v: String(meta.log_format || '—').toUpperCase() },
-      { k: 'Firmware',   v: meta.firmware_version || '—' },
-      { k: 'Hardware',   v: meta.hardware || '—' },
-      { k: 'Autopilot',  v: capitalize(meta.autopilot || '—') },
-      { k: 'Vehicle',    v: capitalize(meta.vehicle_type || '—') },
+      { k: 'Mode',       v: capitalize(meta.primary_mode || '\u2014') },
+      { k: 'Motors',     v: meta.motor_count != null ? String(meta.motor_count) : '\u2014' },
+      { k: 'Format',     v: String(meta.log_format || '\u2014').toUpperCase() },
+      { k: 'Firmware',   v: meta.firmware_version || '\u2014' },
+      { k: 'Hardware',   v: meta.hardware || '\u2014' },
+      { k: 'Autopilot',  v: capitalize(meta.autopilot || '\u2014') },
+      { k: 'Vehicle',    v: capitalize(meta.vehicle_type || '\u2014') },
     ];
 
     document.getElementById('stats-grid').innerHTML = items.map(i => `
@@ -1504,11 +2102,11 @@
     const durLabel = document.getElementById('timeline-duration');
 
     const dur = durationSec || 0;
-    endLabel.textContent = dur ? formatDuration(dur) : '—';
+    endLabel.textContent = dur ? formatDuration(dur) : '\u2014';
     durLabel.textContent = dur ? formatDuration(dur) : '';
 
     if (!dur || findings.length === 0) {
-      track.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:10px;color:var(--text-muted);">No timeline data</div>';
+      track.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:var(--text-muted);">No timeline data</div>';
       return;
     }
 
@@ -1527,11 +2125,53 @@
     }).join('');
   }
 
-  /* ── Plugin bars ───────────────────────────────────────────── */
+  /* ── Severity breakdown chart ──────────────────────────────── */
+  function renderSeverityBreakdown(sevCounts) {
+    const el = document.getElementById('sev-breakdown');
+    const total = Object.values(sevCounts).reduce((s, v) => s + v, 0);
+    if (total === 0) {
+      el.innerHTML = '<div class="empty-state" style="padding:12px;">No findings</div>';
+      return;
+    }
+
+    const rows = [
+      { key: 'critical', label: 'Critical', color: 'var(--red)',        cls: 'col-critical' },
+      { key: 'warning',  label: 'Warning',  color: 'var(--amber)',      cls: 'col-warning'  },
+      { key: 'info',     label: 'Info',     color: '#a3c44a',           cls: 'col-info'     },
+      { key: 'pass',     label: 'Pass',     color: 'var(--green-pass)', cls: 'col-pass'     },
+    ];
+
+    el.innerHTML = rows.map(r => {
+      const count = sevCounts[r.key] || 0;
+      const pct   = total > 0 ? (count / total) * 100 : 0;
+      return `<div class="sev-breakdown-row">
+        <span class="sev-bd-label ${r.cls}">${escHtml(r.label)}</span>
+        <div class="sev-bd-bar-track">
+          <div class="sev-bd-bar-fill" data-target-width="${pct.toFixed(1)}"
+               style="width:0%;background:${r.color};"></div>
+        </div>
+        <span class="sev-bd-count ${r.cls}">${count}</span>
+      </div>`;
+    }).join('');
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.querySelectorAll('.sev-bd-bar-fill').forEach(b => {
+          b.style.transition = 'width 1s cubic-bezier(0.16,1,0.3,1)';
+          b.style.width = b.dataset.targetWidth + '%';
+        });
+      });
+    });
+  }
+
+  /* ── Plugin bars (enhanced) ────────────────────────────────── */
   function renderPluginBars(findings) {
     const container = document.getElementById('plugin-bars-container');
+    const subtitle  = document.getElementById('plugin-scores-subtitle');
+
     if (!findings.length) {
       container.innerHTML = '<div class="empty-state">No plugin data</div>';
+      subtitle.textContent = '';
       return;
     }
 
@@ -1544,26 +2184,33 @@
       }
     });
 
-    const sevColor = { critical: 'var(--red)', warning: 'var(--amber)', info: '#a3c44a', pass: 'var(--green-pass)' };
     const sevOrder = { critical: 0, warning: 1, info: 2, pass: 3 };
+    const sevIcon  = { critical: '!!', warning: '!', info: 'i', pass: '\u2713' };
 
-    const entries = Object.entries(pluginMap).sort((a,b) =>
-      (sevOrder[a[1].severity]||2) - (sevOrder[b[1].severity]||2));
+    // Sort worst first
+    const entries = Object.entries(pluginMap).sort((a, b) => {
+      const sd = (sevOrder[a[1].severity] || 2) - (sevOrder[b[1].severity] || 2);
+      return sd !== 0 ? sd : a[1].score - b[1].score;
+    });
+
+    subtitle.textContent = `${entries.length} plugin${entries.length !== 1 ? 's' : ''}`;
 
     container.innerHTML = entries.map(([name, { score, severity }]) => {
-      const color = sevColor[severity] || 'rgba(255,255,255,0.3)';
-      const colClass = 'col-' + (severity || 'pass');
       const pct = Math.min(Math.max(score, 0), 100);
+      const { color } = scoreStyle(pct);
+      const icon = sevIcon[severity] || '?';
+      const iconCls = 'sev-icon-' + (severity || 'info');
       return `<div class="plugin-bar-row">
-        <span class="plugin-bar-name">${escHtml(name)}</span>
+        <span class="finding-sev-icon ${iconCls}" style="flex-shrink:0;margin-right:2px;" aria-hidden="true">${icon}</span>
+        <span class="plugin-bar-name" title="${escAttr(name)}">${escHtml(name)}</span>
         <div class="plugin-bar-track">
-          <div class="plugin-bar-fill" data-target-width="${pct}" style="width:0%;background:${color}"></div>
+          <div class="plugin-bar-fill" data-target-width="${pct}"
+               style="width:0%;background:${color};"></div>
         </div>
-        <span class="plugin-bar-score ${colClass}">${pct}</span>
+        <span class="plugin-bar-score" style="color:${color};">${pct}</span>
       </div>`;
     }).join('');
 
-    // Animate bars
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         container.querySelectorAll('.plugin-bar-fill').forEach(el => {
@@ -1573,20 +2220,52 @@
     });
   }
 
+  /* ── Phase chips ───────────────────────────────────────────── */
+  function renderPhaseChips(findings) {
+    const phaseCard = document.getElementById('phase-card');
+    const container = document.getElementById('phase-chips');
+
+    const phases = {};
+    findings.forEach(f => {
+      if (f.phase) {
+        phases[f.phase] = (phases[f.phase] || 0) + 1;
+      }
+    });
+
+    if (Object.keys(phases).length === 0) {
+      phaseCard.style.display = 'none';
+      return;
+    }
+
+    phaseCard.style.display = '';
+    const sorted = Object.entries(phases).sort((a, b) => b[1] - a[1]);
+    container.innerHTML = sorted.map(([phase, count]) =>
+      `<div class="phase-chip">
+        <span class="phase-chip-count">${count}</span>
+        <span>${escHtml(capitalize(phase))}</span>
+      </div>`
+    ).join('');
+  }
+
   /* ── Summary table ─────────────────────────────────────────── */
   function renderSummaryTable(summary, meta) {
     const el = document.getElementById('summary-table-body');
+    const pluginErrorsArr = summary.plugin_errors || [];
+    const errStr = pluginErrorsArr.length === 0
+      ? 'None'
+      : pluginErrorsArr.map(e => typeof e === 'object' ? escHtml(e.plugin || String(e)) : escHtml(String(e))).join(', ');
+
     const rows = [
-      { k: 'Total Findings', v: summary.total_findings != null ? String(summary.total_findings) : '—' },
-      { k: 'Plugins Run',    v: summary.plugins_run    != null ? String(summary.plugins_run)    : '—' },
-      { k: 'Plugin Errors',  v: (summary.plugin_errors || []).length === 0 ? 'None' : (summary.plugin_errors || []).join(', ') },
-      { k: 'Flight Date',    v: meta.start_time_utc ? formatDate(meta.start_time_utc) : '—' },
+      { k: 'Total Findings', v: summary.total_findings != null ? String(summary.total_findings) : '\u2014' },
+      { k: 'Plugins Run',    v: summary.plugins_run    != null ? String(summary.plugins_run)    : '\u2014' },
+      { k: 'Plugin Errors',  v: errStr },
+      { k: 'Flight Date',    v: meta.start_time_utc ? formatDate(meta.start_time_utc) : '\u2014' },
     ];
 
     el.innerHTML = rows.map((r, i) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;${i < rows.length-1 ? 'border-bottom:1px solid var(--card-border);' : ''}">
-        <span style="font-size:10px;color:var(--text-sec);letter-spacing:0.04em;">${escHtml(r.k)}</span>
-        <span style="font-size:11px;font-weight:600;color:var(--text);">${escHtml(r.v)}</span>
+        <span style="font-size:11px;color:var(--text-sec);letter-spacing:0.04em;">${escHtml(r.k)}</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text);">${r.v}</span>
       </div>`).join('');
   }
 
@@ -1603,7 +2282,7 @@
     }).join('');
   }
 
-  function setFindingsFilter(filter, e) {
+  function setFindingsFilter(filter) {
     activeFilter  = filter;
     activeFinding = null;
     document.getElementById('finding-detail').classList.remove('visible');
@@ -1617,12 +2296,12 @@
   function renderFindingsList(findings, filter) {
     const container = document.getElementById('findings-scroll');
     const sevOrder  = { critical: 0, warning: 1, info: 2, pass: 3 };
-    const sevIcon   = { critical: '!!', warning: '!', info: 'i', pass: '&#x2713;' };
+    const sevIcon   = { critical: '!!', warning: '!', info: 'i', pass: '\u2713' };
     const colClass  = { critical: 'col-critical', warning: 'col-warning', info: 'col-info', pass: 'col-pass' };
 
     const filtered  = filter === 'all' ? findings : findings.filter(f => f.severity === filter);
-    const sorted    = [...filtered].sort((a,b) => {
-      const d = (sevOrder[a.severity]||2) - (sevOrder[b.severity]||2);
+    const sorted    = [...filtered].sort((a, b) => {
+      const d = (sevOrder[a.severity] || 2) - (sevOrder[b.severity] || 2);
       return d !== 0 ? d : a.score - b.score;
     });
 
@@ -1633,20 +2312,19 @@
 
     container.innerHTML = sorted.map((f, idx) => {
       const scoreColor = scoreStyle(f.score).color;
-      const phase = f.phase ? escHtml(capitalize(f.phase)) : '';
-      const ts    = f.timestamp_start != null ? `t=${f.timestamp_start}s` : '';
-      const meta  = [f.plugin_name, phase, ts].filter(Boolean).join(' \u00b7 ');
+      const phase      = f.phase ? escHtml(capitalize(f.phase)) : '';
+      const ts         = f.timestamp_start != null ? `t=${f.timestamp_start}s` : '';
+      const metaStr    = [f.plugin_name ? escHtml(f.plugin_name) : null, phase, ts].filter(Boolean).join(' \u00b7 ');
       return `<div class="finding-row" id="finding-row-${idx}" onclick="toggleFinding(${idx})" role="button" tabindex="0" aria-expanded="false">
-        <div class="finding-sev-icon sev-icon-${f.severity}">${sevIcon[f.severity] || '?'}</div>
+        <div class="finding-sev-icon sev-icon-${escAttr(f.severity)}">${sevIcon[f.severity] || '?'}</div>
         <div class="finding-row-body">
           <div class="finding-row-title">${escHtml(f.title)}</div>
-          <div class="finding-row-meta">${escHtml(meta)}</div>
+          <div class="finding-row-meta">${metaStr}</div>
         </div>
-        <span class="finding-score ${colClass[f.severity]||''}">${f.score}</span>
+        <span class="finding-score ${colClass[f.severity] || ''}" style="color:${scoreColor};">${f.score}</span>
       </div>`;
     }).join('');
 
-    // Store sorted findings for detail lookup
     container._sortedFindings = sorted;
   }
 
@@ -1667,20 +2345,18 @@
       return;
     }
 
-    // Deactivate previous
     if (activeFinding != null) {
       const prev = document.getElementById('finding-row-' + activeFinding);
-      if (prev) { prev.classList.remove('active'); prev.setAttribute('aria-expanded','false'); }
+      if (prev) { prev.classList.remove('active'); prev.setAttribute('aria-expanded', 'false'); }
     }
 
     activeFinding = idx;
     row.classList.add('active');
     row.setAttribute('aria-expanded', 'true');
 
-    // Build detail panel
     const evidenceHtml = f.evidence && typeof f.evidence === 'object' && Object.keys(f.evidence).length > 0
       ? `<div class="detail-evidence">${
-          Object.entries(f.evidence).map(([k,v]) =>
+          Object.entries(f.evidence).map(([k, v]) =>
             `<div><span class="ev-key">${escHtml(k)}</span>  <span class="ev-val">${escHtml(String(v))}</span></div>`
           ).join('')
         }</div>`
@@ -1697,13 +2373,210 @@
     detailPane.innerHTML = `
       <div class="detail-label">Description</div>
       <div class="detail-value">${escHtml(f.description)}</div>
-      ${f.evidence && Object.keys(f.evidence||{}).length ? '<div class="detail-label">Evidence</div>' + evidenceHtml : ''}
+      ${f.evidence && Object.keys(f.evidence || {}).length ? '<div class="detail-label">Evidence</div>' + evidenceHtml : ''}
       ${tsHtml ? '<div class="detail-label">Timestamps</div>' + tsHtml : ''}
     `;
     detailPane.classList.add('visible');
-
-    // Scroll row into view
     row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Plugins Tab
+  ════════════════════════════════════════════════════════════ */
+  const PLANNED_PLUGINS = [
+    { name: 'ekf_consistency',    description: 'Validates EKF internal consistency and innovation ratios for state estimation quality.' },
+    { name: 'rc_signal',          description: 'Monitors RC link quality, signal dropouts, and failsafe trigger events.' },
+    { name: 'attitude_tracking',  description: 'Assesses attitude control loop performance and tracking error.' },
+    { name: 'position_tracking',  description: 'Evaluates GPS position hold accuracy and drift under navigation modes.' },
+    { name: 'failsafe_events',    description: 'Detects and categorizes all failsafe triggers and emergency responses.' },
+    { name: 'log_health',         description: 'Checks log completeness, missing messages, and data integrity.' },
+  ];
+
+  let pluginsLoaded = false;
+
+  async function loadPluginsTab() {
+    if (pluginsLoaded) return;
+
+    const content    = document.getElementById('plugins-content');
+    const metaChips  = document.getElementById('plugins-meta-chips');
+
+    content.innerHTML = `<div class="plugins-loading">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <div>Loading plugins&hellip;</div>
+    </div>`;
+    metaChips.innerHTML = '';
+
+    try {
+      const res  = await fetch('/api/plugins');
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+
+      const active  = data.plugins || [];
+      const planned = PLANNED_PLUGINS;
+      const total   = active.length + planned.length;
+
+      // Meta chips
+      metaChips.innerHTML = `
+        <div class="meta-chip meta-chip-total">${total} Total</div>
+        <div class="meta-chip meta-chip-active">&#x25cf; Active: ${active.length}</div>
+        <div class="meta-chip meta-chip-planned">Planned: ${planned.length}</div>
+      `;
+
+      // Active plugins section
+      let html = '';
+      if (active.length > 0) {
+        html += `<div class="plugins-section-label">Active Plugins (${active.length})</div>`;
+        html += `<div class="plugins-grid">`;
+        html += active.map(p => renderPluginCard(p, false)).join('');
+        html += `</div>`;
+      }
+
+      // Planned plugins section
+      if (planned.length > 0) {
+        html += `<div class="plugins-section-label">Planned — v1.1</div>`;
+        html += `<div class="plugins-grid">`;
+        html += planned.map(p => renderPluginCard(p, true)).join('');
+        html += `</div>`;
+      }
+
+      if (active.length === 0 && planned.length === 0) {
+        html = `<div class="empty-state">No plugins found.</div>`;
+      }
+
+      content.innerHTML = html;
+      pluginsLoaded = true;
+
+    } catch (err) {
+      content.innerHTML = `<div class="empty-state" style="color:var(--red);">
+        Failed to load plugins: ${escHtml(err.message)}
+        <br><br>
+        <button onclick="pluginsLoaded=false;loadPluginsTab()" style="margin-top:8px;padding:6px 14px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:12px;color:var(--text-sec);cursor:pointer;">Retry</button>
+      </div>`;
+    }
+  }
+
+  function renderPluginCard(plugin, planned) {
+    const modeName = planned ? '' : capitalize(plugin.min_mode || 'any');
+    const version  = planned ? 'v1.1' : (plugin.version || '1.0.0');
+
+    return `<div class="plugin-card${planned ? ' planned' : ''}">
+      <div class="plugin-card-top">
+        <div class="plugin-name">${escHtml(plugin.name)}</div>
+        ${planned
+          ? `<span class="plugin-badge badge-planned">Coming v1.1</span>`
+          : `<div class="plugin-status"><div class="status-dot-active" aria-hidden="true"></div><span style="font-size:11px;color:var(--green);font-weight:700;">Active</span></div>`
+        }
+      </div>
+      <div class="plugin-desc">${escHtml(plugin.description || 'No description available.')}</div>
+      <div class="plugin-badges">
+        <span class="plugin-badge badge-version">v${escHtml(version)}</span>
+        ${!planned && modeName ? `<span class="plugin-badge badge-mode">mode: ${escHtml(modeName)}</span>` : ''}
+        ${!planned ? `<span class="plugin-badge badge-active">&#x2713; Loaded</span>` : ''}
+      </div>
+    </div>`;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     History Tab
+  ════════════════════════════════════════════════════════════ */
+  function saveToHistory(data) {
+    try {
+      const history = loadHistory();
+      const entry = {
+        id:          Date.now(),
+        filename:    (data.metadata && data.metadata.filename) || 'unknown',
+        date:        new Date().toISOString(),
+        score:       data.overall_score,
+        crashed:     !!(data.metadata && data.metadata.crashed),
+        findings:    (data.findings || []).length,
+        data:        data,
+      };
+      history.unshift(entry);
+      const trimmed = history.slice(0, HISTORY_MAX);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+    } catch(_) {
+      // localStorage may be unavailable — fail silently
+    }
+  }
+
+  function loadHistory() {
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    } catch(_) { return []; }
+  }
+
+  function clearHistory() {
+    if (!confirm('Clear all analysis history? This cannot be undone.')) return;
+    try { localStorage.removeItem(HISTORY_KEY); } catch(_) {}
+    renderHistoryTab();
+  }
+
+  function deleteHistoryEntry(id, e) {
+    e.stopPropagation();
+    try {
+      const history = loadHistory().filter(h => h.id !== id);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch(_) {}
+    renderHistoryTab();
+  }
+
+  function replayHistoryEntry(id, e) {
+    e.stopPropagation();
+    try {
+      const entry = loadHistory().find(h => h.id === id);
+      if (!entry || !entry.data) return;
+      lastResults   = entry.data;
+      activeFilter  = 'all';
+      activeFinding = null;
+      renderResults(entry.data);
+      switchTab('analyze');
+    } catch(_) {}
+  }
+
+  function renderHistoryTab() {
+    const container = document.getElementById('history-content');
+    const history   = loadHistory();
+
+    if (history.length === 0) {
+      container.innerHTML = `
+        <div class="history-empty">
+          <div class="history-empty-icon">&#x1F4C2;</div>
+          <div class="history-empty-title">No analysis history yet.</div>
+          <div class="history-empty-sub">Upload a flight log to get started.<br>Results are saved automatically to your browser.</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = `<div class="history-list">` +
+      history.map(entry => {
+        const score   = entry.score != null ? entry.score : null;
+        const { color, grade } = score != null ? scoreStyle(score) : { color: 'var(--text-muted)', grade: '\u2014' };
+        const dateStr = formatDate(entry.date);
+        const statusCls = entry.crashed ? 'crash' : 'normal';
+        const statusLabel = entry.crashed ? 'Crash' : 'Normal';
+
+        return `<div class="history-item" onclick="replayHistoryEntry(${entry.id}, event)">
+          <div class="history-score-ring" style="color:${color};border-color:${color}40;">
+            ${score != null ? score : '\u2014'}
+          </div>
+          <div class="history-item-body">
+            <div class="history-filename">${escHtml(entry.filename)}</div>
+            <div class="history-meta">
+              <span>${escHtml(dateStr)}</span>
+              <span class="history-meta-sep">&middot;</span>
+              <span>${entry.findings} finding${entry.findings !== 1 ? 's' : ''}</span>
+              <span class="history-meta-sep">&middot;</span>
+              <span style="color:${color};">${grade}</span>
+            </div>
+          </div>
+          <div class="history-actions">
+            <span class="history-status ${statusCls}">${escHtml(statusLabel)}</span>
+            <button class="history-replay-btn" onclick="replayHistoryEntry(${entry.id}, event)" title="View results">View</button>
+            <button class="history-delete-btn" onclick="deleteHistoryEntry(${entry.id}, event)" title="Remove from history" aria-label="Remove">&#x2715;</button>
+          </div>
+        </div>`;
+      }).join('') + `</div>`;
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -1762,7 +2635,7 @@
     } catch(_) { return iso; }
   }
 
-  /* Keyboard accessibility for finding rows */
+  /* ── Keyboard accessibility ──────────────────────────────── */
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.classList.contains('finding-row')) {
       e.target.click();

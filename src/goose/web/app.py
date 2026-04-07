@@ -72,7 +72,11 @@ def create_app():
         html_path = _STATIC_DIR / "index.html"
         if not html_path.exists():
             raise HTTPException(status_code=404, detail="index.html not found")
-        return FileResponse(str(html_path), media_type="text/html")
+        return FileResponse(
+            str(html_path),
+            media_type="text/html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
 
     @app.get("/api/plugins")
     async def list_plugins() -> JSONResponse:

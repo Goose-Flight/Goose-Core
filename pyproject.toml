@@ -41,13 +41,12 @@ vibration = "goose.plugins.vibration:VibrationPlugin"
 battery_sag = "goose.plugins.battery_sag:BatterySagPlugin"
 gps_health = "goose.plugins.gps_health:GPSHealthPlugin"
 motor_saturation = "goose.plugins.motor_saturation:MotorSaturationPlugin"
-# Planned plugins (v1.1+):
-# ekf_consistency = "goose.plugins.ekf_consistency:EkfConsistencyPlugin"
-# rc_signal = "goose.plugins.rc_signal:RcSignalPlugin"
-# attitude_tracking = "goose.plugins.attitude_tracking:AttitudeTrackingPlugin"
-# position_tracking = "goose.plugins.position_tracking:PositionTrackingPlugin"
-# failsafe_events = "goose.plugins.failsafe_events:FailsafeEventsPlugin"
-# log_health = "goose.plugins.log_health:LogHealthPlugin"
+ekf_consistency = "goose.plugins.ekf_consistency:EkfConsistencyPlugin"
+rc_signal = "goose.plugins.rc_signal:RcSignalPlugin"
+attitude_tracking = "goose.plugins.attitude_tracking:AttitudeTrackingPlugin"
+position_tracking = "goose.plugins.position_tracking:PositionTrackingPlugin"
+failsafe_events = "goose.plugins.failsafe_events:FailsafeEventsPlugin"
+log_health = "goose.plugins.log_health:LogHealthPlugin"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/goose"]

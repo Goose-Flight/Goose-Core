@@ -48,3 +48,4 @@ web-ui/
 # Environment
 .env
 .env.*
+.claude/

@@ -1776,7 +1776,7 @@
       </div>
 
       <!-- Flight Timeline (mode bands) -->
-      <div id="results-cockpit-timeline" class="cockpit-timeline" style="display:none">
+      <div id="results-cockpit-timeline" class="cockpit-timeline" style="display:none;position:sticky;top:52px;z-index:50;">
         <div class="timeline-scrubber-label">
           <span>FLIGHT TIMELINE</span>
           <span class="timeline-cursor-time" id="inline-cursor-time">--</span>
@@ -2676,11 +2676,17 @@
     flightMap = L.map('flight-map', {
       zoomControl: true,
       attributionControl: false,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      dragging: true,
+      minZoom: 2,
+      maxZoom: 19,
     });
 
-    // Dark tile layer
+    // Dark tile layer (CartoDB dark_all supports up to z20)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
+      maxZoom: 20,
+      maxNativeZoom: 20,
     }).addTo(flightMap);
 
     // Draw flight path with altitude coloring
@@ -2709,7 +2715,7 @@
     // Fit bounds — delay to ensure container is rendered
     setTimeout(() => {
       flightMap.invalidateSize();
-      flightMap.fitBounds(flightPath.getBounds().pad(0.1));
+      flightMap.fitBounds(flightPath.getBounds().pad(0.1), { maxZoom: 17 });
     }, 300);
   }
 

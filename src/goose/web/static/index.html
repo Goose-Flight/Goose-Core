@@ -550,11 +550,11 @@
       border: 1px solid var(--card-border);
       border-radius: var(--radius);
       overflow: hidden;
-      min-height: 220px;
+      min-height: 300px;
     }
 
     .chart-container .chart-body {
-      min-height: 220px;
+      min-height: 300px;
     }
 
     /* Navigation charts (GPS + Velocity) side by side */
@@ -2285,7 +2285,7 @@
     function baseOpts(w, seriesDefs) {
       return {
         width: w,
-        height: 220,
+        height: 300,
         cursor: {
           sync: { key: 'goose-inline-sync' },
           drag: { x: true, y: false, setScale: true },
@@ -2345,7 +2345,7 @@
         if (d.alt_rel) { data.push(d.alt_rel); series.push(sd('Altitude (rel)', C.green, { fill: 'rgba(110,204,114,0.06)' })); }
         if (d.alt_msl) { data.push(d.alt_msl); series.push(sd('Altitude (MSL)', C.blue, { width: 1 })); }
         if (!series.length) return null;
-        const opts = base(el.clientWidth - 12, series);
+        const opts = base(el.clientWidth - 4, series);
         opts.axes[1].label = 'Meters';
         return new uPlot(opts, data, el);
       });
@@ -2358,7 +2358,7 @@
         if (d.current)       { data.push(d.current);        series.push(sd('Current', C.red)); }
         if (d.remaining_pct) { data.push(d.remaining_pct);  series.push(sd('Remaining %', C.green, { width: 1 })); }
         if (!series.length) return null;
-        return new uPlot(base(el.clientWidth - 12, series), data, el);
+        return new uPlot(base(el.clientWidth - 4, series), data, el);
       });
 
       // Motors
@@ -2373,7 +2373,7 @@
           const idx = parseInt(key.replace('output_', ''));
           series.push(sd('Motor ' + (idx + 1), colors[i % colors.length], { width: 1.2 }));
         });
-        const opts = base(el.clientWidth - 12, series);
+        const opts = base(el.clientWidth - 4, series);
         opts.height = 240;
         opts.axes[1].label = 'Output (0-1)';
         return new uPlot(opts, data, el);
@@ -2392,7 +2392,7 @@
           if (sp.pitch) { data.push(sp.pitch); series.push(sd('Pitch SP', C.green, { width: 1, dash: [4,4] })); }
         }
         if (!series.length) return null;
-        const opts = base(el.clientWidth - 12, series);
+        const opts = base(el.clientWidth - 4, series);
         opts.axes[1].label = 'Degrees';
         return new uPlot(opts, data, el);
       });
@@ -2405,7 +2405,7 @@
         if (d.accel_y) { data.push(d.accel_y); series.push(sd('Y', C.green, { width: 1 })); }
         if (d.accel_z) { data.push(d.accel_z); series.push(sd('Z', C.blue,  { width: 1 })); }
         if (!series.length) return null;
-        const opts = base(el.clientWidth - 12, series);
+        const opts = base(el.clientWidth - 4, series);
         opts.axes[1].label = 'm/s\u00B2';
         return new uPlot(opts, data, el);
       });
@@ -2417,7 +2417,7 @@
         if (d.satellites) { data.push(d.satellites); series.push(sd('Satellites', C.green)); }
         if (d.hdop)        { data.push(d.hdop);        series.push(sd('HDOP',       C.amber)); }
         if (!series.length) return null;
-        return new uPlot(base(el.clientWidth - 12, series), data, el);
+        return new uPlot(base(el.clientWidth - 4, series), data, el);
       });
 
       // Velocity
@@ -2428,7 +2428,7 @@
         if (d.vy) { data.push(d.vy); series.push(sd('Vy (East)',  C.green, { width: 1 })); }
         if (d.vz) { data.push(d.vz); series.push(sd('Vz (Down)',  C.blue,  { width: 1 })); }
         if (!series.length) return null;
-        const opts = base(el.clientWidth - 12, series);
+        const opts = base(el.clientWidth - 4, series);
         opts.axes[1].label = 'm/s';
         return new uPlot(opts, data, el);
       });

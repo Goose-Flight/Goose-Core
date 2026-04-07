@@ -199,9 +199,9 @@
 }
 
 .chart-body {
-  padding: 0 6px 6px;
+  padding: 0 2px 4px;
   position: relative;
-  min-height: 180px;
+  min-height: 300px;
 }
 
 .chart-body .uplot {

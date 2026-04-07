@@ -2271,7 +2271,9 @@
       text: 'rgba(216,213,206,0.4)',
     };
 
-    const inlineCharts = [];
+    window._inlineCharts = window._inlineCharts || [];
+    window._inlineCharts.forEach(c => { try { c.destroy(); } catch(_) {} });
+    window._inlineCharts = [];
 
     function baseOpts(w, seriesDefs) {
       return {
@@ -2316,7 +2318,7 @@
       try {
         const chart = builder(el, ts, C, baseOpts, sd);
         if (chart) {
-          inlineCharts.push(chart);
+          window._inlineCharts.push(chart);
         } else {
           el.innerHTML = '<div class="chart-empty">No data available</div>';
           const parentSection = el.closest('[id^="chart-section-"]');
@@ -2509,8 +2511,8 @@
 
   /* ── Sync inline charts to timeline ─────────────────────────── */
   function syncInlineCharts(timeSec) {
-    if (typeof inlineCharts === 'undefined' || !inlineCharts) return;
-    inlineCharts.forEach(chart => {
+    if (!window._inlineCharts) return;
+    window._inlineCharts.forEach(chart => {
       if (!chart || !chart.data || !chart.data[0]) return;
       const ts = chart.data[0];
       let idx = 0;
@@ -2654,12 +2656,13 @@
     for (let i = 0; i < alt.timestamps.length; i++) {
       const lat = alt.lat[i];
       const lon = alt.lon[i];
-      if (lat != null && lon != null && (Math.abs(lat) > 0.001 || Math.abs(lon) > 0.001)) {
+      // Filter out null, zero, and clearly invalid coordinates
+      if (lat != null && lon != null && Math.abs(lat) > 0.1 && Math.abs(lon) > 0.1 && Math.abs(lat) < 90 && Math.abs(lon) < 180) {
         mapPoints.push({ lat, lon, t: alt.timestamps[i], altRel: alt.alt_rel ? alt.alt_rel[i] : null });
       }
     }
 
-    if (mapPoints.length < 2) {
+    if (mapPoints.length < 5) {
       if (card) card.style.display = 'none';
       return;
     }
@@ -2703,8 +2706,11 @@
       radius: 5, color: '#EF9F27', fillColor: '#EF9F27', fillOpacity: 1, weight: 2,
     }).addTo(flightMap);
 
-    // Fit bounds
-    flightMap.fitBounds(flightPath.getBounds().pad(0.1));
+    // Fit bounds — delay to ensure container is rendered
+    setTimeout(() => {
+      flightMap.invalidateSize();
+      flightMap.fitBounds(flightPath.getBounds().pad(0.1));
+    }, 300);
   }
 
   function updateMapPosition(timeSec) {

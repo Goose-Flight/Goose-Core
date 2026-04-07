@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GOOSE — Flight Log Analyzer</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="/static/cockpit.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2635,14 +2634,15 @@
     }
   }
 
-  /* ── Flight Path Map ────────────────────────────────────────── */
-  let flightMap = null;
-  let flightPath = null;
-  let positionMarker = null;
+  /* ── Flight Path (2D SVG render — unlimited zoom) ────────── */
   let mapPoints = [];
+  let pathSvg = null;
+  let pathViewBox = { minX: 0, minY: 0, w: 100, h: 100 };
+  let pathPosMarker = null;
 
   function renderFlightMap(data) {
     const card = document.getElementById('flight-map-card');
+    const container = document.getElementById('flight-map');
     const ts = (data && data.timeseries) || {};
     const alt = ts.altitude;
 
@@ -2651,12 +2651,10 @@
       return;
     }
 
-    // Build lat/lon points, filtering out nulls and zeros
     mapPoints = [];
     for (let i = 0; i < alt.timestamps.length; i++) {
       const lat = alt.lat[i];
       const lon = alt.lon[i];
-      // Filter out null, zero, and clearly invalid coordinates
       if (lat != null && lon != null && Math.abs(lat) > 0.1 && Math.abs(lon) > 0.1 && Math.abs(lat) < 90 && Math.abs(lon) < 180) {
         mapPoints.push({ lat, lon, t: alt.timestamps[i], altRel: alt.alt_rel ? alt.alt_rel[i] : null });
       }
@@ -2669,65 +2667,128 @@
 
     card.style.display = '';
 
-    // Clean up old map
-    if (flightMap) { flightMap.remove(); flightMap = null; }
+    // Convert GPS to local meters (relative to center)
+    const centerLat = mapPoints.reduce((s, p) => s + p.lat, 0) / mapPoints.length;
+    const centerLon = mapPoints.reduce((s, p) => s + p.lon, 0) / mapPoints.length;
+    const mPerDegLat = 111320;
+    const mPerDegLon = 111320 * Math.cos(centerLat * Math.PI / 180);
 
-    // Create map
-    flightMap = L.map('flight-map', {
-      zoomControl: true,
-      attributionControl: false,
-      scrollWheelZoom: true,
-      doubleClickZoom: true,
-      dragging: true,
-      minZoom: 2,
-      maxZoom: 19,
+    const pts = mapPoints.map(p => ({
+      x: (p.lon - centerLon) * mPerDegLon,
+      y: -(p.lat - centerLat) * mPerDegLat, // flip Y for SVG
+      t: p.t,
+    }));
+
+    // Compute bounds with padding
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    pts.forEach(p => {
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
     });
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const pad = Math.max(rangeX, rangeY) * 0.15;
+    minX -= pad; minY -= pad;
+    const w = rangeX + pad * 2;
+    const h = rangeY + pad * 2;
+    pathViewBox = { minX, minY, w, h };
 
-    // Dark tile layer (CartoDB dark_all supports up to z20)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
-      maxNativeZoom: 20,
-    }).addTo(flightMap);
+    // Build SVG path
+    const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+    const startPt = pts[0];
+    const endPt = pts[pts.length - 1];
 
-    // Draw flight path with altitude coloring
-    const latlngs = mapPoints.map(p => [p.lat, p.lon]);
-    flightPath = L.polyline(latlngs, {
-      color: '#6ECC72',
-      weight: 3,
-      opacity: 0.8,
-    }).addTo(flightMap);
+    // Grid lines
+    const gridStep = Math.pow(10, Math.floor(Math.log10(Math.max(w, h) / 4)));
+    const gridStartX = Math.floor(minX / gridStep) * gridStep;
+    const gridStartY = Math.floor(minY / gridStep) * gridStep;
+    let gridLines = '';
+    for (let gx = gridStartX; gx <= minX + w; gx += gridStep) {
+      gridLines += `<line x1="${gx}" y1="${minY}" x2="${gx}" y2="${minY + h}" stroke="rgba(255,255,255,0.06)" stroke-width="${w * 0.002}"/>`;
+    }
+    for (let gy = gridStartY; gy <= minY + h; gy += gridStep) {
+      gridLines += `<line x1="${minX}" y1="${gy}" x2="${minX + w}" y2="${gy}" stroke="rgba(255,255,255,0.06)" stroke-width="${h * 0.002}"/>`;
+    }
 
-    // Start marker (green)
-    L.circleMarker(latlngs[0], {
-      radius: 6, color: '#6ECC72', fillColor: '#6ECC72', fillOpacity: 1, weight: 2,
-    }).addTo(flightMap).bindTooltip('START', { permanent: false, direction: 'top' });
+    // Scale label
+    const scaleLen = gridStep;
+    const scaleLabel = scaleLen >= 1000 ? (scaleLen / 1000).toFixed(0) + ' km' : scaleLen.toFixed(0) + ' m';
+    const r = Math.max(w, h) * 0.012;
 
-    // End marker (red)
-    L.circleMarker(latlngs[latlngs.length - 1], {
-      radius: 6, color: '#E24B4A', fillColor: '#E24B4A', fillOpacity: 1, weight: 2,
-    }).addTo(flightMap).bindTooltip('END', { permanent: false, direction: 'top' });
+    container.innerHTML = `
+      <svg id="flight-path-svg" viewBox="${minX} ${minY} ${w} ${h}"
+           style="width:100%;height:100%;background:#0B0D10;" preserveAspectRatio="xMidYMid meet">
+        ${gridLines}
+        <path d="${pathD}" fill="none" stroke="#6ECC72" stroke-width="${w * 0.005}" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+        <circle cx="${startPt.x}" cy="${startPt.y}" r="${r}" fill="#6ECC72" stroke="#0B0D10" stroke-width="${r * 0.4}"/>
+        <text x="${startPt.x}" y="${startPt.y - r * 1.8}" text-anchor="middle" fill="#6ECC72" font-size="${r * 2}" font-family="var(--font)" font-weight="700">START</text>
+        <circle cx="${endPt.x}" cy="${endPt.y}" r="${r}" fill="#E24B4A" stroke="#0B0D10" stroke-width="${r * 0.4}"/>
+        <text x="${endPt.x}" y="${endPt.y - r * 1.8}" text-anchor="middle" fill="#E24B4A" font-size="${r * 2}" font-family="var(--font)" font-weight="700">END</text>
+        <circle id="path-pos-marker" cx="${startPt.x}" cy="${startPt.y}" r="${r * 0.8}" fill="#EF9F27" stroke="#0B0D10" stroke-width="${r * 0.3}"/>
+        <line x1="${minX + pad * 0.5}" y1="${minY + h - pad * 0.4}" x2="${minX + pad * 0.5 + scaleLen}" y2="${minY + h - pad * 0.4}" stroke="rgba(255,255,255,0.3)" stroke-width="${w * 0.003}"/>
+        <text x="${minX + pad * 0.5 + scaleLen / 2}" y="${minY + h - pad * 0.15}" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="${r * 1.5}" font-family="var(--font)">${scaleLabel}</text>
+      </svg>`;
 
-    // Position marker (moves with timeline)
-    positionMarker = L.circleMarker(latlngs[0], {
-      radius: 5, color: '#EF9F27', fillColor: '#EF9F27', fillOpacity: 1, weight: 2,
-    }).addTo(flightMap);
+    pathPosMarker = document.getElementById('path-pos-marker');
 
-    // Fit bounds — delay to ensure container is rendered
-    setTimeout(() => {
-      flightMap.invalidateSize();
-      flightMap.fitBounds(flightPath.getBounds().pad(0.1), { maxZoom: 17 });
-    }, 300);
+    // Store pts for position updates
+    container._pts = pts;
+
+    // Mouse wheel zoom on SVG
+    const svg = document.getElementById('flight-path-svg');
+    if (svg) {
+      svg.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const vb = svg.viewBox.baseVal;
+        const factor = e.deltaY > 0 ? 1.2 : 0.833;
+        const mx = vb.x + vb.width * 0.5;
+        const my = vb.y + vb.height * 0.5;
+        const nw = vb.width * factor;
+        const nh = vb.height * factor;
+        svg.setAttribute('viewBox', `${mx - nw/2} ${my - nh/2} ${nw} ${nh}`);
+      });
+
+      // Pan with mouse drag
+      let panning = false, panStart = null, panVB = null;
+      svg.addEventListener('mousedown', (e) => {
+        panning = true;
+        panStart = { x: e.clientX, y: e.clientY };
+        const vb = svg.viewBox.baseVal;
+        panVB = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
+      });
+      svg.addEventListener('mousemove', (e) => {
+        if (!panning) return;
+        const rect = svg.getBoundingClientRect();
+        const dx = (e.clientX - panStart.x) / rect.width * panVB.w;
+        const dy = (e.clientY - panStart.y) / rect.height * panVB.h;
+        svg.setAttribute('viewBox', `${panVB.x - dx} ${panVB.y - dy} ${panVB.w} ${panVB.h}`);
+      });
+      svg.addEventListener('mouseup', () => { panning = false; });
+      svg.addEventListener('mouseleave', () => { panning = false; });
+
+      // Double-click to reset
+      svg.addEventListener('dblclick', () => {
+        svg.setAttribute('viewBox', `${pathViewBox.minX} ${pathViewBox.minY} ${pathViewBox.w} ${pathViewBox.h}`);
+      });
+    }
   }
 
   function updateMapPosition(timeSec) {
-    if (!positionMarker || mapPoints.length === 0) return;
-    // Find nearest point to timeSec
-    let nearest = mapPoints[0];
-    for (const p of mapPoints) {
-      if (p.t <= timeSec) nearest = p;
+    if (!pathPosMarker || mapPoints.length === 0) return;
+    const container = document.getElementById('flight-map');
+    const pts = container && container._pts;
+    if (!pts) return;
+
+    // Find nearest point
+    let idx = 0;
+    for (let i = 0; i < mapPoints.length; i++) {
+      if (mapPoints[i].t <= timeSec) idx = i;
       else break;
     }
-    positionMarker.setLatLng([nearest.lat, nearest.lon]);
+    if (idx < pts.length) {
+      pathPosMarker.setAttribute('cx', pts[idx].x);
+      pathPosMarker.setAttribute('cy', pts[idx].y);
+    }
   }
 
   /* ── Mini Gauges ────────────────────────────────────────────── */
@@ -3353,7 +3414,6 @@
   });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/static/cockpit.js"></script>
 </body>
 </html>

@@ -1622,7 +1622,7 @@
       </svg>
     </div>
     <span class="logo-text">Goose</span>
-    <span class="version-badge">v1.2.0</span>
+    <span class="version-badge">v1.3.0</span>
   </div>
 
   <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
@@ -1954,7 +1954,7 @@
 <!-- ── Footer ────────────────────────────────────────────────── -->
 <footer>
   <div class="footer-left">
-    <span>GOOSE v1.2.0</span>
+    <span>GOOSE v1.3.0</span>
     <span class="footer-sep">&middot;</span>
     <span>Open Source Flight Analysis</span>
     <span class="footer-sep">&middot;</span>
@@ -2271,11 +2271,16 @@
       text: 'rgba(216,213,206,0.4)',
     };
 
+    const inlineCharts = [];
+
     function baseOpts(w, seriesDefs) {
       return {
         width: w,
         height: 220,
-        cursor: { drag: { x: true, y: false, setScale: true } },
+        cursor: {
+          sync: { key: 'goose-inline-sync' },
+          drag: { x: true, y: false, setScale: true },
+        },
         scales: { x: { time: false } },
         axes: [
           {
@@ -2310,9 +2315,10 @@
       if (!el) return;
       try {
         const chart = builder(el, ts, C, baseOpts, sd);
-        if (!chart) {
+        if (chart) {
+          inlineCharts.push(chart);
+        } else {
           el.innerHTML = '<div class="chart-empty">No data available</div>';
-          const section = el.closest('.chart-section') || el.closest('.nav-charts-grid');
           const parentSection = el.closest('[id^="chart-section-"]');
           if (parentSection) parentSection.style.display = 'none';
         }
@@ -2476,6 +2482,8 @@
         if (timeLabel) timeLabel.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
         // Move map position marker
         updateMapPosition(t);
+        // Sync all inline charts to this timestamp
+        syncInlineCharts(t);
       }
       sliderWrap.addEventListener('mousedown', e => { dragging = true; updateSlider(e); });
       sliderWrap.addEventListener('click', updateSlider);
@@ -2493,9 +2501,27 @@
           const s2 = Math.floor(t % 60);
           if (timeLabel) timeLabel.textContent = (m2 > 0 ? m2 + 'm ' : '') + s2 + 's';
           updateMapPosition(t);
+          syncInlineCharts(t);
         });
       }
     }
+  }
+
+  /* ── Sync inline charts to timeline ─────────────────────────── */
+  function syncInlineCharts(timeSec) {
+    if (typeof inlineCharts === 'undefined' || !inlineCharts) return;
+    inlineCharts.forEach(chart => {
+      if (!chart || !chart.data || !chart.data[0]) return;
+      const ts = chart.data[0];
+      let idx = 0;
+      for (let i = 0; i < ts.length; i++) {
+        if (ts[i] != null && ts[i] >= timeSec) { idx = i; break; }
+        idx = i;
+      }
+      try {
+        chart.setCursor({ left: chart.valToPos(ts[idx], 'x'), top: -1 });
+      } catch(e) {}
+    });
   }
 
   /* ── Score ring ────────────────────────────────────────────── */

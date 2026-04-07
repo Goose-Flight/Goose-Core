@@ -1,0 +1,14 @@
+{
+  "log_id": "c9b12267-58a9-4a48-a2f7-ca63bdefc23f",
+  "date": "2026-04-07",
+  "vehicle_type": "Quadrotor",
+  "airframe": "Generic Quadcopter",
+  "hardware": "HKUST_NXT_DUAL",
+  "firmware_version": "v1.14.3 (4a0e65)",
+  "duration": "51s",
+  "rating": "N/A",
+  "mode": "Offboard",
+  "is_crash_heuristic": false,
+  "download_url": "https://logs.px4.io/download?log=c9b12267-58a9-4a48-a2f7-ca63bdefc23f",
+  "view_url": "https://logs.px4.io/plot_app?log=c9b12267-58a9-4a48-a2f7-ca63bdefc23f"
+}

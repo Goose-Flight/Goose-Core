@@ -1,0 +1,14 @@
+{
+  "log_id": "f8edf146-bdf7-4421-9ab8-9266a8fe5fe6",
+  "date": "2026-04-07",
+  "vehicle_type": "Quadrotor",
+  "airframe": 4401,
+  "hardware": "SSRC_SALUKI_NXP93",
+  "firmware_version": "v1.15.3",
+  "duration": "52s",
+  "rating": "2026-04-02 12:01",
+  "mode": "Position, Land",
+  "is_crash_heuristic": false,
+  "download_url": "https://logs.px4.io/download?log=f8edf146-bdf7-4421-9ab8-9266a8fe5fe6",
+  "view_url": "https://logs.px4.io/plot_app?log=f8edf146-bdf7-4421-9ab8-9266a8fe5fe6"
+}

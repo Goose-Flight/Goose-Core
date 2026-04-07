@@ -1,0 +1,14 @@
+{
+  "log_id": "98cf7352-b9d5-4743-bbec-b045aa8d43df",
+  "date": "2026-04-07",
+  "vehicle_type": "Quadrotor",
+  "airframe": 10022,
+  "hardware": "PX4_SITL",
+  "firmware_version": "v1.17.0-alpha",
+  "duration": "1m9s",
+  "rating": "2026-04-07 13:09",
+  "mode": "Takeoff, Position, Land, Loiter",
+  "is_crash_heuristic": false,
+  "download_url": "https://logs.px4.io/download?log=98cf7352-b9d5-4743-bbec-b045aa8d43df",
+  "view_url": "https://logs.px4.io/plot_app?log=98cf7352-b9d5-4743-bbec-b045aa8d43df"
+}

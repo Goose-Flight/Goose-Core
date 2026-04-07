@@ -1,0 +1,14 @@
+{
+  "log_id": "7b5c19ba-22db-4426-8294-3b982d8ac19c",
+  "date": "2026-04-07",
+  "vehicle_type": "Quadrotor",
+  "airframe": "Generic 250 Racer",
+  "hardware": "PX4_FMU_V6C",
+  "firmware_version": "v1.15.4 (99c404)",
+  "duration": "16s",
+  "rating": "N/A",
+  "mode": "Position, Offboard",
+  "is_crash_heuristic": false,
+  "download_url": "https://logs.px4.io/download?log=7b5c19ba-22db-4426-8294-3b982d8ac19c",
+  "view_url": "https://logs.px4.io/plot_app?log=7b5c19ba-22db-4426-8294-3b982d8ac19c"
+}

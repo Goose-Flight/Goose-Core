@@ -1,0 +1,14 @@
+{
+  "log_id": "703a70ee-367c-4044-97b4-7696265887d9",
+  "date": "2026-04-07",
+  "vehicle_type": "Quadrotor",
+  "airframe": "Generic Quadcopter",
+  "hardware": "MICOAIR_H743_V2",
+  "firmware_version": "v1.16.1 (c3fc12)",
+  "duration": "16s",
+  "rating": "N/A",
+  "mode": "Altitude",
+  "is_crash_heuristic": false,
+  "download_url": "https://logs.px4.io/download?log=703a70ee-367c-4044-97b4-7696265887d9",
+  "view_url": "https://logs.px4.io/plot_app?log=703a70ee-367c-4044-97b4-7696265887d9"
+}

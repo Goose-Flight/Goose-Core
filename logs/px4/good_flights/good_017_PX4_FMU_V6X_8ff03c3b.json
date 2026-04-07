@@ -1,0 +1,14 @@
+{
+  "log_id": "8ff03c3b-b039-4d7f-8012-ca4b655e9ccb",
+  "date": "2026-04-07",
+  "vehicle_type": "Octorotor",
+  "airframe": "Generic 10\" Octo coaxial geometry",
+  "hardware": "PX4_FMU_V6X",
+  "firmware_version": "v1.17.0-alpha",
+  "duration": "33s",
+  "rating": "1970-01-01 00:11",
+  "mode": "Takeoff, Land, Mission, Loiter",
+  "is_crash_heuristic": false,
+  "download_url": "https://logs.px4.io/download?log=8ff03c3b-b039-4d7f-8012-ca4b655e9ccb",
+  "view_url": "https://logs.px4.io/plot_app?log=8ff03c3b-b039-4d7f-8012-ca4b655e9ccb"
+}

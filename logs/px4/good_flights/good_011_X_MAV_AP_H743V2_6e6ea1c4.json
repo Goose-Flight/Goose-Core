@@ -1,0 +1,14 @@
+{
+  "log_id": "6e6ea1c4-891b-4352-a280-2da5fac70f11",
+  "date": "2026-04-07",
+  "vehicle_type": "Quadrotor",
+  "airframe": "Generic Quadcopter",
+  "hardware": "X_MAV_AP_H743V2",
+  "firmware_version": "v1.17.0-alpha",
+  "duration": "4m17s",
+  "rating": "2026-03-21 04:58",
+  "mode": "Manual, Stabilized",
+  "is_crash_heuristic": false,
+  "download_url": "https://logs.px4.io/download?log=6e6ea1c4-891b-4352-a280-2da5fac70f11",
+  "view_url": "https://logs.px4.io/plot_app?log=6e6ea1c4-891b-4352-a280-2da5fac70f11"
+}

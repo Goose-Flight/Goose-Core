@@ -1,0 +1,14 @@
+{
+  "log_id": "718bc770-24f5-4331-a7fd-6a8e15fc3a43",
+  "date": "2026-04-07",
+  "vehicle_type": "Quadrotor",
+  "airframe": "Generic Quadcopter",
+  "hardware": "PX4_FMU_V6X",
+  "firmware_version": "v1.16.1-rc",
+  "duration": "1m29s",
+  "rating": "2026-04-07 15:18",
+  "mode": "Position",
+  "is_crash_heuristic": false,
+  "download_url": "https://logs.px4.io/download?log=718bc770-24f5-4331-a7fd-6a8e15fc3a43",
+  "view_url": "https://logs.px4.io/plot_app?log=718bc770-24f5-4331-a7fd-6a8e15fc3a43"
+}

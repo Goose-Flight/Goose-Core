@@ -24,17 +24,23 @@ def parser() -> ULogParser:
 
 @pytest.fixture
 def normal_flight(parser: ULogParser, normal_flight_path: Path) -> Flight:
-    return parser.parse(normal_flight_path)
+    result = parser.parse(normal_flight_path)
+    assert result.flight is not None
+    return result.flight
 
 
 @pytest.fixture
 def vibration_crash_flight(parser: ULogParser, vibration_crash_path: Path) -> Flight:
-    return parser.parse(vibration_crash_path)
+    result = parser.parse(vibration_crash_path)
+    assert result.flight is not None
+    return result.flight
 
 
 @pytest.fixture
 def motor_failure_flight(parser: ULogParser, motor_failure_path: Path) -> Flight:
-    return parser.parse(motor_failure_path)
+    result = parser.parse(motor_failure_path)
+    assert result.flight is not None
+    return result.flight
 
 
 class TestVibrationNormalFlight:

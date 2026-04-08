@@ -2082,6 +2082,7 @@
       <!-- Workspace tabs -->
       <div style="display:flex;gap:4px;border-bottom:1px solid var(--card-border);margin-bottom:24px;">
         <button class="ws-tab active" id="ws-tab-evidence" onclick="switchWsTab('evidence')">Evidence</button>
+        <button class="ws-tab" id="ws-tab-diagnostics" onclick="switchWsTab('diagnostics')">Parse Diagnostics</button>
         <button class="ws-tab" id="ws-tab-findings" onclick="switchWsTab('findings')">Findings</button>
         <button class="ws-tab" id="ws-tab-audit" onclick="switchWsTab('audit')">Audit Trail</button>
       </div>
@@ -2102,6 +2103,13 @@
           <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">No evidence yet — upload a flight log to begin.</div>
         </div>
         <div id="ws-ingest-status" style="display:none;font-size:13px;padding:12px;border-radius:8px;margin-top:12px;"></div>
+      </div>
+
+      <!-- Parse Diagnostics tab -->
+      <div id="ws-diagnostics-panel" style="display:none;">
+        <div id="ws-diagnostics-content">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Run analysis to see parse diagnostics.</div>
+        </div>
       </div>
 
       <!-- Findings tab -->
@@ -3814,12 +3822,98 @@
   }
 
   function switchWsTab(tab) {
-    ['evidence','findings','audit'].forEach(t => {
+    ['evidence','diagnostics','findings','audit'].forEach(t => {
       document.getElementById(`ws-tab-${t}`).classList.toggle('active', t === tab);
       document.getElementById(`ws-${t}-panel`).style.display = t === tab ? '' : 'none';
     });
     if (tab === 'audit' && activeCaseId) loadAuditLog(activeCaseId);
     if (tab === 'findings' && activeCaseId) loadFindings(activeCaseId);
+    if (tab === 'diagnostics' && activeCaseId) loadParseDiagnostics(activeCaseId);
+  }
+
+  async function loadParseDiagnostics(caseId) {
+    const el = document.getElementById('ws-diagnostics-content');
+    el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;">Loading…</div>';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/diagnostics`);
+      const data = await r.json();
+      if (!data.ok || !data.diagnostics) {
+        el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">No parse diagnostics yet — run analysis first.</div>';
+        return;
+      }
+      el.innerHTML = renderParseDiagnostics(data.diagnostics);
+    } catch(e) {
+      el.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load diagnostics: ${e.message}</div>`;
+    }
+  }
+
+  function renderParseDiagnostics(d) {
+    const conf = v => {
+      const pct = Math.round((v || 0) * 100);
+      const color = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--yellow, #f59e0b)' : 'var(--red)';
+      return `<span style="color:${color};font-weight:600;">${pct}%</span>`;
+    };
+    const badge = (ok, yes, no) => ok
+      ? `<span style="color:var(--green);">✓ ${yes}</span>`
+      : `<span style="color:var(--red);">✗ ${no}</span>`;
+    const durationMs = d.parse_duration_ms != null ? `${d.parse_duration_ms.toFixed(0)} ms` : '—';
+
+    let streamsHtml = '';
+    if (d.stream_coverage && d.stream_coverage.length > 0) {
+      streamsHtml = `
+        <div style="margin-top:16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Stream Coverage</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;">
+            ${d.stream_coverage.map(s => `
+              <div style="font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--card-border);display:flex;justify-content:space-between;align-items:center;">
+                <span>${s.stream_name}</span>
+                ${s.present
+                  ? `<span style="color:var(--green);">✓ ${s.row_count} rows</span>`
+                  : `<span style="color:var(--text-dim,#666);">—</span>`}
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    const listSection = (title, items, color) => items && items.length > 0 ? `
+      <div style="margin-top:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">${title}</div>
+        ${items.map(m => `<div style="font-size:12px;padding:6px 10px;border-radius:6px;background:var(--card);border-left:3px solid ${color};margin-bottom:4px;">${m}</div>`).join('')}
+      </div>` : '';
+
+    return `
+      <div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:8px;">
+          <div class="card" style="padding:12px 16px;">
+            <div style="font-size:11px;color:var(--text-sec);margin-bottom:2px;">PARSER</div>
+            <div style="font-size:14px;font-weight:600;">${d.parser_selected || '—'}</div>
+            <div style="font-size:11px;color:var(--text-sec);">v${d.parser_version || '?'}</div>
+          </div>
+          <div class="card" style="padding:12px 16px;">
+            <div style="font-size:11px;color:var(--text-sec);margin-bottom:2px;">FORMAT</div>
+            <div style="font-size:14px;font-weight:600;">${d.detected_format || '—'}</div>
+            <div style="font-size:11px;">${badge(d.supported,'Supported','Unsupported')} · confidence ${conf(d.format_confidence)}</div>
+          </div>
+          <div class="card" style="padding:12px 16px;">
+            <div style="font-size:11px;color:var(--text-sec);margin-bottom:2px;">PARSE CONFIDENCE</div>
+            <div style="font-size:22px;font-weight:700;">${conf(d.parser_confidence)}</div>
+          </div>
+          <div class="card" style="padding:12px 16px;">
+            <div style="font-size:11px;color:var(--text-sec);margin-bottom:2px;">PARSE DURATION</div>
+            <div style="font-size:22px;font-weight:700;">${durationMs}</div>
+          </div>
+        </div>
+        ${streamsHtml}
+        ${listSection('Warnings', d.warnings, 'var(--yellow,#f59e0b)')}
+        ${listSection('Errors', d.errors, 'var(--red)')}
+        ${listSection('Corruption Indicators', d.corruption_indicators, 'var(--red)')}
+        ${listSection('Timebase Anomalies', d.timebase_anomalies, 'var(--yellow,#f59e0b)')}
+        ${listSection('Assumptions', d.assumptions, 'var(--text-sec)')}
+        ${d.missing_streams && d.missing_streams.length > 0 ? `
+          <div style="margin-top:16px;font-size:12px;color:var(--text-sec);">
+            Missing streams: ${d.missing_streams.join(', ')}
+          </div>` : ''}
+      </div>`;
   }
 
   function renderEvidenceList(evidence) {
@@ -3902,6 +3996,11 @@
       if (data.ok) {
         btn.textContent = 'Analyze';
         btn.disabled = false;
+        // Render diagnostics in background so the tab is ready
+        if (data.parse_diagnostics) {
+          document.getElementById('ws-diagnostics-content').innerHTML =
+            renderParseDiagnostics(data.parse_diagnostics);
+        }
         // Switch to findings tab
         switchWsTab('findings');
         renderCaseFindingsSummary(data);

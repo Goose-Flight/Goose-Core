@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from goose.core import Flight, Finding
 from goose.core.crash_detector import analyze_crash
-from goose.parsers.ulog import ULogParser
+from goose.parsers.detect import parse_file
 from goose.plugins.registry import load_plugins
 
 router = APIRouter(prefix="/api", tags=["analysis"])
@@ -71,20 +71,13 @@ class HealthResponse(BaseModel):
 # ============================================================================
 
 def _parse_log_file(filepath: Path) -> Flight:
-    """Parse a log file, auto-detecting format based on extension."""
-    ext = filepath.suffix.lower()
-
-    # Currently supported formats
-    if ext == ".ulg":
-        try:
-            parser = ULogParser()
-            return parser.parse(filepath)
-        except Exception as e:
-            raise ValueError(f"Failed to parse {filepath.name}: {str(e)}") from e
-    else:
-        raise ValueError(
-            f"Unsupported file format: {ext}. Currently supports: .ulg"
-        )
+    """Parse a log file via the formal parser contract."""
+    result = parse_file(filepath)
+    if not result.success:
+        errors = "; ".join(result.diagnostics.errors)
+        raise ValueError(f"Failed to parse {filepath.name}: {errors}")
+    assert result.flight is not None
+    return result.flight
 
 
 # ============================================================================

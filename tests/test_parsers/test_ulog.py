@@ -1,4 +1,8 @@
-"""Tests for the ULog parser against real PX4 flight logs."""
+"""Tests for the ULog parser against real PX4 flight logs.
+
+Sprint 3: parse() returns ParseResult. Fixtures extract .flight for Flight tests.
+New diagnostics tests verify ParseDiagnostics contract.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +12,7 @@ import pandas as pd
 import pytest
 
 from goose.core.flight import Flight
+from goose.parsers.diagnostics import ParseResult
 from goose.parsers.ulog import ULogParser
 
 
@@ -23,17 +28,59 @@ class TestULogParserBasic:
         assert ulog_parser.can_parse("test.bin") is False
         assert ulog_parser.can_parse("test.csv") is False
 
-    def test_file_not_found(self, ulog_parser: ULogParser) -> None:
-        with pytest.raises(FileNotFoundError):
-            ulog_parser.parse("nonexistent.ulg")
+    def test_parse_returns_parse_result(self, ulog_parser: ULogParser, normal_flight_path: Path) -> None:
+        result = ulog_parser.parse(normal_flight_path)
+        assert isinstance(result, ParseResult)
+
+    def test_file_not_found_returns_failure(self, ulog_parser: ULogParser) -> None:
+        """Missing files return a ParseResult failure — not a raised exception."""
+        result = ulog_parser.parse("nonexistent.ulg")
+        assert not result.success
+        assert result.flight is None
+        assert any("not found" in e.lower() or "nonexistent" in e.lower() for e in result.diagnostics.errors)
+
+    def test_successful_parse_has_diagnostics(self, ulog_parser: ULogParser, normal_flight_path: Path) -> None:
+        result = ulog_parser.parse(normal_flight_path)
+        assert result.success
+        assert result.diagnostics.parser_selected == "ULogParser"
+        assert result.diagnostics.detected_format == "ulog"
+        assert result.diagnostics.format_confidence == 1.0
+        assert result.diagnostics.supported is True
+        assert result.diagnostics.parser_confidence > 0.0
+        assert result.diagnostics.parse_completed_at is not None
+        assert result.diagnostics.parse_duration_ms is not None
+
+    def test_successful_parse_has_provenance(self, ulog_parser: ULogParser, normal_flight_path: Path) -> None:
+        result = ulog_parser.parse(normal_flight_path)
+        assert result.provenance is not None
+        assert result.provenance.parser_name == "ULogParser"
+        assert result.provenance.detected_format == "ulog"
+        assert "ulg" in result.provenance.transformation_chain[0].lower()
+
+    def test_stream_coverage_populated(self, ulog_parser: ULogParser, normal_flight_path: Path) -> None:
+        result = ulog_parser.parse(normal_flight_path)
+        assert len(result.diagnostics.stream_coverage) > 0
+        names = [s.stream_name for s in result.diagnostics.stream_coverage]
+        assert "attitude" in names
+        assert "position" in names
+
+    def test_parse_artifacts_has_topics(self, ulog_parser: ULogParser, normal_flight_path: Path) -> None:
+        result = ulog_parser.parse(normal_flight_path)
+        assert "topics_present" in result.parse_artifacts
+        assert isinstance(result.parse_artifacts["topics_present"], list)
 
 
 class TestULogNormalFlight:
     """Test parser against a normal (clean) PX4 flight log."""
 
     @pytest.fixture
-    def flight(self, ulog_parser: ULogParser, normal_flight_path: Path) -> Flight:
+    def parse_result(self, ulog_parser: ULogParser, normal_flight_path: Path) -> ParseResult:
         return ulog_parser.parse(normal_flight_path)
+
+    @pytest.fixture
+    def flight(self, parse_result: ParseResult) -> Flight:
+        assert parse_result.flight is not None
+        return parse_result.flight
 
     def test_metadata_autopilot(self, flight: Flight) -> None:
         assert flight.metadata.autopilot == "px4"
@@ -116,7 +163,9 @@ class TestULogMotorFailure:
 
     @pytest.fixture
     def flight(self, ulog_parser: ULogParser, motor_failure_path: Path) -> Flight:
-        return ulog_parser.parse(motor_failure_path)
+        result = ulog_parser.parse(motor_failure_path)
+        assert result.flight is not None
+        return result.flight
 
     def test_parses_successfully(self, flight: Flight) -> None:
         assert flight.metadata.autopilot == "px4"
@@ -146,7 +195,9 @@ class TestULogVibrationCrash:
 
     @pytest.fixture
     def flight(self, ulog_parser: ULogParser, vibration_crash_path: Path) -> Flight:
-        return ulog_parser.parse(vibration_crash_path)
+        result = ulog_parser.parse(vibration_crash_path)
+        assert result.flight is not None
+        return result.flight
 
     def test_parses_successfully(self, flight: Flight) -> None:
         assert flight.metadata.autopilot == "px4"

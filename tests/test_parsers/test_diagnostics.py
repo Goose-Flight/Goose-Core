@@ -1,0 +1,299 @@
+"""Tests for the Sprint 3 parser contract — ParseDiagnostics and ParseResult.
+
+These tests verify the formal parser contract independently of any specific
+log format. They also cover the detect module and stub parser behavior.
+
+Sprint 3 — Parser Framework and Diagnostics
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from pathlib import Path
+
+import pytest
+
+from goose.parsers.base import BaseParser
+from goose.parsers.csv_parser import CSVParser
+from goose.parsers.dataflash import DataFlashParser
+from goose.parsers.detect import detect_format, detect_parser, parse_file, supported_formats
+from goose.parsers.diagnostics import ParseDiagnostics, ParseResult, StreamCoverage
+from goose.parsers.tlog import TLogParser
+from goose.parsers.ulog import ULogParser
+
+
+# ---------------------------------------------------------------------------
+# ParseDiagnostics model
+# ---------------------------------------------------------------------------
+
+class TestParseDiagnosticsModel:
+    def test_default_fields(self) -> None:
+        d = ParseDiagnostics()
+        assert d.parser_selected == ""
+        assert d.supported is False
+        assert d.format_confidence == 0.0
+        assert d.parser_confidence == 0.0
+        assert d.missing_streams == []
+        assert d.warnings == []
+        assert d.errors == []
+        assert d.corruption_indicators == []
+        assert d.timebase_anomalies == []
+        assert d.assumptions == []
+        assert isinstance(d.parse_started_at, datetime)
+        assert d.parse_completed_at is None
+
+    def test_to_dict_roundtrip(self) -> None:
+        d = ParseDiagnostics(
+            parser_selected="ULogParser",
+            parser_version="1.0.0",
+            detected_format="ulog",
+            format_confidence=0.95,
+            supported=True,
+            parser_confidence=0.88,
+            warnings=["Battery missing"],
+            missing_streams=["battery"],
+            assumptions=["Timestamps monotonic"],
+        )
+        d.parse_completed_at = datetime.now().replace(microsecond=0)
+        d_back = ParseDiagnostics.from_dict(d.to_dict())
+        assert d_back.parser_selected == "ULogParser"
+        assert d_back.format_confidence == 0.95
+        assert d_back.supported is True
+        assert d_back.parser_confidence == 0.88
+        assert d_back.warnings == ["Battery missing"]
+        assert d_back.missing_streams == ["battery"]
+        assert d_back.assumptions == ["Timestamps monotonic"]
+        assert d_back.parse_completed_at is not None
+
+    def test_to_json_is_valid(self) -> None:
+        import json
+        d = ParseDiagnostics(parser_selected="X", detected_format="ulog")
+        parsed = json.loads(d.to_json())
+        assert parsed["parser_selected"] == "X"
+
+    def test_unsupported_factory(self) -> None:
+        d = ParseDiagnostics.unsupported(".bin", parser_name="DataFlashParser")
+        assert d.supported is False
+        assert d.parser_confidence == 0.0
+        assert d.format_confidence == 1.0
+        assert len(d.errors) == 1
+        assert ".bin" in d.errors[0] or "not supported" in d.errors[0]
+
+    def test_failed_factory(self) -> None:
+        d = ParseDiagnostics.failed(
+            parser_name="ULogParser",
+            parser_version="1.0",
+            detected_format="ulog",
+            error="corrupt header",
+        )
+        assert d.parser_confidence == 0.0
+        assert "corrupt header" in d.errors[0]
+
+    def test_stream_coverage_roundtrip(self) -> None:
+        sc = StreamCoverage(stream_name="attitude", present=True, row_count=500)
+        sc_back = StreamCoverage.from_dict(sc.to_dict())
+        assert sc_back.stream_name == "attitude"
+        assert sc_back.present is True
+        assert sc_back.row_count == 500
+
+
+# ---------------------------------------------------------------------------
+# ParseResult model
+# ---------------------------------------------------------------------------
+
+class TestParseResultModel:
+    def test_failure_has_no_flight(self) -> None:
+        diag = ParseDiagnostics(errors=["bad file"])
+        result = ParseResult.failure(diag)
+        assert result.flight is None
+        assert not result.success
+
+    def test_success_requires_flight_and_no_errors(self) -> None:
+        from goose.core.flight import Flight, FlightMetadata
+        meta = FlightMetadata(autopilot="px4", log_format="ulog", source_file="x.ulg",
+                              duration_sec=10.0, firmware_version="1.0",
+                              vehicle_type="quadcopter", motor_count=4,
+                              frame_type=None, hardware=None, start_time_utc=None)
+        import pandas as pd
+        flight = Flight(metadata=meta, position=pd.DataFrame(), position_setpoint=pd.DataFrame(),
+                        velocity=pd.DataFrame(), velocity_setpoint=pd.DataFrame(),
+                        attitude=pd.DataFrame(), attitude_setpoint=pd.DataFrame(),
+                        attitude_rate=pd.DataFrame(), attitude_rate_setpoint=pd.DataFrame(),
+                        battery=pd.DataFrame(), gps=pd.DataFrame(), motors=pd.DataFrame(),
+                        vibration=pd.DataFrame(), rc_input=pd.DataFrame(),
+                        ekf=pd.DataFrame(), cpu=pd.DataFrame(),
+                        mode_changes=[], events=[], parameters={}, primary_mode="manual")
+        diag = ParseDiagnostics(supported=True)  # no errors
+        result = ParseResult(flight=flight, diagnostics=diag)
+        assert result.success
+
+    def test_flight_with_errors_is_not_success(self) -> None:
+        from goose.core.flight import Flight, FlightMetadata
+        import pandas as pd
+        meta = FlightMetadata(autopilot="px4", log_format="ulog", source_file="x.ulg",
+                              duration_sec=10.0, firmware_version="1.0",
+                              vehicle_type="quadcopter", motor_count=4,
+                              frame_type=None, hardware=None, start_time_utc=None)
+        flight = Flight(metadata=meta, position=pd.DataFrame(), position_setpoint=pd.DataFrame(),
+                        velocity=pd.DataFrame(), velocity_setpoint=pd.DataFrame(),
+                        attitude=pd.DataFrame(), attitude_setpoint=pd.DataFrame(),
+                        attitude_rate=pd.DataFrame(), attitude_rate_setpoint=pd.DataFrame(),
+                        battery=pd.DataFrame(), gps=pd.DataFrame(), motors=pd.DataFrame(),
+                        vibration=pd.DataFrame(), rc_input=pd.DataFrame(),
+                        ekf=pd.DataFrame(), cpu=pd.DataFrame(),
+                        mode_changes=[], events=[], parameters={}, primary_mode="manual")
+        diag = ParseDiagnostics(errors=["something went wrong"])
+        result = ParseResult(flight=flight, diagnostics=diag)
+        assert not result.success
+
+
+# ---------------------------------------------------------------------------
+# Stub parsers
+# ---------------------------------------------------------------------------
+
+class TestStubParsers:
+    """Stubs must not claim can_parse and must return unsupported diagnostics."""
+
+    @pytest.mark.parametrize("parser_cls,ext", [
+        (DataFlashParser, ".bin"),
+        (TLogParser, ".tlog"),
+        (CSVParser, ".csv"),
+    ])
+    def test_not_implemented(self, parser_cls: type, ext: str) -> None:
+        parser = parser_cls()
+        assert not parser.implemented
+
+    @pytest.mark.parametrize("parser_cls,ext", [
+        (DataFlashParser, ".bin"),
+        (TLogParser, ".tlog"),
+        (CSVParser, ".csv"),
+    ])
+    def test_can_parse_returns_false(self, parser_cls: type, ext: str) -> None:
+        parser = parser_cls()
+        assert not parser.can_parse(f"file{ext}")
+
+    @pytest.mark.parametrize("parser_cls,ext", [
+        (DataFlashParser, ".bin"),
+        (TLogParser, ".tlog"),
+        (CSVParser, ".csv"),
+    ])
+    def test_parse_returns_failure_not_exception(self, parser_cls: type, ext: str, tmp_path: Path) -> None:
+        parser = parser_cls()
+        f = tmp_path / f"test{ext}"
+        f.write_bytes(b"\x00" * 10)
+        result = parser.parse(f)
+        assert isinstance(result, ParseResult)
+        assert not result.success
+        assert result.flight is None
+        assert len(result.diagnostics.errors) > 0
+        assert not result.diagnostics.supported
+
+
+# ---------------------------------------------------------------------------
+# Detection module
+# ---------------------------------------------------------------------------
+
+class TestDetectModule:
+    def test_detect_parser_returns_ulog_for_ulg(self, normal_flight_path: Path) -> None:
+        parser = detect_parser(normal_flight_path)
+        assert parser is not None
+        assert isinstance(parser, ULogParser)
+
+    def test_detect_parser_returns_none_for_bin(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.bin"
+        f.write_bytes(b"\x00")
+        assert detect_parser(f) is None
+
+    def test_detect_parser_returns_none_for_unknown(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.xyz"
+        f.write_bytes(b"\x00")
+        assert detect_parser(f) is None
+
+    def test_detect_format_ulg(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.ulg"
+        f.write_bytes(b"\x00")
+        assert detect_format(f) == "ulog"
+
+    def test_detect_format_bin(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.bin"
+        f.write_bytes(b"\x00")
+        assert detect_format(f) == "dataflash"
+
+    def test_detect_format_unknown(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.xyz"
+        f.write_bytes(b"\x00")
+        assert detect_format(f) == "unknown"
+
+    def test_parse_file_success_for_ulg(self, normal_flight_path: Path) -> None:
+        result = parse_file(normal_flight_path)
+        assert result.success
+        assert result.flight is not None
+        assert result.diagnostics.parser_selected == "ULogParser"
+
+    def test_parse_file_unsupported_for_bin(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.bin"
+        f.write_bytes(b"\x00")
+        result = parse_file(f)
+        assert not result.success
+        assert result.flight is None
+        assert not result.diagnostics.supported
+
+    def test_parse_file_unsupported_for_unknown_ext(self, tmp_path: Path) -> None:
+        f = tmp_path / "test.xyz"
+        f.write_bytes(b"\x00")
+        result = parse_file(f)
+        assert not result.success
+        assert len(result.diagnostics.errors) > 0
+
+    def test_supported_formats_includes_all_known(self) -> None:
+        formats = supported_formats()
+        names = [f["format_name"] for f in formats]
+        assert "ulog" in names
+        assert "dataflash" in names
+        assert "tlog" in names
+        assert "csv" in names
+
+    def test_supported_formats_only_ulog_implemented(self) -> None:
+        formats = supported_formats()
+        implemented = [f for f in formats if f["implemented"]]
+        assert len(implemented) == 1
+        assert implemented[0]["format_name"] == "ulog"
+
+
+# ---------------------------------------------------------------------------
+# ULogParser diagnostics quality (with real fixture)
+# ---------------------------------------------------------------------------
+
+class TestULogDiagnosticsQuality:
+    """Verify that ULogParser produces high-quality diagnostics on real logs."""
+
+    def test_parser_confidence_above_threshold(self, normal_flight_path: Path) -> None:
+        parser = ULogParser()
+        result = parser.parse(normal_flight_path)
+        assert result.diagnostics.parser_confidence >= 0.5
+
+    def test_stream_coverage_has_present_and_absent(self, normal_flight_path: Path) -> None:
+        parser = ULogParser()
+        result = parser.parse(normal_flight_path)
+        coverage = result.diagnostics.stream_coverage
+        assert any(s.present for s in coverage)
+        # Not all streams need to be present, but list should be populated
+        assert len(coverage) >= 5
+
+    def test_parse_duration_recorded(self, normal_flight_path: Path) -> None:
+        parser = ULogParser()
+        result = parser.parse(normal_flight_path)
+        assert result.diagnostics.parse_duration_ms is not None
+        assert result.diagnostics.parse_duration_ms >= 0
+
+    def test_assumptions_not_empty(self, normal_flight_path: Path) -> None:
+        parser = ULogParser()
+        result = parser.parse(normal_flight_path)
+        assert len(result.diagnostics.assumptions) > 0
+
+    def test_provenance_evidence_id_empty_by_default(self, normal_flight_path: Path) -> None:
+        """Parser doesn't know the evidence_id — caller must fill it in."""
+        parser = ULogParser()
+        result = parser.parse(normal_flight_path)
+        assert result.provenance is not None
+        assert result.provenance.source_evidence_id == ""

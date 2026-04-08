@@ -16,17 +16,18 @@ from goose.core.crash_detector import CrashAnalysis, analyze_crash
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.core.scoring import compute_overall_score
-from goose.parsers.ulog import ULogParser
+from goose.parsers.detect import parse_file
 from goose.plugins.base import Plugin
 
 
 def _parse_log(filepath: Path) -> Flight:
-    """Parse a log file, auto-detecting format."""
-    ext = filepath.suffix.lower()
-    if ext == ".ulg":
-        parser = ULogParser()
-        return parser.parse(filepath)
-    raise click.ClickException(f"Unsupported log format: {ext}")
+    """Parse a log file via the formal parser contract."""
+    result = parse_file(filepath)
+    if not result.success:
+        errors = "; ".join(result.diagnostics.errors)
+        raise click.ClickException(f"Cannot parse '{filepath.name}': {errors}")
+    assert result.flight is not None
+    return result.flight
 
 
 def _load_and_run_plugins(flight: Flight) -> list[Finding]:

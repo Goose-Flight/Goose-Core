@@ -1,0 +1,190 @@
+"""Parser diagnostics and ParseResult contract for Goose forensic framework.
+
+Every parser must return a ParseResult containing:
+  - flight: the canonical Flight model (or None on failure)
+  - diagnostics: structured ParseDiagnostics describing what the parser found
+  - provenance: full lineage record linking parsed data back to source evidence
+
+These types are the formal parser contract from Sprint 3 onward.
+All parser-aware code must consume ParseResult rather than raw Flight objects.
+
+Sprint 3 — Parser Framework and Diagnostics
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from goose.core.flight import Flight
+    from goose.forensics.models import Provenance
+
+
+# ---------------------------------------------------------------------------
+# ParseDiagnostics
+# ---------------------------------------------------------------------------
+
+@dataclass
+class StreamCoverage:
+    """Coverage summary for a single telemetry stream/topic."""
+
+    stream_name: str
+    present: bool
+    row_count: int = 0
+    notes: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> StreamCoverage:
+        return cls(**d)
+
+
+@dataclass
+class ParseDiagnostics:
+    """Structured diagnostics produced by a parser alongside the canonical Flight.
+
+    Every parser must populate this regardless of whether parsing succeeded.
+    Partial parses, corruptions, and unsupported formats must surface here —
+    they must not be silently swallowed.
+
+    Fields mirror the spec in 02_forensic_core_architecture_spec.md §4.5.
+    """
+
+    # Parser identity
+    parser_selected: str = ""           # parser class name, e.g. "ULogParser"
+    parser_version: str = ""            # semver or hash
+
+    # Format detection
+    detected_format: str = ""           # "ulog" | "dataflash" | "tlog" | "csv" | "unknown"
+    format_confidence: float = 0.0      # 0.0–1.0
+    supported: bool = False             # False if format is not implemented
+
+    # Parse quality
+    parser_confidence: float = 0.0      # 0.0–1.0 overall parse confidence
+
+    # Streams
+    missing_streams: list[str] = field(default_factory=list)
+    stream_coverage: list[StreamCoverage] = field(default_factory=list)
+
+    # Diagnostics
+    warnings: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    corruption_indicators: list[str] = field(default_factory=list)
+    timebase_anomalies: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+
+    # Timestamps
+    parse_started_at: datetime = field(default_factory=lambda: datetime.now().replace(microsecond=0))
+    parse_completed_at: datetime | None = None
+    parse_duration_ms: float | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "parser_selected": self.parser_selected,
+            "parser_version": self.parser_version,
+            "detected_format": self.detected_format,
+            "format_confidence": self.format_confidence,
+            "supported": self.supported,
+            "parser_confidence": self.parser_confidence,
+            "missing_streams": self.missing_streams,
+            "stream_coverage": [s.to_dict() for s in self.stream_coverage],
+            "warnings": self.warnings,
+            "errors": self.errors,
+            "corruption_indicators": self.corruption_indicators,
+            "timebase_anomalies": self.timebase_anomalies,
+            "assumptions": self.assumptions,
+            "parse_started_at": self.parse_started_at.isoformat(),
+            "parse_completed_at": self.parse_completed_at.isoformat() if self.parse_completed_at else None,
+            "parse_duration_ms": self.parse_duration_ms,
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> ParseDiagnostics:
+        d = dict(d)
+        d["stream_coverage"] = [
+            StreamCoverage.from_dict(s) for s in d.get("stream_coverage", [])
+        ]
+        d["parse_started_at"] = datetime.fromisoformat(d["parse_started_at"])
+        if d.get("parse_completed_at"):
+            d["parse_completed_at"] = datetime.fromisoformat(d["parse_completed_at"])
+        return cls(**d)
+
+    @classmethod
+    def unsupported(cls, ext: str, parser_name: str = "") -> ParseDiagnostics:
+        """Construct diagnostics for a format that is declared unsupported."""
+        return cls(
+            parser_selected=parser_name or "none",
+            detected_format=ext.lstrip(".").lower() or "unknown",
+            format_confidence=1.0 if ext else 0.0,
+            supported=False,
+            parser_confidence=0.0,
+            errors=[
+                f"Format '{ext}' is not supported. "
+                "Only .ulg (PX4 ULog) files are currently implemented."
+            ],
+        )
+
+    @classmethod
+    def failed(
+        cls,
+        parser_name: str,
+        parser_version: str,
+        detected_format: str,
+        error: str,
+    ) -> ParseDiagnostics:
+        """Construct diagnostics for a parse that failed with an exception."""
+        return cls(
+            parser_selected=parser_name,
+            parser_version=parser_version,
+            detected_format=detected_format,
+            format_confidence=1.0,
+            supported=True,
+            parser_confidence=0.0,
+            errors=[f"Parse failed: {error}"],
+        )
+
+
+# ---------------------------------------------------------------------------
+# ParseResult
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ParseResult:
+    """The complete output of a parser invocation.
+
+    A parser always returns this — even on failure.  On failure:
+      - flight is None
+      - diagnostics.errors is non-empty
+      - diagnostics.parser_confidence is 0.0
+
+    Consumers must check ``success`` before using ``flight``.
+    """
+
+    diagnostics: ParseDiagnostics
+    flight: Flight | None = None
+    provenance: Provenance | None = None
+    # Raw artifacts produced by the parser that may be useful for debugging
+    # (e.g. topic lists, parameter dumps). Not part of the canonical model.
+    parse_artifacts: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def success(self) -> bool:
+        """True if the parse produced a usable Flight object."""
+        return self.flight is not None and not self.diagnostics.errors
+
+    @classmethod
+    def failure(
+        cls,
+        diagnostics: ParseDiagnostics,
+        provenance: Provenance | None = None,
+    ) -> ParseResult:
+        """Construct a failed ParseResult."""
+        return cls(flight=None, diagnostics=diagnostics, provenance=provenance)

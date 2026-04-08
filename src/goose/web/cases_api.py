@@ -11,16 +11,20 @@ Routes:
   GET  /api/cases/{case_id}/evidence       — list evidence items
   POST /api/cases/{case_id}/analyze        — run analysis on case evidence
   GET  /api/cases/{case_id}/findings       — get findings from last analysis
+  GET  /api/cases/{case_id}/diagnostics    — get parse diagnostics from last analysis
   GET  /api/cases/{case_id}/audit          — get audit log entries
   PATCH /api/cases/{case_id}/status        — update case status
 
-Sprint 2 — GUI/API Case Workflow
+Sprint 3 — Parser Framework and Diagnostics
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import math
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -28,8 +32,10 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from goose import __version__
 from goose.forensics import CaseService, CaseStatus
-from goose.forensics.models import AnalysisRun
+from goose.forensics.models import AnalysisRun, AuditAction, AuditEntry
+from goose.parsers.detect import parse_file
 
 logger = logging.getLogger(__name__)
 
@@ -227,11 +233,18 @@ async def list_evidence(case_id: str) -> JSONResponse:
 
 @router.post("/{case_id}/analyze")
 async def analyze_case(case_id: str) -> JSONResponse:
-    """Run all plugins against the first evidence item in the case.
+    """Run the parser framework and all plugins against the case's evidence.
 
-    Returns findings, overall score, metadata, and timeseries (same shape as
-    the legacy /api/analyze response so existing frontend code works unchanged).
+    Sprint 3: uses the formal ParseResult contract. Writes canonical artifacts
+    to the case parsed/ directory. Parse diagnostics are always returned.
     """
+    from goose.web.app import (
+        _compute_overall_score,
+        _extract_timeseries,
+        _finding_to_dict,
+        _format_duration,
+    )
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)
@@ -244,161 +257,248 @@ async def analyze_case(case_id: str) -> JSONResponse:
             detail="No evidence ingested yet. Upload a flight log first.",
         )
 
-    # Use the most recently ingested evidence item
     ev = case.evidence_items[-1]
     evidence_path = ev.stored_path
+    run_id = f"RUN-{uuid.uuid4().hex[:8].upper()}"
+    started_at = datetime.now()
 
+    # --- Audit: parse started -----------------------------------------------
+    svc._append_audit(case_id, AuditEntry(
+        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+        timestamp=started_at,
+        actor="api",
+        action=AuditAction.PARSE_STARTED,
+        object_type="evidence",
+        object_id=ev.evidence_id,
+        details={"evidence_path": evidence_path, "run_id": run_id},
+    ))
+
+    # --- Parse via formal contract -------------------------------------------
     try:
-        from goose.web.app import (
-            _compute_overall_score,
-            _extract_timeseries,
-            _finding_to_dict,
-            _format_duration,
-            _try_all_parsers,
-        )
-        from goose.parsers.ulog import ULogParser
+        parse_result = parse_file(evidence_path)
+    except Exception as exc:
+        logger.exception("Unexpected error from parse_file for case %s", case_id)
+        parse_result = None
+        _parse_exc = exc
+    else:
+        _parse_exc = None
 
-        # Parse
-        flight = None
-        parse_error: str | None = None
-        try:
-            ulog = ULogParser()
-            if ulog.can_parse(evidence_path):
-                flight = ulog.parse(evidence_path)
-        except Exception as exc:
-            parse_error = str(exc)
-            logger.warning("ULogParser failed on case evidence: %s", exc)
+    if parse_result is None:
+        svc._append_audit(case_id, AuditEntry(
+            event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+            timestamp=datetime.now(),
+            actor="api",
+            action=AuditAction.PARSE_FAILED,
+            object_type="evidence",
+            object_id=ev.evidence_id,
+            details={"error": str(_parse_exc)},
+            success=False,
+            error=str(_parse_exc),
+        ))
+        raise HTTPException(status_code=500, detail=f"Internal parse error: {_parse_exc}")
 
-        if flight is None:
-            flight, parse_error = _try_all_parsers(evidence_path, parse_error)
+    # Attach evidence_id to provenance
+    if parse_result.provenance:
+        parse_result.provenance.source_evidence_id = ev.evidence_id
 
-        if flight is None:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Could not parse evidence file '{ev.filename}'. "
-                       f"Supported: .ulg. Error: {parse_error}",
-            )
+    # --- Persist parsed/ artifacts -------------------------------------------
+    case_dir = svc.case_dir(case_id)
+    parsed_dir = case_dir / "parsed"
+    parsed_dir.mkdir(exist_ok=True)
 
-        # Run plugins
-        from goose.plugins.registry import load_plugins
-        plugins = load_plugins()
-        all_findings: list[Any] = []
-        plugin_errors: list[dict[str, str]] = []
-        plugin_versions: dict[str, str] = {}
+    diag_path = parsed_dir / "parse_diagnostics.json"
+    diag_path.write_text(parse_result.diagnostics.to_json(), encoding="utf-8")
 
-        for plugin in plugins:
-            plugin_versions[plugin.name] = getattr(plugin, "version", "unknown")
-            try:
-                findings = plugin.analyze(flight, {})
-                all_findings.extend(findings)
-            except Exception as exc:
-                logger.warning("Plugin %s failed: %s", plugin.name, exc)
-                plugin_errors.append({"plugin": plugin.name, "error": str(exc)})
-
-        overall_score = _compute_overall_score(all_findings)
-
-        # Record analysis run in case
-        import uuid
-        from datetime import datetime
-        from goose import __version__
-
-        run = AnalysisRun(
-            run_id=f"RUN-{uuid.uuid4().hex[:8].upper()}",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
-            plugin_versions=plugin_versions,
-            ruleset_version=None,
-            findings_count=len([f for f in all_findings if f.severity != "pass"]),
-            status="completed",
-            engine_version=__version__,
-        )
-        case.analysis_runs.append(run)
-        svc.save_case(case)
-
-        # Persist findings to analysis/
-        import json
-        analysis_dir = svc.case_dir(case_id) / "analysis"
-        (analysis_dir / "findings.json").write_text(
-            json.dumps([_finding_to_dict(f) for f in all_findings], indent=2),
+    if parse_result.provenance:
+        prov_path = parsed_dir / "provenance.json"
+        prov_path.write_text(
+            json.dumps(parse_result.provenance.to_dict(), indent=2),
             encoding="utf-8",
         )
 
-        # Build response (same shape as /api/analyze for shim compatibility)
-        meta = flight.metadata
-        duration_sec = meta.duration_sec
-        duration_str = _format_duration(duration_sec)
-        start_time_str = meta.start_time_utc.isoformat() if meta.start_time_utc else None
+    # --- Audit: parse completed/failed ---------------------------------------
+    parse_audit_action = AuditAction.PARSE_COMPLETED if parse_result.success else AuditAction.PARSE_FAILED
+    svc._append_audit(case_id, AuditEntry(
+        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+        timestamp=datetime.now(),
+        actor="api",
+        action=parse_audit_action,
+        object_type="evidence",
+        object_id=ev.evidence_id,
+        details={
+            "parser": parse_result.diagnostics.parser_selected,
+            "parser_confidence": parse_result.diagnostics.parser_confidence,
+            "warnings": len(parse_result.diagnostics.warnings),
+            "errors": len(parse_result.diagnostics.errors),
+        },
+        success=parse_result.success,
+        error="; ".join(parse_result.diagnostics.errors) if not parse_result.success else None,
+    ))
 
-        findings_by_severity: dict[str, int] = {"critical": 0, "warning": 0, "info": 0, "pass": 0}
-        for f in all_findings:
-            sev = f.severity if f.severity in findings_by_severity else "info"
-            findings_by_severity[sev] += 1
+    if not parse_result.success:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": f"Could not parse evidence file '{ev.filename}'.",
+                "errors": parse_result.diagnostics.errors,
+                "supported": parse_result.diagnostics.supported,
+                "detected_format": parse_result.diagnostics.detected_format,
+            },
+        )
 
+    flight = parse_result.flight  # guaranteed non-None here
+
+    # --- Audit: analysis started ---------------------------------------------
+    svc._append_audit(case_id, AuditEntry(
+        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+        timestamp=datetime.now(),
+        actor="api",
+        action=AuditAction.ANALYSIS_STARTED,
+        object_type="analysis",
+        object_id=run_id,
+        details={"evidence_id": ev.evidence_id},
+    ))
+
+    # --- Run plugins ---------------------------------------------------------
+    from goose.plugins.registry import load_plugins
+    plugins = load_plugins()
+    all_findings: list[Any] = []
+    plugin_errors: list[dict[str, str]] = []
+    plugin_versions: dict[str, str] = {}
+
+    for plugin in plugins:
+        plugin_versions[plugin.name] = getattr(plugin, "version", "unknown")
         try:
-            timeseries = _extract_timeseries(flight)
-        except Exception as ts_exc:
-            logger.warning("Time-series extraction failed: %s", ts_exc)
-            timeseries = {}
+            findings = plugin.analyze(flight, {})
+            all_findings.extend(findings)
+        except Exception as exc:
+            logger.warning("Plugin %s failed: %s", plugin.name, exc)
+            plugin_errors.append({"plugin": plugin.name, "error": str(exc)})
 
-        try:
-            from goose.core.narrative import generate_narrative, generate_human_narrative
-            narr_meta = {
-                "duration_str": duration_str,
-                "vehicle_type": meta.vehicle_type,
-                "primary_mode": flight.primary_mode,
-                "firmware_version": meta.firmware_version,
-                "hardware": meta.hardware,
-                "crashed": flight.crashed,
-            }
-            narrative = generate_narrative(all_findings, metadata=narr_meta, overall_score=overall_score)
-            narrative_human = generate_human_narrative(all_findings, metadata=narr_meta, overall_score=overall_score)
-        except Exception:
-            narrative = narrative_human = None
+    overall_score = _compute_overall_score(all_findings)
+    completed_at = datetime.now()
 
-        return JSONResponse({
-            "ok": True,
-            "case_id": case_id,
-            "run_id": run.run_id,
-            "evidence_id": ev.evidence_id,
+    # --- Persist analysis/ artifacts -----------------------------------------
+    analysis_dir = case_dir / "analysis"
+    analysis_dir.mkdir(exist_ok=True)
+
+    findings_serializable = [_finding_to_dict(f) for f in all_findings]
+    (analysis_dir / "findings.json").write_text(
+        json.dumps(findings_serializable, indent=2), encoding="utf-8"
+    )
+
+    plugin_diag = {
+        "run_id": run_id,
+        "plugins_run": [{"name": p.name, "version": plugin_versions[p.name]} for p in plugins],
+        "plugin_errors": plugin_errors,
+        "overall_score": overall_score,
+        "engine_version": __version__,
+        "evidence_id": ev.evidence_id,
+        "parser_selected": parse_result.diagnostics.parser_selected,
+        "parser_confidence": parse_result.diagnostics.parser_confidence,
+    }
+    (analysis_dir / "plugin_diagnostics.json").write_text(
+        json.dumps(plugin_diag, indent=2), encoding="utf-8"
+    )
+
+    # --- Record analysis run in case -----------------------------------------
+    run = AnalysisRun(
+        run_id=run_id,
+        started_at=started_at,
+        completed_at=completed_at,
+        plugin_versions=plugin_versions,
+        ruleset_version=None,
+        findings_count=len([f for f in all_findings if f.severity != "pass"]),
+        status="completed",
+        engine_version=__version__,
+    )
+    case.analysis_runs.append(run)
+    svc.save_case(case)
+
+    # --- Audit: analysis completed -------------------------------------------
+    svc._append_audit(case_id, AuditEntry(
+        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+        timestamp=completed_at,
+        actor="api",
+        action=AuditAction.ANALYSIS_COMPLETED,
+        object_type="analysis",
+        object_id=run_id,
+        details={
+            "findings_count": run.findings_count,
+            "plugins_run": len(plugins),
             "overall_score": overall_score,
-            "narrative": narrative,
-            "narrative_human": narrative_human,
-            "timeseries": timeseries,
-            "metadata": {
-                "filename": ev.filename,
-                "autopilot": meta.autopilot,
-                "vehicle_type": meta.vehicle_type,
-                "firmware_version": meta.firmware_version,
-                "hardware": meta.hardware,
-                "duration_sec": round(duration_sec, 1),
-                "duration_str": duration_str,
-                "start_time_utc": start_time_str,
-                "log_format": meta.log_format,
-                "motor_count": meta.motor_count,
-                "primary_mode": flight.primary_mode,
-                "crashed": flight.crashed,
-            },
-            "summary": {
-                "total_findings": len(all_findings),
-                "by_severity": findings_by_severity,
-                "plugins_run": len(plugins),
-                "plugin_errors": plugin_errors,
-            },
-            "findings": [_finding_to_dict(f) for f in all_findings],
-        })
+        },
+    ))
 
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.exception("Analysis failed for case %s", case_id)
-        raise HTTPException(status_code=500, detail=f"Analysis error: {exc}") from exc
+    # --- Build response ------------------------------------------------------
+    meta = flight.metadata
+    duration_sec = meta.duration_sec
+    duration_str = _format_duration(duration_sec)
+    start_time_str = meta.start_time_utc.isoformat() if meta.start_time_utc else None
+
+    findings_by_severity: dict[str, int] = {"critical": 0, "warning": 0, "info": 0, "pass": 0}
+    for f in all_findings:
+        sev = f.severity if f.severity in findings_by_severity else "info"
+        findings_by_severity[sev] += 1
+
+    try:
+        timeseries = _extract_timeseries(flight)
+    except Exception as ts_exc:
+        logger.warning("Time-series extraction failed: %s", ts_exc)
+        timeseries = {}
+
+    try:
+        from goose.core.narrative import generate_human_narrative, generate_narrative
+        narr_meta = {
+            "duration_str": duration_str,
+            "vehicle_type": meta.vehicle_type,
+            "primary_mode": flight.primary_mode,
+            "firmware_version": meta.firmware_version,
+            "hardware": meta.hardware,
+            "crashed": flight.crashed,
+        }
+        narrative = generate_narrative(all_findings, metadata=narr_meta, overall_score=overall_score)
+        narrative_human = generate_human_narrative(all_findings, metadata=narr_meta, overall_score=overall_score)
+    except Exception:
+        narrative = narrative_human = None
+
+    return JSONResponse({
+        "ok": True,
+        "case_id": case_id,
+        "run_id": run.run_id,
+        "evidence_id": ev.evidence_id,
+        "overall_score": overall_score,
+        "narrative": narrative,
+        "narrative_human": narrative_human,
+        "timeseries": timeseries,
+        "metadata": {
+            "filename": ev.filename,
+            "autopilot": meta.autopilot,
+            "vehicle_type": meta.vehicle_type,
+            "firmware_version": meta.firmware_version,
+            "hardware": meta.hardware,
+            "duration_sec": round(duration_sec, 1),
+            "duration_str": duration_str,
+            "start_time_utc": start_time_str,
+            "log_format": meta.log_format,
+            "motor_count": meta.motor_count,
+            "primary_mode": flight.primary_mode,
+            "crashed": flight.crashed,
+        },
+        "parse_diagnostics": parse_result.diagnostics.to_dict(),
+        "summary": {
+            "total_findings": len(all_findings),
+            "by_severity": findings_by_severity,
+            "plugins_run": len(plugins),
+            "plugin_errors": plugin_errors,
+        },
+        "findings": findings_serializable,
+    })
 
 
 @router.get("/{case_id}/findings")
 async def get_findings(case_id: str) -> JSONResponse:
     """Return findings from the most recent analysis run."""
-    import json
-
     try:
         svc = get_service()
         svc.get_case(case_id)  # verify exists
@@ -412,6 +512,26 @@ async def get_findings(case_id: str) -> JSONResponse:
     try:
         findings = json.loads(findings_path.read_text(encoding="utf-8"))
         return JSONResponse({"ok": True, "findings": findings, "count": len(findings)})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/diagnostics")
+async def get_diagnostics(case_id: str) -> JSONResponse:
+    """Return parse diagnostics from the most recent analysis run."""
+    try:
+        svc = get_service()
+        svc.get_case(case_id)  # verify exists
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    diag_path = svc.case_dir(case_id) / "parsed" / "parse_diagnostics.json"
+    if not diag_path.exists():
+        return JSONResponse({"ok": True, "diagnostics": None, "message": "No analysis run yet."})
+
+    try:
+        diag_data = json.loads(diag_path.read_text(encoding="utf-8"))
+        return JSONResponse({"ok": True, "diagnostics": diag_data})
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

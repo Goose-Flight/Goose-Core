@@ -279,33 +279,18 @@ def create_app():
                 tmp.write(content)
 
             # ----------------------------------------------------------
-            # Parser selection — try ULog first, then auto-detect
+            # Parser selection via formal ParseResult contract
             # ----------------------------------------------------------
-            flight = None
-            parse_error: str | None = None
-
-            try:
-                from goose.parsers.ulog import ULogParser
-                ulog_parser = ULogParser()
-                if ulog_parser.can_parse(tmp_path):
-                    flight = ulog_parser.parse(tmp_path)
-            except Exception as exc:
-                parse_error = str(exc)
-                logger.warning("ULogParser failed: %s", exc)
-
-            # If ULog didn't handle it, try other parsers
-            if flight is None:
-                flight, parse_error = _try_all_parsers(tmp_path, parse_error)
-
-            if flight is None:
+            from goose.parsers.detect import parse_file as _parse_file
+            _parse_result = _parse_file(tmp_path)
+            if not _parse_result.success:
+                errors = "; ".join(_parse_result.diagnostics.errors)
                 detail = (
-                    f"Could not parse '{original_name.name}' "
-                    f"(extension: {suffix or 'none'}). "
-                    f"Supported formats: .ulg, .bin, .log, .tlog, .csv"
+                    f"Could not parse '{original_name.name}'. "
+                    f"Supported format: .ulg. Error: {errors}"
                 )
-                if parse_error:
-                    detail += f". Parser error: {parse_error}"
                 raise HTTPException(status_code=422, detail=detail)
+            flight = _parse_result.flight
 
             # ----------------------------------------------------------
             # Run plugins

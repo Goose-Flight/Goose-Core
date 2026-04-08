@@ -1,7 +1,11 @@
-"""PX4 ULog parser — converts .ulg files into the normalized Flight dataclass."""
+"""PX4 ULog parser — converts .ulg files into the normalized Flight dataclass.
+
+Sprint 3: parse() now returns ParseResult with full ParseDiagnostics and Provenance.
+"""
 
 from __future__ import annotations
 
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,13 +15,16 @@ import numpy as np
 import pandas as pd
 from pyulog import ULog
 
+from goose import __version__ as _engine_version
 from goose.core.flight import (
     Flight,
     FlightEvent,
     FlightMetadata,
     ModeChange,
 )
+from goose.forensics.models import Provenance
 from goose.parsers.base import BaseParser
+from goose.parsers.diagnostics import ParseDiagnostics, ParseResult, StreamCoverage
 
 # PX4 flight mode mapping (main_state values)
 PX4_MODES: dict[int, str] = {
@@ -83,37 +90,155 @@ class ULogParser(BaseParser):
     format_name = "ulog"
     file_extensions = [".ulg"]
 
-    def parse(self, filepath: str | Path) -> Flight:
-        """Parse a .ulg file and return a normalized Flight object."""
-        filepath = Path(filepath)
-        if not filepath.exists():
-            raise FileNotFoundError(f"ULog file not found: {filepath}")
+    def parse(self, filepath: str | Path) -> ParseResult:
+        """Parse a .ulg file and return a ParseResult with diagnostics and provenance.
 
-        ulog = ULog(str(filepath))
+        Never raises — all errors are captured in ParseResult.diagnostics.errors.
+        """
+        filepath = Path(filepath)
+        diag = ParseDiagnostics(
+            parser_selected="ULogParser",
+            parser_version=_engine_version,
+            detected_format="ulog",
+            format_confidence=1.0,
+            supported=True,
+            parse_started_at=datetime.now().replace(microsecond=0),
+        )
+        t0 = time.monotonic()
+
+        if not filepath.exists():
+            diag.errors.append(f"File not found: {filepath}")
+            diag.parser_confidence = 0.0
+            return ParseResult.failure(diag)
+
+        try:
+            ulog = ULog(str(filepath))
+        except Exception as exc:
+            diag.errors.append(f"ULog open failed: {exc}")
+            diag.parser_confidence = 0.0
+            diag.parse_completed_at = datetime.now().replace(microsecond=0)
+            diag.parse_duration_ms = round((time.monotonic() - t0) * 1000, 1)
+            return ParseResult.failure(diag)
+
         start_us = ulog.start_timestamp
 
-        metadata = self._extract_metadata(ulog, filepath)
-        position = self._extract_position(ulog, start_us)
-        position_setpoint = self._extract_position_setpoint(ulog, start_us)
-        velocity = self._extract_velocity(ulog, start_us)
-        velocity_setpoint = self._extract_velocity_setpoint(ulog, start_us)
-        attitude = self._extract_attitude(ulog, start_us)
-        attitude_setpoint = self._extract_attitude_setpoint(ulog, start_us)
-        attitude_rate = self._extract_attitude_rate(ulog, start_us)
-        attitude_rate_setpoint = self._extract_attitude_rate_setpoint(ulog, start_us)
-        battery = self._extract_battery(ulog, start_us)
-        gps = self._extract_gps(ulog, start_us)
-        motors = self._extract_motors(ulog, start_us, metadata.motor_count)
-        vibration = self._extract_vibration(ulog, start_us)
-        rc_input = self._extract_rc_input(ulog, start_us)
-        ekf = self._extract_ekf(ulog, start_us)
-        cpu = self._extract_cpu(ulog, start_us)
-        mode_changes = self._extract_mode_changes(ulog, start_us)
-        events = self._extract_events(ulog, start_us)
-        parameters = self._extract_parameters(ulog)
-        primary_mode = self._compute_primary_mode(mode_changes, metadata.duration_sec)
+        # --- Stream coverage audit -----------------------------------------
+        present_topics = {ds.name for ds in ulog.data_list}
+        diag.parse_artifacts = {"topics_present": sorted(present_topics)}
 
-        return Flight(
+        STREAM_MAP = {
+            "vehicle_local_position": "position",
+            "vehicle_local_position_setpoint": "position_setpoint",
+            "vehicle_global_position": "global_position",
+            "vehicle_velocity_setpoint": "velocity_setpoint",
+            "vehicle_attitude": "attitude",
+            "vehicle_attitude_setpoint": "attitude_setpoint",
+            "vehicle_rates_setpoint": "attitude_rate_setpoint",
+            "vehicle_angular_velocity": "attitude_rate",
+            "battery_status": "battery",
+            "vehicle_gps_position": "gps",
+            "sensor_gps": "gps (alt)",
+            "actuator_outputs": "motors",
+            "actuator_motors": "motors (alt)",
+            "sensor_combined": "vibration",
+            "sensor_accel": "vibration (alt)",
+            "input_rc": "rc_input",
+            "estimator_status": "ekf",
+            "estimator_sensor_bias": "ekf (alt)",
+            "vehicle_status": "mode_changes",
+            "cpuload": "cpu",
+        }
+        coverage: list[StreamCoverage] = []
+        missing: list[str] = []
+        for topic, label in STREAM_MAP.items():
+            df = _topic_to_df(ulog, topic)
+            if df is not None:
+                coverage.append(StreamCoverage(
+                    stream_name=label,
+                    present=True,
+                    row_count=len(df),
+                ))
+            else:
+                coverage.append(StreamCoverage(stream_name=label, present=False))
+                missing.append(label)
+
+        diag.stream_coverage = coverage
+        diag.missing_streams = missing
+
+        # Warn for important missing streams
+        if "battery" in missing:
+            diag.warnings.append("Battery stream missing — battery analysis will be skipped.")
+        if "gps" in missing and "gps (alt)" in missing:
+            diag.warnings.append("GPS stream missing — position analysis will be incomplete.")
+        if "mode_changes" in missing:
+            diag.warnings.append("vehicle_status missing — mode change extraction unavailable.")
+        if "ekf" in missing and "ekf (alt)" in missing:
+            diag.warnings.append("EKF stream missing — estimator analysis unavailable.")
+
+        # --- Timebase check ------------------------------------------------
+        duration_us = ulog.last_timestamp - ulog.start_timestamp
+        duration_sec = duration_us / 1e6
+        if duration_sec < 1.0:
+            diag.timebase_anomalies.append(
+                f"Log duration is very short ({duration_sec:.2f}s). "
+                "Timestamps may be unreliable."
+            )
+        if ulog.start_timestamp == 0:
+            diag.timebase_anomalies.append(
+                "Log start timestamp is 0 — absolute time reference unavailable."
+            )
+
+        # --- Corruption / logged errors ------------------------------------
+        for msg in ulog.logged_messages:
+            log_level = msg.log_level if hasattr(msg, "log_level") else 6
+            if isinstance(log_level, int) and log_level <= 3:
+                diag.corruption_indicators.append(
+                    f"Critical log message at {(msg.timestamp - start_us)/1e6:.1f}s: {msg.message}"
+                )
+            elif isinstance(log_level, str) and log_level.lower() in ("emergency", "alert", "critical"):
+                diag.corruption_indicators.append(
+                    f"Critical log message: {msg.message}"
+                )
+
+        # --- Assumptions ---------------------------------------------------
+        diag.assumptions.append(
+            "Timestamps are assumed monotonically increasing from log start."
+        )
+        if "gps" in missing and "gps (alt)" not in missing:
+            diag.assumptions.append(
+                "Using sensor_gps as GPS source (vehicle_gps_position not present)."
+            )
+
+        # --- Extract all streams -------------------------------------------
+        try:
+            metadata = self._extract_metadata(ulog, filepath)
+            position = self._extract_position(ulog, start_us)
+            position_setpoint = self._extract_position_setpoint(ulog, start_us)
+            velocity = self._extract_velocity(ulog, start_us)
+            velocity_setpoint = self._extract_velocity_setpoint(ulog, start_us)
+            attitude = self._extract_attitude(ulog, start_us)
+            attitude_setpoint = self._extract_attitude_setpoint(ulog, start_us)
+            attitude_rate = self._extract_attitude_rate(ulog, start_us)
+            attitude_rate_setpoint = self._extract_attitude_rate_setpoint(ulog, start_us)
+            battery = self._extract_battery(ulog, start_us)
+            gps = self._extract_gps(ulog, start_us)
+            motors = self._extract_motors(ulog, start_us, metadata.motor_count)
+            vibration = self._extract_vibration(ulog, start_us)
+            rc_input = self._extract_rc_input(ulog, start_us)
+            ekf = self._extract_ekf(ulog, start_us)
+            cpu = self._extract_cpu(ulog, start_us)
+            mode_changes = self._extract_mode_changes(ulog, start_us)
+            events = self._extract_events(ulog, start_us)
+            parameters = self._extract_parameters(ulog)
+            primary_mode = self._compute_primary_mode(mode_changes, metadata.duration_sec)
+        except Exception as exc:
+            diag.errors.append(f"Extraction failed mid-parse: {exc}")
+            diag.parser_confidence = 0.0
+            diag.parse_completed_at = datetime.now().replace(microsecond=0)
+            diag.parse_duration_ms = round((time.monotonic() - t0) * 1000, 1)
+            return ParseResult.failure(diag)
+
+        flight = Flight(
             metadata=metadata,
             position=position,
             position_setpoint=position_setpoint,
@@ -134,6 +259,40 @@ class ULogParser(BaseParser):
             events=events,
             parameters=parameters,
             primary_mode=primary_mode,
+        )
+
+        # --- Finalize diagnostics ------------------------------------------
+        # Parser confidence: starts at 1.0, penalised for missing critical streams
+        confidence = 1.0
+        critical_missing = {"position", "attitude", "battery", "gps"}
+        for stream in missing:
+            if stream in critical_missing:
+                confidence -= 0.15
+        if diag.corruption_indicators:
+            confidence -= 0.10 * min(len(diag.corruption_indicators), 3)
+        if diag.timebase_anomalies:
+            confidence -= 0.05
+        diag.parser_confidence = max(0.0, round(confidence, 2))
+        diag.parse_completed_at = datetime.now().replace(microsecond=0)
+        diag.parse_duration_ms = round((time.monotonic() - t0) * 1000, 1)
+
+        # --- Provenance ---------------------------------------------------
+        provenance = Provenance(
+            source_evidence_id="",  # caller fills this in when evidence_id is known
+            parser_name="ULogParser",
+            parser_version=_engine_version,
+            detected_format="ulog",
+            parsed_at=diag.parse_started_at,
+            transformation_chain=["raw_ulg -> canonical_flight"],
+            engine_version=_engine_version,
+            assumptions=list(diag.assumptions),
+        )
+
+        return ParseResult(
+            flight=flight,
+            diagnostics=diag,
+            provenance=provenance,
+            parse_artifacts={"topics_present": sorted(present_topics)},
         )
 
     def _extract_metadata(self, ulog: ULog, filepath: Path) -> FlightMetadata:

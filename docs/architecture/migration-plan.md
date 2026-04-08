@@ -1,6 +1,6 @@
 ---
 title: Goose-Core Migration Plan
-version: Sprint 0
+version: Sprint 3 (updated)
 status: active
 ---
 
@@ -21,89 +21,84 @@ target forensic architecture without breaking the working product.
 
 ---
 
-## Sprint 0 — Current Sprint (Governance)
-
-Work done in Sprint 0 does NOT touch analysis code. It covers:
+## Sprint 0 — COMPLETE (Governance)
 
 - [x] Phase 0 architecture audit (`docs/architecture/audit.md`)
 - [x] Target architecture doc (`docs/architecture/target-architecture.md`)
 - [x] This migration plan
-- [ ] CI/CD pipelines (`.github/workflows/ci.yml`)
+- [x] CI/CD pipelines (`.github/workflows/ci.yml`) -- ruff, mypy, pytest, bandit, pip-audit
 - [ ] GitHub labels, milestones, and issues
 - [ ] Updated PR and issue templates
 - [ ] CODEOWNERS and contributing guide
 
-**Output:** Clean governance foundation. No code changes to analysis engine.
+**Output:** CI/CD pipeline and governance foundation shipped.
 
 ---
 
-## Sprint 1 — Case and Evidence Foundation
+## Sprint 1 — COMPLETE (Case and Evidence Foundation)
 
 **New module:** `src/goose/forensics/`
 
-What gets added:
-- `Case`, `EvidenceItem`, `EvidenceManifest`, `Provenance`, `AuditEntry` models
-- `CaseService` — case directory management, evidence ingest, hashing
-- Tests for all of the above
+What was built:
+- [x] `Case`, `EvidenceItem`, `EvidenceManifest`, `Provenance`, `AuditEntry` models
+- [x] `CaseService` -- case directory management, evidence ingest, SHA-256/SHA-512 hashing
+- [x] Immutable evidence storage (read-only after ingest)
+- [x] Evidence manifest (JSON) per case
+- [x] Append-only audit log (JSONL) per case
+- [x] Case directory structure: `cases/CASE-YYYY-NNNNNN/{evidence/, manifests/, parsed/, analysis/, audit/, exports/}`
+- [x] Tests for all of the above
 
-What does NOT change:
-- `core/flight.py`, `core/finding.py`, `plugins/`, `parsers/`, `web/` — untouched
-
-**Risk:** LOW — purely additive. Existing tests unaffected.
+**Output:** Forensic case foundation shipped.
 
 ---
 
-## Sprint 2 — Case-Oriented GUI and API
+## Sprint 2 — COMPLETE (Case-Oriented GUI and API)
 
 **Refactored:** `src/goose/web/`
 
-What changes:
-- New case-oriented API routes: `POST /api/cases`, `POST /api/cases/{id}/evidence`,
-  `POST /api/cases/{id}/analyze`
-- GUI gains: case create screen, case list, evidence view
-- `/api/analyze` becomes a **compatibility shim** that creates a case internally
-  and returns the same response shape as today
+What was built:
+- [x] Case-oriented API routes: `/api/cases` family
+- [x] GUI: case list, case creation, evidence upload, findings view, audit trail view
+- [x] Backward-compatible `/api/analyze` shim preserved
+- [x] All chart code (`cockpit.js`) preserved
 
-What is preserved:
-- Existing `/api/analyze` response shape (so frontend still works during transition)
-- All chart code (`cockpit.js`) — unchanged
-
-**Risk:** MEDIUM — API refactor. Shim must be solid.
+**Output:** Web GUI is now the primary product surface with case-oriented workflow.
 
 ---
 
-## Sprint 3 — Parser Contract Refactor
+## Sprint 3 — COMPLETE (Parser Contract Refactor)
 
 **Refactored:** `src/goose/parsers/`
 
-What changes:
-- `BaseParser.parse()` returns `ParseResult` (Flight + ParseDiagnostics + Provenance)
-- ULog parser wrapped to return `ParseResult`
-- `ParseDiagnostics` model added
-- DataFlash/TLog/CSV stubs get `DISABLED` flag — `can_parse()` returns False
-  (or they are removed from entry-point registration)
+What was built:
+- [x] `ParseResult` contract: `(Flight | None, ParseDiagnostics, Provenance)`
+- [x] `ParseDiagnostics`: parser identity, format/parse confidence, stream coverage
+  (20 streams), warnings, errors, corruption indicators, timebase anomalies,
+  assumptions, parse timing
+- [x] `diagnostics_version: "1.0"`, `confidence_scope: "parser_parse_quality"`
+- [x] `Provenance`: full lineage record with `contract_version: "1.0"`
+- [x] ULogParser adapted to return ParseResult with real diagnostics
+- [x] Stub parsers: `implemented=False`, honest unsupported-format errors
+- [x] Detection module: `parse_file()`, `detect_parser()`, `supported_formats()`
+- [x] Parse diagnostics tab in GUI case workspace
 
-What is preserved:
-- `Flight` model unchanged (same data, just now embedded in `ParseResult`)
-- All plugins — they still receive `Flight`, not `ParseResult`
-
-**Risk:** HIGH — parser contract change cascades to web API and CLI.
-  Mitigation: update `_try_all_parsers()` in `web/app.py` to unwrap `ParseResult`.
+**Output:** Parser framework with full diagnostic output shipped.
 
 ---
 
-## Sprint 4 — Extended Finding and Canonical Model
+## Sprint 4 — IN PROGRESS (Extended Finding and Canonical Model)
 
 **Extended:** `src/goose/core/finding.py` and new models
 
-What changes:
-- `Finding` gets new optional fields: `finding_id`, `plugin_version`, `confidence`,
+What is being built:
+- `Finding` gains new optional fields: `finding_id`, `plugin_version`, `confidence`,
   `evidence_references`, `contradicting_metrics`, `assumptions`
-- New models: `EvidenceReference`, `Hypothesis`, `SignalQuality`
-- All new fields are **optional with defaults** — existing plugins emit valid
+- New models: `ForensicFinding`, `EvidenceReference`, `Hypothesis`, `SignalQuality`
+- Evidence-linked findings and hypothesis generation
+- All new fields are **optional with defaults** -- existing plugins emit valid
   Findings without changes
 
-**Risk:** LOW — additive only. Existing plugins continue to work.
+**Risk:** LOW -- additive only. Existing plugins continue to work.
 
 ---
 
@@ -158,13 +153,13 @@ Each sprint leaves the system deployable.
 
 ## Compatibility Shim Lifecycle
 
-| Route | Sprint 0-1 | Sprint 2 | Sprint 6+ |
+| Route | Sprint 0-1 | Sprint 2-3 (current) | Sprint 6+ |
 |-------|-----------|---------|-----------|
-| `POST /api/analyze` | Active (current) | Shim (creates case internally) | Deprecated |
-| `POST /api/cases` | Missing | Active | Active |
-| `GET /api/cases` | Missing | Active | Active |
-| `POST /api/cases/{id}/evidence` | Missing | Active | Active |
-| `POST /api/cases/{id}/analyze` | Missing | Active | Active |
+| `POST /api/analyze` | Active | Shim (preserved for backward compat) | Deprecated |
+| `POST /api/cases` | Missing | **Active** | Active |
+| `GET /api/cases` | Missing | **Active** | Active |
+| `POST /api/cases/{id}/evidence` | Missing | **Active** | Active |
+| `POST /api/cases/{id}/analyze` | Missing | **Active** | Active |
 
-The shim in Sprint 2 ensures the existing single-page GUI continues to work
-while the new case-oriented GUI is built in Sprint 6.
+The case-oriented API routes are the primary interface as of Sprint 2. The
+`/api/analyze` shim is preserved for backward compatibility.

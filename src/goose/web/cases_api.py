@@ -378,13 +378,54 @@ async def analyze_case(case_id: str) -> JSONResponse:
     overall_score = _compute_overall_score(all_findings)
     completed_at = datetime.now()
 
+    # --- Lift thin findings to forensic-grade ForensicFinding objects ---------
+    from goose.forensics.lifting import lift_findings, generate_hypotheses, build_signal_quality
+    forensic_findings = lift_findings(
+        thin_findings=all_findings,
+        run_id=run_id,
+        evidence_item=ev,
+        plugin_versions=plugin_versions,
+        parse_diag=parse_result.diagnostics,
+    )
+    hypotheses = generate_hypotheses(forensic_findings, run_id=run_id)
+    signal_quality = build_signal_quality(parse_result.diagnostics)
+
     # --- Persist analysis/ artifacts -----------------------------------------
     analysis_dir = case_dir / "analysis"
     analysis_dir.mkdir(exist_ok=True)
 
-    findings_serializable = [_finding_to_dict(f) for f in all_findings]
+    # findings.json — forensic-grade (ForensicFinding), versioned
+    findings_bundle = {
+        "findings_version": "2.0",  # v1 was thin findings; v2 is ForensicFinding
+        "run_id": run_id,
+        "evidence_id": ev.evidence_id,
+        "generated_at": completed_at.isoformat(),
+        "findings": [f.to_dict() for f in forensic_findings],
+    }
     (analysis_dir / "findings.json").write_text(
-        json.dumps(findings_serializable, indent=2), encoding="utf-8"
+        json.dumps(findings_bundle, indent=2), encoding="utf-8"
+    )
+
+    # hypotheses.json — first-class case artifact
+    hypotheses_bundle = {
+        "hypotheses_version": "1.0",
+        "run_id": run_id,
+        "generated_at": completed_at.isoformat(),
+        "hypotheses": [h.to_dict() for h in hypotheses],
+    }
+    (analysis_dir / "hypotheses.json").write_text(
+        json.dumps(hypotheses_bundle, indent=2), encoding="utf-8"
+    )
+
+    # signal_quality.json — stream reliability from parse diagnostics
+    sq_bundle = {
+        "signal_quality_version": "1.0",
+        "run_id": run_id,
+        "generated_at": completed_at.isoformat(),
+        "streams": [sq.to_dict() for sq in signal_quality],
+    }
+    (analysis_dir / "signal_quality.json").write_text(
+        json.dumps(sq_bundle, indent=2), encoding="utf-8"
     )
 
     plugin_diag = {
@@ -396,6 +437,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
         "evidence_id": ev.evidence_id,
         "parser_selected": parse_result.diagnostics.parser_selected,
         "parser_confidence": parse_result.diagnostics.parser_confidence,
+        "parser_confidence_scope": parse_result.diagnostics.confidence_scope,
     }
     (analysis_dir / "plugin_diagnostics.json").write_text(
         json.dumps(plugin_diag, indent=2), encoding="utf-8"
@@ -408,7 +450,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
         completed_at=completed_at,
         plugin_versions=plugin_versions,
         ruleset_version=None,
-        findings_count=len([f for f in all_findings if f.severity != "pass"]),
+        findings_count=len([f for f in forensic_findings if f.severity != "pass"]),
         status="completed",
         engine_version=__version__,
     )
@@ -491,14 +533,23 @@ async def analyze_case(case_id: str) -> JSONResponse:
             "by_severity": findings_by_severity,
             "plugins_run": len(plugins),
             "plugin_errors": plugin_errors,
+            "hypotheses_count": len(hypotheses),
         },
-        "findings": findings_serializable,
+        # Forensic-grade findings (ForensicFinding with evidence references)
+        "findings": [f.to_dict() for f in forensic_findings],
+        # Hypothesis candidates
+        "hypotheses": [h.to_dict() for h in hypotheses],
     })
 
 
 @router.get("/{case_id}/findings")
 async def get_findings(case_id: str) -> JSONResponse:
-    """Return findings from the most recent analysis run."""
+    """Return forensic findings from the most recent analysis run.
+
+    Returns the versioned findings bundle (findings_version field).
+    v2.0+ bundles contain ForensicFinding objects with evidence references.
+    v1.0 bundles (thin findings from Sprint 2/3) are returned as-is for compat.
+    """
     try:
         svc = get_service()
         svc.get_case(case_id)  # verify exists
@@ -507,11 +558,52 @@ async def get_findings(case_id: str) -> JSONResponse:
 
     findings_path = svc.case_dir(case_id) / "analysis" / "findings.json"
     if not findings_path.exists():
-        return JSONResponse({"ok": True, "findings": [], "count": 0})
+        return JSONResponse({"ok": True, "findings": [], "count": 0, "findings_version": None})
 
     try:
-        findings = json.loads(findings_path.read_text(encoding="utf-8"))
-        return JSONResponse({"ok": True, "findings": findings, "count": len(findings)})
+        bundle = json.loads(findings_path.read_text(encoding="utf-8"))
+        # v2+ bundle: has findings_version + findings array
+        if isinstance(bundle, dict) and "findings" in bundle:
+            findings = bundle["findings"]
+            return JSONResponse({
+                "ok": True,
+                "findings_version": bundle.get("findings_version"),
+                "run_id": bundle.get("run_id"),
+                "evidence_id": bundle.get("evidence_id"),
+                "findings": findings,
+                "count": len(findings),
+            })
+        # v1 compat: was a plain list
+        if isinstance(bundle, list):
+            return JSONResponse({"ok": True, "findings": bundle, "count": len(bundle), "findings_version": "1.0"})
+        return JSONResponse({"ok": True, "findings": [], "count": 0, "findings_version": None})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/hypotheses")
+async def get_hypotheses(case_id: str) -> JSONResponse:
+    """Return hypothesis candidates from the most recent analysis run."""
+    try:
+        svc = get_service()
+        svc.get_case(case_id)  # verify exists
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    hyp_path = svc.case_dir(case_id) / "analysis" / "hypotheses.json"
+    if not hyp_path.exists():
+        return JSONResponse({"ok": True, "hypotheses": [], "count": 0})
+
+    try:
+        bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
+        hyps = bundle.get("hypotheses", []) if isinstance(bundle, dict) else []
+        return JSONResponse({
+            "ok": True,
+            "hypotheses_version": bundle.get("hypotheses_version") if isinstance(bundle, dict) else None,
+            "run_id": bundle.get("run_id") if isinstance(bundle, dict) else None,
+            "hypotheses": hyps,
+            "count": len(hyps),
+        })
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

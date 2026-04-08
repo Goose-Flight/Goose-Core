@@ -2084,6 +2084,7 @@
         <button class="ws-tab active" id="ws-tab-evidence" onclick="switchWsTab('evidence')">Evidence</button>
         <button class="ws-tab" id="ws-tab-diagnostics" onclick="switchWsTab('diagnostics')">Parse Diagnostics</button>
         <button class="ws-tab" id="ws-tab-findings" onclick="switchWsTab('findings')">Findings</button>
+        <button class="ws-tab" id="ws-tab-hypotheses" onclick="switchWsTab('hypotheses')">Hypotheses</button>
         <button class="ws-tab" id="ws-tab-audit" onclick="switchWsTab('audit')">Audit Trail</button>
       </div>
 
@@ -2116,6 +2117,13 @@
       <div id="ws-findings-panel" style="display:none;">
         <div id="ws-findings-content">
           <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Run analysis to see findings.</div>
+        </div>
+      </div>
+
+      <!-- Hypotheses tab -->
+      <div id="ws-hypotheses-panel" style="display:none;">
+        <div id="ws-hypotheses-content">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Run analysis to see hypotheses.</div>
         </div>
       </div>
 
@@ -3822,13 +3830,69 @@
   }
 
   function switchWsTab(tab) {
-    ['evidence','diagnostics','findings','audit'].forEach(t => {
+    ['evidence','diagnostics','findings','hypotheses','audit'].forEach(t => {
       document.getElementById(`ws-tab-${t}`).classList.toggle('active', t === tab);
       document.getElementById(`ws-${t}-panel`).style.display = t === tab ? '' : 'none';
     });
     if (tab === 'audit' && activeCaseId) loadAuditLog(activeCaseId);
     if (tab === 'findings' && activeCaseId) loadFindings(activeCaseId);
     if (tab === 'diagnostics' && activeCaseId) loadParseDiagnostics(activeCaseId);
+    if (tab === 'hypotheses' && activeCaseId) loadHypotheses(activeCaseId);
+  }
+
+  async function loadHypotheses(caseId) {
+    const el = document.getElementById('ws-hypotheses-content');
+    el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;">Loading…</div>';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/hypotheses`);
+      const data = await r.json();
+      if (!data.ok || !data.hypotheses || data.hypotheses.length === 0) {
+        el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">No hypotheses yet — run analysis first.</div>';
+        return;
+      }
+      el.innerHTML = renderHypothesesPanel(data.hypotheses);
+    } catch(e) {
+      el.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load hypotheses: ${e.message}</div>`;
+    }
+  }
+
+  function renderHypothesesPanel(hypotheses) {
+    const statusColor = s => ({
+      candidate: 'var(--text-sec)',
+      supported: 'var(--green)',
+      refuted: 'var(--red)',
+      inconclusive: 'var(--yellow,#f59e0b)',
+    }[s] || 'var(--text-sec)');
+
+    const bandColor = b => ({high:'var(--green)',medium:'var(--yellow,#f59e0b)',low:'var(--red)',unknown:'var(--text-sec)'}[b]||'var(--text-sec)');
+
+    return `
+      <div style="margin-bottom:8px;font-size:12px;color:var(--text-sec);">
+        <strong>Hypotheses are auto-generated root-cause candidates.</strong>
+        They are distinct from findings and must be reviewed by an analyst.
+        Confidence here is investigative confidence — not parser or finding confidence.
+      </div>
+      ${hypotheses.map(h => `
+        <div class="card" style="margin-bottom:12px;padding:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+            <div>
+              <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:${statusColor(h.status)};">${h.status}</span>
+              <span style="font-size:11px;color:var(--text-sec);margin-left:8px;">${h.theme || ''}</span>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:${bandColor(h.confidence_band)};">${Math.round((h.confidence||0)*100)}% confidence</span>
+          </div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px;">${h.statement}</div>
+          <div style="display:flex;gap:16px;font-size:12px;margin-bottom:8px;">
+            <span style="color:var(--green);">▲ ${h.supporting_finding_ids.length} supporting</span>
+            <span style="color:var(--red);">▼ ${h.contradicting_finding_ids.length} contradicting</span>
+          </div>
+          ${h.unresolved_questions && h.unresolved_questions.length > 0 ? `
+            <div style="margin-top:8px;">
+              <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:4px;">UNRESOLVED QUESTIONS</div>
+              ${h.unresolved_questions.map(q => `<div style="font-size:12px;color:var(--text-sec);padding:4px 0;border-left:2px solid var(--card-border);padding-left:8px;margin-bottom:4px;">${q}</div>`).join('')}
+            </div>` : ''}
+          <div style="font-size:10px;color:var(--text-dim,#555);margin-top:8px;">${h.hypothesis_id} · scope: ${h.confidence_scope}</div>
+        </div>`).join('')}`;
   }
 
   async function loadParseDiagnostics(caseId) {
@@ -4046,27 +4110,49 @@
       ${criticals.length > 0 ? `
         <div style="margin-bottom:16px;">
           <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;">Critical (${criticals.length})</div>
-          ${criticals.map(f => `
-            <div style="background:var(--red-glow);border:1px solid rgba(226,75,74,0.2);border-radius:8px;padding:12px;margin-bottom:6px;">
-              <div style="font-size:13px;font-weight:600;color:var(--red);">${f.title}</div>
-              <div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${f.description}</div>
-            </div>`).join('')}
+          ${criticals.map(f => renderForensicFindingCard(f, 'var(--red)', 'var(--red-glow)', 'rgba(226,75,74,0.2)')).join('')}
         </div>` : ''}
       ${warnings.length > 0 ? `
         <div style="margin-bottom:16px;">
           <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;">Warnings (${warnings.length})</div>
-          ${warnings.map(f => `
-            <div style="background:var(--amber-glow);border:1px solid rgba(239,159,39,0.2);border-radius:8px;padding:12px;margin-bottom:6px;">
-              <div style="font-size:13px;font-weight:600;color:var(--amber);">${f.title}</div>
-              <div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${f.description}</div>
-            </div>`).join('')}
+          ${warnings.map(f => renderForensicFindingCard(f, 'var(--amber)', 'var(--amber-glow)', 'rgba(239,159,39,0.2)')).join('')}
         </div>` : ''}
       <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
-        ${passes.length} checks passed · ${summary.plugins_run || 0} plugins · Run ID: ${data.run_id || 'unknown'}
-        ${data.evidence_id ? ` · Evidence: ${data.evidence_id}` : ''}
+        ${passes.length} checks passed · ${summary.plugins_run || 0} plugins · ${summary.hypotheses_count || 0} hypotheses
+        · Run ID: ${data.run_id || 'unknown'}${data.evidence_id ? ` · Evidence: ${data.evidence_id}` : ''}
       </div>
       <div style="margin-top:16px;">
         <button class="ghost-btn" onclick="viewFullAnalysis(${JSON.stringify(data).replace(/"/g, '&quot;')})">View Full Analysis →</button>
+      </div>`;
+  }
+
+  function renderForensicFindingCard(f, colorVar, bgVar, borderVar) {
+    const refs = (f.evidence_references || []);
+    const refHtml = refs.length > 0 ? `
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid ${borderVar};">
+        <div style="font-size:10px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Evidence References</div>
+        ${refs.map(r => `
+          <div style="font-size:11px;color:var(--text-sec);display:flex;gap:8px;align-items:baseline;margin-bottom:2px;">
+            <span style="font-weight:600;">${r.evidence_id}</span>
+            ${r.stream_name ? `<span>· ${r.stream_name}</span>` : ''}
+            ${r.time_range_start != null ? `<span>· ${r.time_range_start.toFixed(1)}s–${(r.time_range_end||r.time_range_start).toFixed(1)}s</span>` : ''}
+          </div>
+          ${r.support_summary ? `<div style="font-size:11px;color:var(--text-sec);margin-bottom:4px;font-style:italic;">"${r.support_summary.slice(0,120)}${r.support_summary.length>120?'…':''}"</div>` : ''}`).join('')}
+      </div>` : `<div style="margin-top:6px;font-size:10px;color:var(--text-dim,#666);">No evidence reference attached.</div>`;
+
+    const confBand = f.confidence_band || '';
+    const confPct = f.confidence != null ? Math.round(f.confidence * 100) : null;
+    const confStr = confPct != null ? ` · ${confPct}% confidence (${confBand})` : '';
+
+    return `
+      <div style="background:${bgVar};border:1px solid ${borderVar};border-radius:8px;padding:12px;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="font-size:13px;font-weight:600;color:${colorVar};">${f.title}</div>
+          <div style="font-size:10px;color:var(--text-sec);">score: ${f.score}</div>
+        </div>
+        <div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${f.description}</div>
+        <div style="font-size:10px;color:var(--text-dim,#666);margin-top:4px;">${f.plugin_id}${confStr}${f.phase ? ` · phase: ${f.phase}` : ''}</div>
+        ${refHtml}
       </div>`;
   }
 
@@ -4082,8 +4168,18 @@
     try {
       const res = await fetch(`/api/cases/${caseId}/findings`);
       const data = await res.json();
-      if (data.findings && data.findings.length > 0) {
-        // findings already rendered from analyze response — skip if already shown
+      if (!data.ok || !data.findings || data.findings.length === 0) return;
+      // Re-render findings tab with forensic cards (in case tab opened without running analyze first)
+      const el = document.getElementById('ws-findings-content');
+      const criticals = data.findings.filter(f => f.severity === 'critical');
+      const warnings  = data.findings.filter(f => f.severity === 'warning');
+      const passes    = data.findings.filter(f => f.severity === 'pass').length;
+      let html = '';
+      if (criticals.length) html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;">Critical (${criticals.length})</div>${criticals.map(f=>renderForensicFindingCard(f,'var(--red)','var(--red-glow)','rgba(226,75,74,0.2)')).join('')}</div>`;
+      if (warnings.length) html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;text-transform:uppercase;">Warnings (${warnings.length})</div>${warnings.map(f=>renderForensicFindingCard(f,'var(--amber)','var(--amber-glow)','rgba(239,159,39,0.2)')).join('')}</div>`;
+      if (html) {
+        html += `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">${passes} checks passed · Evidence: ${data.evidence_id||'—'}</div>`;
+        el.innerHTML = html;
       }
     } catch(_) {}
   }

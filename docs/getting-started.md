@@ -1,7 +1,8 @@
 # Getting Started
 
-Get up and running with Goose in under five minutes.
-Goose reads your drone flight log and tells you what went wrong.
+Get up and running with Goose in under five minutes. Goose is a flight forensic
+platform for UAV/drone investigation -- it parses flight logs, runs diagnostic
+plugins, and organizes results in auditable forensic cases.
 
 ## Requirements
 
@@ -22,9 +23,20 @@ goose doctor
 This checks that all dependencies are importable and plugins are discovered.
 If anything is missing, run `goose doctor --fix` to attempt automatic repair.
 
-## Your first crash analysis
+## Launch the Web GUI (recommended)
 
-Point Goose at a PX4 ULog file:
+The web GUI is the primary product surface. Launch it with:
+
+```bash
+goose serve
+```
+
+Open `http://localhost:8000` in your browser. From the GUI you can create cases,
+upload evidence files, run analysis, view findings, and inspect the audit trail.
+
+## CLI crash analysis
+
+You can also point Goose at a PX4 ULog file directly from the command line:
 
 ```bash
 goose crash flight.ulg

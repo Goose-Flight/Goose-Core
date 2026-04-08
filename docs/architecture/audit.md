@@ -1,14 +1,15 @@
 ---
 title: Goose-Core Architecture Audit
-version: Sprint 0
-date: 2026-04-07
-status: baseline
+version: Sprint 3 (updated)
+date: 2026-04-08
+status: current
 ---
 
-# Goose-Core Architecture Audit — Sprint 0 Baseline
+# Goose-Core Architecture Audit
 
-This document captures the current state of Goose-Core as of v1.3.4 against
-the NEW MISSION spec pack. It is the authoritative Sprint 0 deliverable.
+This document captures the current state of Goose-Core against the NEW MISSION
+spec pack. Originally written as the Sprint 0 baseline, updated after Sprint 3
+completion to reflect current state.
 
 ---
 
@@ -75,46 +76,52 @@ src/goose/
 
 ## 2. Gap Analysis Against Spec Pack
 
-### 2.1 Case Subsystem — MISSING
+### 2.1 Case Subsystem — COMPLETE (Sprint 1)
 
 **Required:** Case model, EvidenceItem, EvidenceManifest, case directory service,
 case status, analysis run history, export history.
 
-**Current:** No case concept exists. All analysis is stateless and ephemeral.
-Each API call creates a temp file, analyzes it, and discards it.
+**Current:** Implemented in `src/goose/forensics/`. Case model with evidence
+inventory, analysis runs, exports, and audit trail. Case directory structure:
+`cases/CASE-YYYY-NNNNNN/{evidence/, manifests/, parsed/, analysis/, audit/, exports/}`.
 
-**Impact:** HIGH — foundational. All other forensic subsystems depend on this.
+**Status:** Shipped in Sprint 1.
 
 ---
 
-### 2.2 Evidence Subsystem — MISSING
+### 2.2 Evidence Subsystem — COMPLETE (Sprint 1)
 
 **Required:** Immutable ingest, SHA-256/SHA-512 hashing, evidence manifest,
 provenance tracking, immutable original storage.
 
-**Current:** `tempfile.NamedTemporaryFile(delete=False)` is the ingest path.
-Files are deleted after analysis. No hashing. No manifest. No provenance.
+**Current:** Immutable evidence ingest with SHA-256 + SHA-512 hashing. Evidence
+files set read-only after copy. Evidence manifest (JSON) written per case.
+Provenance model tracks full lineage with `contract_version: "1.0"`.
 
-**Impact:** CRITICAL. Violates the #1 non-negotiable from the Master Brief.
+**Status:** Shipped in Sprint 1.
 
 ---
 
-### 2.3 Parser Subsystem — PARTIAL
+### 2.3 Parser Subsystem — COMPLETE (Sprint 3)
 
 **Required:** Parser ID, parser version, ParseDiagnostics, Provenance output,
 format confidence, corruption surfacing, missing-stream reporting.
 
 **Current:**
-- `BaseParser.parse()` returns only `Flight` (no diagnostics, no provenance)
-- `can_parse()` is extension-only (no magic-byte detection)
-- No `ParseDiagnostics` model exists
-- No `Provenance` model exists
-- DataFlash/TLog/CSV stubs exist and `can_parse()` returns True for matching
-  extensions — this is a truthfulness violation per spec Section 6
+- `ParseResult` contract: `(Flight | None, ParseDiagnostics, Provenance)` --
+  `parse()` never raises
+- `ParseDiagnostics`: parser identity, format confidence, parse confidence,
+  stream coverage (20 streams), warnings, errors, corruption indicators,
+  timebase anomalies, assumptions, parse timing
+- `diagnostics_version: "1.0"`, `confidence_scope: "parser_parse_quality"`
+- `Provenance`: full lineage record with `contract_version: "1.0"`
+- ULogParser adapted to return ParseResult with real diagnostics
+- Stub parsers (DataFlash, TLog, CSV): `implemented=False`, return honest
+  unsupported-format errors
+- Detection module: `parse_file()`, `detect_parser()`, `supported_formats()`
+- Parse diagnostics tab in GUI case workspace
 
-**Impact:** HIGH — parser contract must change before Sprint 3.
-Note: `docs/supported-formats.md` already marks non-ULog as "Planned" (good).
-But the stubs still `can_parse()` = True and attempt to parse, which can mislead.
+**Status:** Shipped in Sprint 3.
 
 ---
 
@@ -188,39 +195,41 @@ No replay. No version verification.
 
 ---
 
-### 2.8 Audit Subsystem — MISSING
+### 2.8 Audit Subsystem — COMPLETE (Sprint 1)
 
 **Required:** Write-once audit log, evidence access traces, parser/analyzer
 execution traces, export traces.
 
-**Current:** Python `logging` module used throughout. No structured audit trail.
+**Current:** Append-only audit log (JSONL) per case. AuditEntry model with
+event_id, timestamp, actor, action, object references, and error tracking.
+Written on case creation, evidence ingest, parse, and analysis events.
 
-**Impact:** MEDIUM — foundational for enterprise/government credibility.
+**Status:** Shipped in Sprint 1.
 
 ---
 
-### 2.9 GUI Workflow — DOES NOT MATCH SPEC
+### 2.9 GUI Workflow — PARTIAL (Sprints 2-3)
 
-**Required:** Case-oriented workflow: create case → ingest evidence → parse →
-analyze → findings → timeline → export. Case list, evidence view, parse
+**Required:** Case-oriented workflow: create case -> ingest evidence -> parse ->
+analyze -> findings -> timeline -> export. Case list, evidence view, parse
 diagnostics, plugin inventory, hypothesis view, admin view.
 
-**Current:** Single-page upload-and-display. No case concept. Analysis is
-one-shot stateless. No evidence integrity display. No parse diagnostics view.
-No plugin trust visibility. No hypothesis view.
+**Current:** Case-oriented GUI with case list, case creation, evidence upload,
+findings view, audit trail view, and parse diagnostics tab. Backward-compatible
+`/api/analyze` shim preserved. Charts and SVG flight path embedded in case
+workspace.
 
-**Impact:** HIGH — the entire GUI workflow must be rebuilt around the case model.
-The existing charts, timeline, and findings display can be preserved and embedded
-into the case workspace.
+**Still missing:** Hypothesis view (Sprint 4+), plugin trust visibility
+(Sprint 5+), full investigation workspace (Sprint 6).
 
 ---
 
-### 2.10 CI/CD — MISSING
+### 2.10 CI/CD — COMPLETE (Sprint 0)
 
-No `.github/workflows/` exists. No automated linting, formatting checks, type
-checking, test runs, coverage, or security scanning.
+GitHub Actions pipeline in place: ruff, mypy, pytest (3.10/3.11/3.12 matrix),
+bandit, pip-audit.
 
-**Impact:** HIGH — must be in place before Sprint 1 coding begins.
+**Status:** Shipped in Sprint 0. 389 tests passing.
 
 ---
 
@@ -238,47 +247,47 @@ These components are working and should be migrated (not replaced):
 | Narrative engine | `core/narrative.py` | Yes — move to report subsystem |
 | Scoring engine | `core/scoring.py` | Yes — evolve |
 | Telemetry subsystem | `telemetry/` | Yes — preserve |
-| Test suite (~258 tests) | `tests/` | Yes — extend |
+| Test suite (389 tests) | `tests/` | Yes — extend |
 
 ---
 
-## 4. What Conflicts and Must Change
+## 4. What Conflicts and Must Change (Sprint 0 baseline, updated Sprint 3)
 
-| Current Behavior | Required Behavior | Risk |
-|-----------------|-------------------|------|
-| Temp-file ingest in `/api/analyze` | Immutable case evidence ingest | HIGH |
-| `BaseParser.parse()` → `Flight` only | `parse()` → `(Flight, ParseDiagnostics, Provenance)` | HIGH |
-| `Plugin.analyze()` → `list[Finding]` | `analyze()` → `PluginResult` with diagnostics | MEDIUM |
-| Stateless single-page GUI | Case-oriented multi-view GUI | HIGH |
-| No case/evidence/audit models | Full forensic case lifecycle | CRITICAL |
-| DataFlash/TLog/CSV `can_parse()` = True | Disable stubs OR implement honestly | MEDIUM |
-
----
-
-## 5. Doc/Code Mismatches
-
-| Document | Claim | Reality |
-|----------|-------|---------|
-| `docs/supported-formats.md` | DataFlash/TLog/CSV are "Planned" | Code has stub parsers that can_parse() = True and attempt to parse |
-| `docs/api-reference.md` | Documents `/api/analyze` as main path | Spec requires case-oriented API |
-| `docs/writing-plugins.md` | Shows Plugin base class interface | Missing manifest, trust, output contract |
-| README | Lists all 4 formats | Only ULog is real |
+| Sprint 0 Issue | Required Behavior | Status |
+|---------------|-------------------|--------|
+| Temp-file ingest in `/api/analyze` | Immutable case evidence ingest | RESOLVED (Sprint 1) |
+| `BaseParser.parse()` -> `Flight` only | `parse()` -> `(Flight, ParseDiagnostics, Provenance)` | RESOLVED (Sprint 3) |
+| `Plugin.analyze()` -> `list[Finding]` | `analyze()` -> `PluginResult` with diagnostics | OPEN (Sprint 5) |
+| Stateless single-page GUI | Case-oriented multi-view GUI | PARTIAL (Sprint 2, Sprint 6 for full workspace) |
+| No case/evidence/audit models | Full forensic case lifecycle | RESOLVED (Sprint 1) |
+| DataFlash/TLog/CSV `can_parse()` = True | Disable stubs OR implement honestly | RESOLVED (Sprint 3, `implemented=False`) |
 
 ---
 
-## 6. Recommended Implementation Order
+## 5. Doc/Code Mismatches (Sprint 0 baseline, updated Sprint 3)
+
+| Document | Sprint 0 Issue | Sprint 3 Status |
+|----------|---------------|-----------------|
+| `docs/supported-formats.md` | Stub parsers that can_parse() = True | FIXED: stubs marked `implemented=False` |
+| `docs/api-reference.md` | Documents `/api/analyze` as main path | FIXED: case-oriented API routes added (Sprint 2) |
+| `docs/writing-plugins.md` | Missing manifest, trust, output contract | Still missing (Sprint 5) |
+| README | Listed all 4 formats as if supported | FIXED: only ULog listed as supported |
+
+---
+
+## 6. Implementation Order
 
 Following the sprint plan from spec doc 05:
 
-1. **Sprint 0** (now): CI/CD, GitHub governance, this audit document
-2. **Sprint 1**: Case + Evidence + Audit models and services (PR 1)
-3. **Sprint 2**: Case-oriented GUI and API refactor (PR 2)
-4. **Sprint 3**: Parser contract + ParseDiagnostics + ULog adaptation (PR 3)
-5. **Sprint 4**: Expanded Finding + EvidenceReference + Hypothesis (PR 4)
-6. **Sprint 5**: Plugin manifest + analyzer contract + trust scaffolding (PR 5)
-7. **Sprint 6**: GUI investigation workspace (PR 6)
+1. **Sprint 0**: CI/CD, GitHub governance, this audit document -- COMPLETE
+2. **Sprint 1**: Case + Evidence + Audit models and services -- COMPLETE
+3. **Sprint 2**: Case-oriented GUI and API refactor -- COMPLETE
+4. **Sprint 3**: Parser contract + ParseDiagnostics + ULog adaptation -- COMPLETE
+5. **Sprint 4** (in progress): Expanded Finding + EvidenceReference + Hypothesis
+6. **Sprint 5**: Plugin manifest + analyzer contract + trust scaffolding
+7. **Sprint 6**: GUI investigation workspace
 8. **Sprint 7**: Correlation + reconstruction engine
-9. **Sprint 8**: Export bundle + replay (PR 7)
+9. **Sprint 8**: Export bundle + replay
 10. **Sprint 9**: Trust policy engine + tuning profiles
 11. **Sprint 10**: Format truthfulness + parser support matrix
 12. **Sprint 11**: Connected portal alignment
@@ -294,7 +303,7 @@ Following the sprint plan from spec doc 05:
 | Case model adds storage complexity | MEDIUM | Start with local filesystem; abstract storage layer |
 | Temp-file removal breaks `/api/analyze` route | MEDIUM | Add compatibility wrapper during Sprint 2 transition |
 | DataFlash/TLog stubs mislead users | MEDIUM | Hard-disable in Sprint 0 or Sprint 10 |
-| 258 existing tests may fail after contract changes | MEDIUM | Run CI on every PR; fix as part of each sprint |
+| 389 existing tests may fail after contract changes | MEDIUM | Run CI on every PR; fix as part of each sprint |
 | `crashed` property is a heuristic on Flight | LOW | Move to CrashDetectionPlugin findings; keep as convenience only |
 
 ---

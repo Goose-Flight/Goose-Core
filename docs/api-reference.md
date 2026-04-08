@@ -1,8 +1,48 @@
 # REST API Reference
 
-The Goose REST API provides programmatic access to flight analysis features. Start the server with `goose serve` and interact via HTTP.
+The Goose REST API provides programmatic access to flight forensic features.
+Start the server with `goose serve` and interact via HTTP.
+
+The primary workflow is case-oriented: create a case, ingest evidence, run
+analysis, and view findings. A backward-compatible `/api/analyze` shim is
+preserved for single-file analysis without case management.
 
 **Base URL:** `http://127.0.0.1:8000/api/` (default)
+
+---
+
+## Case API (Primary)
+
+### GET `/api/cases`
+
+List all cases.
+
+### POST `/api/cases`
+
+Create a new forensic case.
+
+### POST `/api/cases/{id}/evidence`
+
+Ingest evidence into a case. The uploaded file is hashed (SHA-256 + SHA-512),
+stored immutably in the case evidence directory, and an evidence manifest entry
+is written. An audit log entry is recorded.
+
+### POST `/api/cases/{id}/analyze`
+
+Run analysis on the evidence in a case. Plugin findings are stored in the case
+analysis directory and an audit log entry is recorded.
+
+### GET `/api/cases/{id}`
+
+Get case details including evidence inventory, analysis runs, and status.
+
+---
+
+## Legacy API (Compatibility)
+
+The following endpoints are preserved for backward compatibility. They operate
+without the case system -- uploading a file, analyzing it, and returning results
+in a single request.
 
 ---
 
@@ -82,7 +122,7 @@ Upload a flight log and run all applicable analysis plugins.
 
 **Request:**
 - **Method:** POST (multipart form data)
-- **Body:** `file` (binary, required) — Flight log file (.ulg, .bin, .log, .tlog, .csv)
+- **Body:** `file` (binary, required) — Flight log file (`.ulg` only; other formats not yet supported)
 
 **Response:**
 ```json
@@ -172,7 +212,7 @@ Upload a flight log and get crash detection with root cause analysis.
 
 **Request:**
 - **Method:** POST (multipart form data)
-- **Body:** `file` (binary, required) — Flight log file (.ulg, .bin, .log, .tlog, .csv)
+- **Body:** `file` (binary, required) — Flight log file (`.ulg` only; other formats not yet supported)
 
 **Response:**
 ```json
@@ -407,5 +447,7 @@ The API has **no authentication** by default. Deploy behind a reverse proxy (ngi
 
 ## API Status & Changes
 
-The API is **under active development** and may change. Check the [CLI Reference](cli-reference.md) for the stable command-line interface.
+The case-oriented API (`/api/cases` family) is the primary interface as of
+Sprint 2. The legacy `/api/analyze` and `/api/crash` endpoints are preserved as
+backward-compatible shims. The API may evolve as new sprints are completed.
 

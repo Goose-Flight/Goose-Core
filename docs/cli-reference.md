@@ -166,10 +166,12 @@ goose analyze flight.ulg -f json -v -o analysis.json
 
 ## goose serve
 
-Start the Goose REST API server. Launches a uvicorn server hosting the
-FastAPI application.
+Start the Goose web server. Launches a uvicorn server hosting the FastAPI
+application with the web GUI.
 
-> **Note:** The web API and UI are under active development.
+> **Note:** The web GUI is the primary product surface. It provides
+> case-oriented workflow: case creation, evidence upload, analysis, findings
+> view, audit trail, and parse diagnostics.
 
 ```
 goose serve [OPTIONS]

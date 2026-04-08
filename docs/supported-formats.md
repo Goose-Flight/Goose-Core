@@ -1,16 +1,17 @@
 # Supported Formats
 
-Goose reads flight logs from several autopilot systems. This page lists each
-format, its file extensions, and current support status.
+Goose currently supports **PX4 ULog only**. Stub parsers exist for other
+formats but are not yet implemented and will return honest unsupported-format
+errors.
 
 ## Format summary
 
 | Format | Extensions | Autopilot | Status |
 | --- | --- | --- | --- |
 | PX4 ULog | `.ulg` | PX4 | **Fully supported** |
-| ArduPilot DataFlash | `.bin`, `.log` | ArduPilot | Planned |
-| MAVLink telemetry | `.tlog` | Any MAVLink | Planned |
-| Generic CSV | `.csv` | Any | Planned |
+| ArduPilot DataFlash | `.bin`, `.log` | ArduPilot | Not yet implemented (stub only) |
+| MAVLink telemetry | `.tlog` | Any MAVLink | Not yet implemented (stub only) |
+| Generic CSV | `.csv` | Any | Not yet implemented (stub only) |
 
 ---
 
@@ -78,45 +79,54 @@ Goose maps PX4 navigation state integers to human-readable mode names:
 
 ## ArduPilot DataFlash (.bin, .log)
 
-**Status: Planned**
+**Status: Not yet implemented**
 
 DataFlash is the binary log format used by ArduPilot (Copter, Plane, Rover).
 `.bin` files are the raw binary format; `.log` files are the text-decoded
 equivalent.
 
-Parser support is planned for a future release.
+A stub parser exists in the codebase but is marked `implemented=False`. It will
+return an unsupported-format error if called. Real parser support is planned for
+a future sprint.
 
 ---
 
 ## MAVLink Telemetry (.tlog)
 
-**Status: Planned**
+**Status: Not yet implemented**
 
 MAVLink `.tlog` files record timestamped MAVLink messages as received by a
 ground station (QGroundControl, Mission Planner, MAVProxy). They contain
 telemetry from any MAVLink-compatible autopilot.
 
-Parser support is planned for a future release. The `pymavlink` library is
-already included as a dependency.
+A stub parser exists but is marked `implemented=False`. The `pymavlink` library
+is already included as a dependency. Real parser support is planned for a future
+sprint.
 
 ---
 
 ## Generic CSV (.csv)
 
-**Status: Planned**
+**Status: Not yet implemented**
 
 CSV support will allow Goose to analyze exported telemetry from any source,
 provided the columns follow a documented naming convention.
 
-Parser support is planned for a future release.
+A stub parser exists but is marked `implemented=False`. Real parser support is
+planned for a future sprint.
 
 ---
 
 ## Format detection
 
-Goose currently selects the parser based on file extension:
+Goose provides a detection module (`parse_file()`, `detect_parser()`,
+`supported_formats()`) that selects the appropriate parser. Currently only the
+ULog parser is functional:
 
-- `.ulg` — ULog parser
-- All other extensions — not yet supported (produces an error)
+- `.ulg` -- ULog parser (returns full `ParseResult` with diagnostics)
+- All other extensions -- stub parsers return unsupported-format errors
 
-Automatic format detection by file content is planned for a future release.
+The parser framework uses the `ParseResult` contract, which returns
+`(Flight | None, ParseDiagnostics, Provenance)` for every parse attempt.
+The parse never raises -- it always returns structured diagnostic output,
+even on failure.

@@ -45,9 +45,9 @@
 | Symptom | Likely Cause | Solution |
 | --- | --- | --- |
 | `.ulg` file won't parse | Corrupted ULog | Verify file integrity: `hexdump -C file.ulg \| head` should show "ULG" magic bytes |
-| `.bin` or `.log` won't parse | Not ArduPilot format | Confirm it's from ArduPilot; PX4 uses `.ulg` |
-| `.tlog` won't parse | Incomplete MAVLink telemetry | Ensure the file was properly downloaded/recorded |
-| CSV file won't parse | Wrong format or missing headers | See [Supported Formats](supported-formats.md) for CSV schema |
+| `.bin` or `.log` won't parse | Format not yet supported | ArduPilot DataFlash parser is not yet implemented. Only PX4 ULog (.ulg) is currently supported. |
+| `.tlog` won't parse | Format not yet supported | MAVLink TLog parser is not yet implemented. Only PX4 ULog (.ulg) is currently supported. |
+| CSV file won't parse | Format not yet supported | CSV parser is not yet implemented. Only PX4 ULog (.ulg) is currently supported. |
 
 **Verify a log file:**
 ```bash

@@ -9,6 +9,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # Streams to inspect
 KEY_STREAMS = ["position", "attitude", "battery", "gps", "motors"]
@@ -30,6 +31,19 @@ class LogHealthPlugin(Plugin):
     description = "Log file integrity and data quality"
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="log_health",
+        name="Log Health",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Checks log file integrity, missing streams, data dropouts, data rates, and duration consistency",
+        category=PluginCategory.HEALTH,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=[],
+        optional_streams=["position", "attitude", "battery", "gps", "motors"],
+        output_finding_types=["missing_stream", "data_dropout", "low_data_rate", "duration_mismatch"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         findings: list[Finding] = []

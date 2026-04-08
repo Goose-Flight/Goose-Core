@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightPhase
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # Crash classification types
 CRASH_TYPES = (
@@ -70,6 +71,19 @@ class CrashDetectionPlugin(Plugin):
     description = "Detects crashes via altitude loss, attitude divergence, motor failure, and impact signatures"
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="crash_detection",
+        name="Crash Detection",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Detects crashes via altitude loss, attitude divergence, motor failure, and impact signatures",
+        category=PluginCategory.CRASH,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=["position"],
+        optional_streams=["attitude", "attitude_setpoint", "motors", "vibration"],
+        output_finding_types=["crash_detected", "altitude_loss", "attitude_divergence", "motor_failure", "impact"],
+    )
 
     # Configurable thresholds (overridable via config dict)
     DEFAULT_CONFIG: dict[str, Any] = {

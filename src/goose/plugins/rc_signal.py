@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # RSSI thresholds (0-100 %)
 RSSI_WARNING = 70.0
@@ -29,6 +30,19 @@ class RcSignalPlugin(Plugin):
     description = "RC signal quality and failsafe detection"
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="rc_signal",
+        name="RC Signal Quality",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Analyzes RC signal quality including RSSI levels, dropouts, and stuck channels",
+        category=PluginCategory.RF_COMMS,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=["rc_input"],
+        optional_streams=[],
+        output_finding_types=["rssi_level", "rc_dropout", "stuck_channel"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run RC signal quality checks. Returns findings."""

@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # Thresholds
 MIN_SATELLITES = 8          # below this is degraded GPS
@@ -37,6 +38,19 @@ class GPSHealthPlugin(Plugin):
     )
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="gps_health",
+        name="GPS Health",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Checks satellite count, HDOP, position jump anomalies, and GPS dropout intervals",
+        category=PluginCategory.NAVIGATION,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=["gps"],
+        optional_streams=[],
+        output_finding_types=["satellite_count", "hdop", "position_jump", "gps_dropout"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run GPS health checks. Returns findings for each check category."""

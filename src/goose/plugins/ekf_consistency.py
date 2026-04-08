@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # Innovation ratio thresholds (normalized, unitless)
 INNOV_WARNING = 0.8
@@ -26,6 +27,19 @@ class EkfConsistencyPlugin(Plugin):
     description = "EKF innovation monitoring and filter health"
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="ekf_consistency",
+        name="EKF Consistency",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Monitors EKF innovation ratios and detects filter health issues",
+        category=PluginCategory.NAVIGATION,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=["ekf"],
+        optional_streams=[],
+        output_finding_types=["velocity_innovation", "position_innovation", "ekf_fault_flags"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run EKF health checks. Returns findings."""

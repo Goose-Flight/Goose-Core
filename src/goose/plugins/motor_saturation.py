@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # Thresholds
 SATURATION_THRESHOLD = 0.95       # 95% output — near saturation
@@ -27,6 +28,19 @@ class MotorSaturationPlugin(Plugin):
     )
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="motor_saturation",
+        name="Motor Saturation",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Checks motor outputs for near-saturation events, cross-motor imbalance, and sustained saturation periods",
+        category=PluginCategory.PROPULSION,
+        supported_vehicle_types=["multirotor", "all"],
+        required_streams=["motors"],
+        optional_streams=[],
+        output_finding_types=["motor_saturation", "motor_imbalance", "sustained_saturation"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run motor saturation checks. Returns findings for each check category."""

@@ -7,6 +7,7 @@ from typing import Any
 from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightEvent, ModeChange
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # Modes that indicate an autonomous emergency response
 EMERGENCY_MODES = {"rtl", "return", "land", "emergency", "failsafe", "parachute", "termination"}
@@ -26,6 +27,19 @@ class FailsafeEventsPlugin(Plugin):
     description = "Failsafe trigger and mode change analysis"
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="failsafe_events",
+        name="Failsafe Events",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Detects failsafe triggers and unexpected mode changes during flight",
+        category=PluginCategory.HEALTH,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=[],
+        optional_streams=["mode_changes", "events"],
+        output_finding_types=["failsafe_event", "emergency_mode_transition"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         findings: list[Finding] = []

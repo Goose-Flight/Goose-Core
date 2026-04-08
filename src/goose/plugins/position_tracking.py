@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # Thresholds
 WARN_MEAN_ERROR_M = 3.0     # warn if mean horizontal error > 3m
@@ -37,6 +38,19 @@ class PositionTrackingPlugin(Plugin):
     description = "Position tracking error vs commanded position"
     version = "1.0.0"
     min_mode = "position"
+
+    manifest = PluginManifest(
+        plugin_id="position_tracking",
+        name="Position Tracking",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Compares actual vs commanded position to quantify tracking error and hover drift",
+        category=PluginCategory.NAVIGATION,
+        supported_vehicle_types=["multirotor", "all"],
+        required_streams=["position", "position_setpoint"],
+        optional_streams=["velocity"],
+        output_finding_types=["horizontal_error", "vertical_error", "hover_drift"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         findings: list[Finding] = []

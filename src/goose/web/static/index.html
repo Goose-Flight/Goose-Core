@@ -2085,6 +2085,7 @@
         <button class="ws-tab" id="ws-tab-diagnostics" onclick="switchWsTab('diagnostics')">Parse Diagnostics</button>
         <button class="ws-tab" id="ws-tab-findings" onclick="switchWsTab('findings')">Findings</button>
         <button class="ws-tab" id="ws-tab-hypotheses" onclick="switchWsTab('hypotheses')">Hypotheses</button>
+        <button class="ws-tab" id="ws-tab-plugins" onclick="switchWsTab('plugins')">Plugins</button>
         <button class="ws-tab" id="ws-tab-audit" onclick="switchWsTab('audit')">Audit Trail</button>
       </div>
 
@@ -2124,6 +2125,13 @@
       <div id="ws-hypotheses-panel" style="display:none;">
         <div id="ws-hypotheses-content">
           <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Run analysis to see hypotheses.</div>
+        </div>
+      </div>
+
+      <!-- Plugins tab -->
+      <div id="ws-plugins-panel" style="display:none;">
+        <div id="ws-plugins-content">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Loading plugin inventory...</div>
         </div>
       </div>
 
@@ -3830,7 +3838,7 @@
   }
 
   function switchWsTab(tab) {
-    ['evidence','diagnostics','findings','hypotheses','audit'].forEach(t => {
+    ['evidence','diagnostics','findings','hypotheses','plugins','audit'].forEach(t => {
       document.getElementById(`ws-tab-${t}`).classList.toggle('active', t === tab);
       document.getElementById(`ws-${t}-panel`).style.display = t === tab ? '' : 'none';
     });
@@ -3838,6 +3846,7 @@
     if (tab === 'findings' && activeCaseId) loadFindings(activeCaseId);
     if (tab === 'diagnostics' && activeCaseId) loadParseDiagnostics(activeCaseId);
     if (tab === 'hypotheses' && activeCaseId) loadHypotheses(activeCaseId);
+    if (tab === 'plugins' && activeCaseId) loadPlugins(activeCaseId);
   }
 
   async function loadHypotheses(caseId) {
@@ -3893,6 +3902,83 @@
             </div>` : ''}
           <div style="font-size:10px;color:var(--text-dim,#555);margin-top:8px;">${h.hypothesis_id} · scope: ${h.confidence_scope}</div>
         </div>`).join('')}`;
+  }
+
+  async function loadPlugins(caseId) {
+    const el = document.getElementById('ws-plugins-content');
+    el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;">Loading...</div>';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/plugins`);
+      const data = await r.json();
+      if (!data.ok || !data.manifests || data.manifests.length === 0) {
+        el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">No plugins registered.</div>';
+        return;
+      }
+      el.innerHTML = renderPluginsPanel(data.manifests, data.plugin_run_info || []);
+    } catch(e) {
+      el.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load plugins: ${e.message}</div>`;
+    }
+  }
+
+  function renderPluginsPanel(manifests, runInfo) {
+    const runMap = {};
+    runInfo.forEach(ri => { runMap[ri.plugin_id] = ri; });
+
+    const catColor = c => ({
+      health:'#6ECC72', crash:'#E24B4A', flight_dynamics:'#EF9F27',
+      navigation:'#5B9BD5', propulsion:'#C77DBA', rf_comms:'#E8A838',
+      mission_rules:'#7CB5D2', reporting:'#999'
+    }[c] || 'var(--text-sec)');
+
+    const trustColor = t => ({
+      builtin_trusted:'var(--green)', local_unsigned:'var(--amber)',
+      local_signed:'#5B9BD5', community:'#C77DBA',
+      enterprise_trusted:'#6ECC72', blocked:'var(--red)'
+    }[t] || 'var(--text-sec)');
+
+    const trustLabel = t => t.replace(/_/g, ' ');
+
+    return `
+      <div style="margin-bottom:12px;font-size:12px;color:var(--text-sec);">
+        <strong>${manifests.length} registered plugin(s).</strong>
+        Each plugin declares required streams, trust state, and output types.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;">
+      ${manifests.map(m => {
+        const ri = runMap[m.plugin_id];
+        const statusBadge = ri
+          ? (ri.skipped
+            ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--amber-glow);color:var(--amber);border:1px solid var(--amber);">SKIPPED</span>`
+            : `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--green-glow);color:var(--green);border:1px solid var(--green);">RAN</span>`)
+          : `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--card);color:var(--text-sec);border:1px solid var(--card-border);">NOT RUN</span>`;
+        const findingsCount = ri && ri.executed ? ri.findings_emitted : null;
+        const skipReason = ri && ri.skipped ? ri.skip_reason : '';
+        const durationMs = ri ? ri.execution_duration_ms : null;
+
+        return `
+          <div class="card" style="padding:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <div>
+                <div style="font-size:14px;font-weight:600;">${m.name}</div>
+                <div style="font-size:11px;color:var(--text-sec);">v${m.version} by ${m.author}</div>
+              </div>
+              ${statusBadge}
+            </div>
+            <div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${m.description}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+              <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:8px;border:1px solid ${catColor(m.category)};color:${catColor(m.category)};">${m.category}</span>
+              <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:8px;border:1px solid ${trustColor(m.trust_state)};color:${trustColor(m.trust_state)};">${trustLabel(m.trust_state)}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-sec);">
+              ${m.required_streams.length > 0 ? `<div>Required: <span style="color:var(--text);">${m.required_streams.join(', ')}</span></div>` : '<div>No required streams</div>'}
+              ${m.optional_streams.length > 0 ? `<div>Optional: ${m.optional_streams.join(', ')}</div>` : ''}
+            </div>
+            ${findingsCount !== null ? `<div style="font-size:11px;margin-top:6px;color:var(--text-sec);">Findings emitted: <strong style="color:var(--text);">${findingsCount}</strong>${durationMs !== null ? ` in ${durationMs.toFixed(0)}ms` : ''}</div>` : ''}
+            ${skipReason ? `<div style="font-size:11px;margin-top:4px;color:var(--amber);">${skipReason}</div>` : ''}
+            <div style="font-size:10px;color:var(--text-dim,#555);margin-top:6px;">${m.plugin_id} &middot; contract v${m.minimum_contract_version}</div>
+          </div>`;
+      }).join('')}
+      </div>`;
   }
 
   async function loadParseDiagnostics(caseId) {

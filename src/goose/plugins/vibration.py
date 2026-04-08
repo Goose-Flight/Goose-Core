@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightPhase
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # PX4 vibration thresholds in m/s^2
 VIBRATION_GOOD = 15.0
@@ -49,6 +50,19 @@ class VibrationPlugin(Plugin):
     description = "Computes RMS/peak vibration per axis, checks PX4 thresholds, detects clipping and degradation"
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="vibration",
+        name="Vibration Analysis",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Computes RMS/peak vibration per axis, checks PX4 thresholds, detects clipping and degradation",
+        category=PluginCategory.HEALTH,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=["vibration"],
+        optional_streams=[],
+        output_finding_types=["vibration_level", "sensor_clipping", "vibration_degradation"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run vibration analysis. Returns findings for each axis and anomalies."""

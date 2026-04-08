@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # 4S LiPo voltage thresholds (per-cell × 4)
 CELL_COUNT = 4
@@ -38,6 +39,19 @@ class BatterySagPlugin(Plugin):
     )
     version = "1.0.0"
     min_mode = "manual"
+
+    manifest = PluginManifest(
+        plugin_id="battery_sag",
+        name="Battery Sag Analysis",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Checks minimum voltage thresholds (4S), voltage sag under current load, remaining-percent floor, and sudden voltage drop events",
+        category=PluginCategory.HEALTH,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=["battery"],
+        optional_streams=[],
+        output_finding_types=["low_voltage", "voltage_sag", "low_remaining_pct", "sudden_voltage_drop"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run battery health checks. Returns findings for each check category."""

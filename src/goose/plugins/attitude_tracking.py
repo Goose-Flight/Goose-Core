@@ -10,6 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
+from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
 # Tracking error thresholds in degrees
 TRACKING_ERROR_WARNING_DEG = 5.0
@@ -46,6 +47,19 @@ class AttitudeTrackingPlugin(Plugin):
     description = "Attitude tracking error vs setpoint analysis"
     version = "1.0.0"
     min_mode = "stabilized"
+
+    manifest = PluginManifest(
+        plugin_id="attitude_tracking",
+        name="Attitude Tracking",
+        version="1.0.0",
+        author="Goose Flight",
+        description="Compares attitude vs setpoint to quantify tracking error and detect oscillations",
+        category=PluginCategory.FLIGHT_DYNAMICS,
+        supported_vehicle_types=["multirotor", "fixed_wing", "all"],
+        required_streams=["attitude", "attitude_setpoint"],
+        optional_streams=[],
+        output_finding_types=["tracking_error", "attitude_oscillation"],
+    )
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run attitude tracking analysis. Returns findings per axis and for oscillation."""

@@ -359,18 +359,27 @@ async def analyze_case(case_id: str) -> JSONResponse:
         details={"evidence_id": ev.evidence_id},
     ))
 
-    # --- Run plugins ---------------------------------------------------------
-    from goose.plugins.registry import load_plugins
-    plugins = load_plugins()
-    all_findings: list[Any] = []
+    # --- Run plugins (Sprint 5: forensic contract) ----------------------------
+    from goose.plugins import PLUGIN_REGISTRY
+    from goose.plugins.contract import PluginDiagnostics as PDiag
+    plugins = list(PLUGIN_REGISTRY.values())
+    all_findings: list[Any] = []        # thin findings for backward compat
+    forensic_findings: list[Any] = []   # ForensicFinding from new contract
     plugin_errors: list[dict[str, str]] = []
     plugin_versions: dict[str, str] = {}
+    all_plugin_diagnostics: list[PDiag] = []
 
     for plugin in plugins:
         plugin_versions[plugin.name] = getattr(plugin, "version", "unknown")
         try:
-            findings = plugin.analyze(flight, {})
-            all_findings.extend(findings)
+            ff_list, p_diag = plugin.forensic_analyze(
+                flight, ev.evidence_id, run_id, {}, parse_result.diagnostics,
+            )
+            forensic_findings.extend(ff_list)
+            all_plugin_diagnostics.append(p_diag)
+            # Also run thin findings for backward compat (narrative, overall score)
+            thin = plugin.analyze(flight, {})
+            all_findings.extend(thin)
         except Exception as exc:
             logger.warning("Plugin %s failed: %s", plugin.name, exc)
             plugin_errors.append({"plugin": plugin.name, "error": str(exc)})
@@ -378,15 +387,8 @@ async def analyze_case(case_id: str) -> JSONResponse:
     overall_score = _compute_overall_score(all_findings)
     completed_at = datetime.now()
 
-    # --- Lift thin findings to forensic-grade ForensicFinding objects ---------
-    from goose.forensics.lifting import lift_findings, generate_hypotheses, build_signal_quality
-    forensic_findings = lift_findings(
-        thin_findings=all_findings,
-        run_id=run_id,
-        evidence_item=ev,
-        plugin_versions=plugin_versions,
-        parse_diag=parse_result.diagnostics,
-    )
+    # --- Hypotheses and signal quality (still use lifting layer) -------------
+    from goose.forensics.lifting import generate_hypotheses, build_signal_quality
     hypotheses = generate_hypotheses(forensic_findings, run_id=run_id)
     signal_quality = build_signal_quality(parse_result.diagnostics)
 
@@ -430,8 +432,10 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     plugin_diag = {
         "run_id": run_id,
+        "diagnostics_version": "2.0",
         "plugins_run": [{"name": p.name, "version": plugin_versions[p.name]} for p in plugins],
         "plugin_errors": plugin_errors,
+        "plugin_diagnostics": [pd.to_dict() for pd in all_plugin_diagnostics],
         "overall_score": overall_score,
         "engine_version": __version__,
         "evidence_id": ev.evidence_id,
@@ -644,6 +648,36 @@ async def get_audit_log(case_id: str) -> JSONResponse:
         raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/plugins")
+async def get_plugins(case_id: str) -> JSONResponse:
+    """Return plugin manifests and (if available) per-plugin run diagnostics."""
+    try:
+        svc = get_service()
+        svc.get_case(case_id)  # verify exists
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    from goose.plugins import get_plugin_manifests
+    manifests = [m.to_dict() for m in get_plugin_manifests()]
+
+    # Try to load plugin run diagnostics from last analysis
+    plugin_run_info: list[dict[str, Any]] = []
+    diag_path = svc.case_dir(case_id) / "analysis" / "plugin_diagnostics.json"
+    if diag_path.exists():
+        try:
+            bundle = json.loads(diag_path.read_text(encoding="utf-8"))
+            plugin_run_info = bundle.get("plugin_diagnostics", [])
+        except Exception:
+            pass
+
+    return JSONResponse({
+        "ok": True,
+        "manifests": manifests,
+        "plugin_run_info": plugin_run_info,
+        "count": len(manifests),
+    })
 
 
 @router.patch("/{case_id}/status")

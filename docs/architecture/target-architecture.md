@@ -204,6 +204,176 @@ cases/
 
 ---
 
+## Case Directory Schema (Sprint 1)
+
+### Exact layout and ownership rules
+
+```
+cases/
+  {CASE_ID}/                      # e.g. CASE-2026-000001
+    case.json                     # OWNER: CaseService — written on create, updated on state changes
+    evidence/
+      {EV_ID}-{original_name}     # OWNER: CaseService — copied once, set read-only, never modified
+                                  # e.g. EV-0001-flight.ulg
+    manifests/
+      evidence_manifest.json      # OWNER: CaseService — written after each evidence ingest
+    parsed/
+      canonical_flight.json       # OWNER: ParserFramework — written after successful parse
+      parse_diagnostics.json      # OWNER: ParserFramework — always written (even on partial parse)
+      provenance.json             # OWNER: ParserFramework — written alongside parse output
+    analysis/
+      findings.json               # OWNER: AnalysisEngine — written after analysis run
+      hypotheses.json             # OWNER: AnalysisEngine (Sprint 7+)
+      timeline.json               # OWNER: AnalysisEngine (Sprint 7+)
+      plugin_diagnostics.json     # OWNER: AnalysisEngine — written after analysis run
+    audit/
+      audit_log.jsonl             # OWNER: AuditService — append-only, never overwritten
+    exports/
+      {EXPORT_ID}_bundle.json     # OWNER: ExportService (Sprint 8)
+```
+
+### Naming rules
+- `CASE_ID`: `CASE-YYYY-{6-digit-sequence}`, e.g. `CASE-2026-000001`
+- `EV_ID`: `EV-{4-digit-sequence}`, e.g. `EV-0001`
+- Evidence filename: `{EV_ID}-{sanitized_original_filename}`
+- No spaces in any path component — underscores only
+- All JSON files use 2-space indentation
+- `audit_log.jsonl`: one JSON object per line, never pretty-printed
+
+### Immutability rules
+- Evidence files in `evidence/` are set to read-only (mode 0o444) immediately after copy
+- `audit_log.jsonl` is opened in append mode only — never truncated or rewritten
+- `case.json` is the only file that changes after initial write (status, run history, export history)
+- All other files are write-once per analysis run
+
+---
+
+## Sprint 1 Model Contracts
+
+These are the exact typed contracts to implement in `src/goose/forensics/models.py`.
+
+```python
+from __future__ import annotations
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+
+class CaseStatus(str, Enum):
+    OPEN = "open"
+    ANALYZING = "analyzing"
+    REVIEW = "review"
+    CLOSED = "closed"
+    ARCHIVED = "archived"
+
+
+class AuditAction(str, Enum):
+    CASE_CREATED = "case_created"
+    EVIDENCE_INGESTED = "evidence_ingested"
+    PARSE_STARTED = "parse_started"
+    PARSE_COMPLETED = "parse_completed"
+    PARSE_FAILED = "parse_failed"
+    ANALYSIS_STARTED = "analysis_started"
+    ANALYSIS_COMPLETED = "analysis_completed"
+    CASE_EXPORTED = "case_exported"
+    EVIDENCE_ACCESSED = "evidence_accessed"
+
+
+@dataclass
+class EvidenceItem:
+    evidence_id: str               # e.g. "EV-0001"
+    filename: str                  # original filename
+    content_type: str              # "application/octet-stream" or detected MIME
+    size_bytes: int
+    sha256: str                    # lowercase hex, always present
+    sha512: str | None             # lowercase hex, preferred but optional
+    source_acquisition_mode: str   # "upload" | "local_copy" | "remote_fetch"
+    source_reference: str | None   # original path or URL if applicable
+    stored_path: str               # absolute path to immutable copy in case dir
+    acquired_at: datetime
+    acquired_by: str               # "gui" | "cli" | "api"
+    immutable: bool = True         # always True for stored evidence
+    notes: str = ""
+
+
+@dataclass
+class EvidenceManifest:
+    manifest_version: str = "1.0"
+    case_id: str = ""
+    generated_at: datetime = field(default_factory=datetime.utcnow)
+    evidence: list[EvidenceItem] = field(default_factory=list)
+    # derived_artifacts maps evidence_id -> list of artifact paths produced from it
+    derived_artifacts: dict[str, list[str]] = field(default_factory=dict)
+    retention_policy: str = "indefinite"
+
+
+@dataclass
+class AnalysisRun:
+    run_id: str
+    started_at: datetime
+    completed_at: datetime | None
+    plugin_versions: dict[str, str]   # plugin_id -> version
+    ruleset_version: str | None
+    findings_count: int
+    status: str                        # "completed" | "failed" | "in_progress"
+    error: str | None = None
+
+
+@dataclass
+class CaseExport:
+    export_id: str
+    exported_at: datetime
+    export_path: str
+    bundle_version: str
+    includes_replay: bool
+
+
+@dataclass
+class Case:
+    case_id: str                                     # e.g. "CASE-2026-000001"
+    created_at: datetime
+    created_by: str                                  # "gui" | "cli" | actor identifier
+    status: CaseStatus = CaseStatus.OPEN
+    tags: list[str] = field(default_factory=list)
+    notes: str = ""
+    engine_version: str = ""                         # goose package version
+    ruleset_version: str | None = None
+    plugin_policy_version: str | None = None
+    evidence_items: list[EvidenceItem] = field(default_factory=list)
+    analysis_runs: list[AnalysisRun] = field(default_factory=list)
+    exports: list[CaseExport] = field(default_factory=list)
+
+
+@dataclass
+class Provenance:
+    source_evidence_id: str
+    parser_name: str
+    parser_version: str
+    detected_format: str
+    parsed_at: datetime
+    transformation_chain: list[str] = field(default_factory=list)
+    config_references: dict[str, str] = field(default_factory=dict)
+    engine_version: str = ""
+    build_hash: str | None = None
+    assumptions: list[str] = field(default_factory=list)
+
+
+@dataclass
+class AuditEntry:
+    event_id: str
+    timestamp: datetime
+    actor: str                    # "gui" | "cli" | "system" | user identifier
+    action: AuditAction
+    object_type: str              # "case" | "evidence" | "analysis" | "export"
+    object_id: str                # case_id or evidence_id
+    details: dict[str, Any] = field(default_factory=dict)
+    success: bool = True
+    error: str | None = None
+```
+
+---
+
 ## Key Contracts (Sprint Targets)
 
 ### ParseResult (Sprint 3)

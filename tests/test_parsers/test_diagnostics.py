@@ -297,3 +297,138 @@ class TestULogDiagnosticsQuality:
         result = parser.parse(normal_flight_path)
         assert result.provenance is not None
         assert result.provenance.source_evidence_id == ""
+
+
+# ---------------------------------------------------------------------------
+# Pre-Sprint-4 stabilization — contract versioning and confidence scope
+# ---------------------------------------------------------------------------
+
+class TestParserContractVersioning:
+    """Verify schema version and contract fields are present and serialized.
+
+    These tests lock the serialized shape of ParseDiagnostics and Provenance
+    before Sprint 4 downstream artifacts start depending on it.
+    """
+
+    # -- ParseDiagnostics versioning ----------------------------------------
+
+    def test_diagnostics_version_field_exists(self) -> None:
+        d = ParseDiagnostics()
+        assert hasattr(d, "diagnostics_version")
+        assert d.diagnostics_version == "1.0"
+
+    def test_diagnostics_version_in_to_dict(self) -> None:
+        d = ParseDiagnostics()
+        serialized = d.to_dict()
+        assert "diagnostics_version" in serialized
+        assert serialized["diagnostics_version"] == "1.0"
+
+    def test_diagnostics_version_in_to_json(self) -> None:
+        import json
+        d = ParseDiagnostics()
+        parsed = json.loads(d.to_json())
+        assert parsed["diagnostics_version"] == "1.0"
+
+    def test_diagnostics_version_survives_roundtrip(self) -> None:
+        d = ParseDiagnostics(diagnostics_version="1.0", parser_selected="X")
+        d_back = ParseDiagnostics.from_dict(d.to_dict())
+        assert d_back.diagnostics_version == "1.0"
+
+    def test_diagnostics_from_dict_ignores_unknown_keys(self) -> None:
+        """from_dict must not crash on keys from a future schema version."""
+        d = ParseDiagnostics()
+        raw = d.to_dict()
+        raw["future_field_v2"] = "some_value"
+        recovered = ParseDiagnostics.from_dict(raw)  # must not raise
+        assert recovered.diagnostics_version == "1.0"
+
+    # -- Confidence scope ---------------------------------------------------
+
+    def test_confidence_scope_field_exists(self) -> None:
+        d = ParseDiagnostics()
+        assert hasattr(d, "confidence_scope")
+        assert d.confidence_scope == "parser_parse_quality"
+
+    def test_confidence_scope_in_to_dict(self) -> None:
+        d = ParseDiagnostics()
+        serialized = d.to_dict()
+        assert "confidence_scope" in serialized
+        assert serialized["confidence_scope"] == "parser_parse_quality"
+
+    def test_confidence_scope_survives_roundtrip(self) -> None:
+        d = ParseDiagnostics()
+        d_back = ParseDiagnostics.from_dict(d.to_dict())
+        assert d_back.confidence_scope == "parser_parse_quality"
+
+    def test_real_parse_confidence_scope_is_parser_parse_quality(
+        self, normal_flight_path: "Path"
+    ) -> None:
+        """Ensure ULogParser sets the correct scope on real output."""
+        parser = ULogParser()
+        result = parser.parse(normal_flight_path)
+        assert result.diagnostics.confidence_scope == "parser_parse_quality"
+
+    # -- Provenance contract versioning ------------------------------------
+
+    def test_provenance_contract_version_field_exists(self) -> None:
+        from goose.forensics.models import Provenance
+        p = Provenance()
+        assert hasattr(p, "contract_version")
+        assert p.contract_version == "1.0"
+
+    def test_provenance_contract_version_in_to_dict(self) -> None:
+        from goose.forensics.models import Provenance
+        p = Provenance()
+        serialized = p.to_dict()
+        assert "contract_version" in serialized
+        assert serialized["contract_version"] == "1.0"
+
+    def test_provenance_contract_version_survives_roundtrip(self) -> None:
+        from goose.forensics.models import Provenance
+        p = Provenance(contract_version="1.0", parser_name="ULogParser")
+        p_back = Provenance.from_dict(p.to_dict())
+        assert p_back.contract_version == "1.0"
+
+    def test_provenance_from_dict_ignores_unknown_keys(self) -> None:
+        """from_dict must not crash on keys from a future schema version."""
+        from goose.forensics.models import Provenance
+        p = Provenance()
+        raw = p.to_dict()
+        raw["future_field_v2"] = "some_value"
+        recovered = Provenance.from_dict(raw)  # must not raise
+        assert recovered.contract_version == "1.0"
+
+    def test_real_parse_provenance_has_contract_version(
+        self, normal_flight_path: "Path"
+    ) -> None:
+        parser = ULogParser()
+        result = parser.parse(normal_flight_path)
+        assert result.provenance is not None
+        assert result.provenance.contract_version == "1.0"
+
+    # -- Confidence scoring semantics --------------------------------------
+
+    def test_parser_confidence_is_float_in_range(self, normal_flight_path: "Path") -> None:
+        parser = ULogParser()
+        result = parser.parse(normal_flight_path)
+        c = result.diagnostics.parser_confidence
+        assert isinstance(c, float)
+        assert 0.0 <= c <= 1.0
+
+    def test_failed_parse_has_zero_confidence(self) -> None:
+        parser = ULogParser()
+        result = parser.parse("nonexistent.ulg")
+        assert result.diagnostics.parser_confidence == 0.0
+
+    def test_unsupported_format_has_zero_confidence(self) -> None:
+        from goose.parsers.dataflash import DataFlashParser
+        parser = DataFlashParser()
+        import tempfile, os
+        with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+            f.write(b"\x00" * 10)
+            tmp = f.name
+        try:
+            result = parser.parse(tmp)
+            assert result.diagnostics.parser_confidence == 0.0
+        finally:
+            os.unlink(tmp)

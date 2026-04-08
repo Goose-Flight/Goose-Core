@@ -262,7 +262,21 @@ class ULogParser(BaseParser):
         )
 
         # --- Finalize diagnostics ------------------------------------------
-        # Parser confidence: starts at 1.0, penalised for missing critical streams
+        # Parser confidence scoring — see ParseDiagnostics class docstring for
+        # the full semantics.  This is parse/data-quality confidence ONLY, not
+        # root-cause confidence.  Do not use this value to score hypotheses.
+        #
+        # Scoring table (v1, matches contract_version "1.0"):
+        #   Base:                                     1.0
+        #   Each critical stream absent
+        #     (position, attitude, battery, gps):    −0.15 each
+        #   Each corruption indicator (max 3):       −0.10 each
+        #   Any timebase anomaly:                    −0.05 (flat)
+        #   Floor:                                    0.0
+        #
+        # Critical streams are those whose absence makes core analysis
+        # impossible or unreliable for crash/anomaly investigation.
+        # Adding a stream to this set is a contract_version-breaking change.
         confidence = 1.0
         critical_missing = {"position", "attitude", "battery", "gps"}
         for stream in missing:

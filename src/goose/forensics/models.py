@@ -237,9 +237,20 @@ class Provenance:
     """Records the full lineage of parsed data back to source evidence.
 
     Written by the parser framework alongside canonical flight data.
+
+    Schema versioning
+    -----------------
+    ``provenance_version`` is the schema version for this record.
+    ``contract_version`` identifies the parser contract under which this
+    provenance was produced — i.e., which version of the ParseResult/
+    ParseDiagnostics API was in use.  Increment ``contract_version`` when
+    the parser contract itself changes in a way that affects replay
+    compatibility (e.g. new required fields in ParseResult, changed
+    confidence model, new canonical stream list).
     """
 
-    provenance_version: str = "1.0"    # schema version for forward-compat
+    provenance_version: str = "1.0"     # schema version for this record
+    contract_version: str = "1.0"       # parser contract version (ParseResult API)
     source_evidence_id: str = ""
     parser_name: str = ""
     parser_version: str = ""
@@ -260,6 +271,9 @@ class Provenance:
     def from_dict(cls, d: dict[str, Any]) -> Provenance:
         d = dict(d)
         d["parsed_at"] = datetime.fromisoformat(d["parsed_at"])
+        # Forward-compat: ignore unknown keys from future versions
+        known = {f.name for f in __import__("dataclasses").fields(cls)}
+        d = {k: v for k, v in d.items() if k in known}
         return cls(**d)
 
 

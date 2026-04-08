@@ -53,7 +53,32 @@ class ParseDiagnostics:
     they must not be silently swallowed.
 
     Fields mirror the spec in 02_forensic_core_architecture_spec.md §4.5.
+
+    Schema versioning
+    -----------------
+    ``diagnostics_version`` is a forward-compatibility field. Increment it
+    when the shape of this dict changes in a way that would break a reader
+    built against a prior version. Consumers must check this field before
+    deserializing if they need strict compatibility.
+
+    Confidence scope
+    ----------------
+    ``parser_confidence`` is **parse/data-quality confidence only**.
+    It answers: "How completely and reliably did the parser extract data
+    from this file?"  It does NOT reflect root-cause analysis confidence,
+    plugin agreement, or investigative certainty — those live in Finding and
+    Hypothesis models.  Conflating the two would corrupt forensic reasoning.
+
+    Parser confidence scoring (ULogParser, v1):
+      Start:  1.0
+      Each critical missing stream (position, attitude, battery, gps): −0.15
+      Each corruption indicator (capped at 3):                          −0.10
+      Any timebase anomaly:                                             −0.05
+      Floor:  0.0, rounded to 2 decimal places
     """
+
+    # Schema version — increment on breaking serialization changes
+    diagnostics_version: str = "1.0"
 
     # Parser identity
     parser_selected: str = ""           # parser class name, e.g. "ULogParser"
@@ -64,8 +89,10 @@ class ParseDiagnostics:
     format_confidence: float = 0.0      # 0.0–1.0
     supported: bool = False             # False if format is not implemented
 
-    # Parse quality
-    parser_confidence: float = 0.0      # 0.0–1.0 overall parse confidence
+    # Parse quality — see "Confidence scope" in class docstring
+    parser_confidence: float = 0.0      # 0.0–1.0, parse/data-quality confidence ONLY
+    # Explicit label so consumers can never mistake the scope of this value:
+    confidence_scope: str = "parser_parse_quality"  # always this value; not root-cause
 
     # Streams
     missing_streams: list[str] = field(default_factory=list)
@@ -85,12 +112,14 @@ class ParseDiagnostics:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "diagnostics_version": self.diagnostics_version,
             "parser_selected": self.parser_selected,
             "parser_version": self.parser_version,
             "detected_format": self.detected_format,
             "format_confidence": self.format_confidence,
             "supported": self.supported,
             "parser_confidence": self.parser_confidence,
+            "confidence_scope": self.confidence_scope,
             "missing_streams": self.missing_streams,
             "stream_coverage": [s.to_dict() for s in self.stream_coverage],
             "warnings": self.warnings,
@@ -115,6 +144,9 @@ class ParseDiagnostics:
         d["parse_started_at"] = datetime.fromisoformat(d["parse_started_at"])
         if d.get("parse_completed_at"):
             d["parse_completed_at"] = datetime.fromisoformat(d["parse_completed_at"])
+        # Forward-compat: ignore unknown keys from future versions
+        known = {f.name for f in __import__("dataclasses").fields(cls)}
+        d = {k: v for k, v in d.items() if k in known}
         return cls(**d)
 
     @classmethod

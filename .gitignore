@@ -49,3 +49,8 @@ web-ui/
 .env
 .env.*
 .claude/
+
+# Internal strategy / business docs (keep local, never commit)
+docs/strategy.md
+docs/competitor_analysis.md
+docs/internal_*.md

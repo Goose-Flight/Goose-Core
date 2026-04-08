@@ -98,10 +98,24 @@ class PluginDiagnostics:
     executed: bool = True
     skipped: bool = False
     skip_reason: str = ""
+    blocked: bool = False
+    block_reason: str = ""
     missing_streams: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     findings_emitted: int = 0
     execution_duration_ms: float = 0.0
+    trust_state: str = ""
+
+    @property
+    def execution_status(self) -> str:
+        """Derive execution status from flags: RAN | SKIPPED | BLOCKED."""
+        if self.blocked:
+            return "BLOCKED"
+        if self.skipped:
+            return "SKIPPED"
+        if self.executed:
+            return "RAN"
+        return "NOT_RUN"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -111,10 +125,14 @@ class PluginDiagnostics:
             "executed": self.executed,
             "skipped": self.skipped,
             "skip_reason": self.skip_reason,
+            "blocked": self.blocked,
+            "block_reason": self.block_reason,
             "missing_streams": self.missing_streams,
             "warnings": self.warnings,
             "findings_emitted": self.findings_emitted,
             "execution_duration_ms": self.execution_duration_ms,
+            "execution_status": self.execution_status,
+            "trust_state": self.trust_state,
         }
 
 

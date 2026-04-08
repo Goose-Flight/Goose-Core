@@ -75,6 +75,7 @@ class Plugin(ABC):
                 missing_streams=missing,
                 findings_emitted=0,
                 execution_duration_ms=round(elapsed, 2),
+                trust_state=self.manifest.trust_state.value,
             )
             return [], diag
 
@@ -142,6 +143,7 @@ class Plugin(ABC):
             findings_emitted=len(forensic_findings),
             warnings=warnings,
             execution_duration_ms=round(elapsed, 2),
+            trust_state=self.manifest.trust_state.value,
         )
         return forensic_findings, diag
 

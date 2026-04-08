@@ -201,7 +201,7 @@
     .case-card-id { font-size: 12px; font-weight: 700; color: var(--text); min-width: 160px; }
     .case-card-meta { font-size: 12px; color: var(--text-sec); flex: 1; }
     .case-card-status {
-      font-size: 11px;
+      font-size: 12px;
       padding: 2px 9px;
       border-radius: 12px;
       border: 1px solid var(--card-border);
@@ -216,8 +216,8 @@
       margin-bottom: 8px;
     }
     .ev-row-name { font-size: 13px; font-weight: 600; color: var(--text); }
-    .ev-row-hash { font-size: 11px; color: var(--text-sec); word-break: break-all; margin-top: 4px; }
-    .ev-row-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .ev-row-hash { font-size: 12px; color: var(--text-sec); word-break: break-all; margin-top: 4px; }
+    .ev-row-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 
     .audit-row {
       font-size: 12px;
@@ -2076,16 +2076,19 @@
           <h2 id="ws-case-id" style="font-size:16px;font-weight:600;color:var(--text);"></h2>
           <div id="ws-case-meta" style="font-size:12px;color:var(--text-sec);margin-top:2px;"></div>
         </div>
-        <span id="ws-status-badge" style="margin-left:auto;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--card);border:1px solid var(--card-border);"></span>
+        <span id="ws-status-badge" style="margin-left:auto;font-size:12px;padding:3px 10px;border-radius:20px;background:var(--card);border:1px solid var(--card-border);"></span>
       </div>
 
       <!-- Workspace tabs -->
-      <div style="display:flex;gap:4px;border-bottom:1px solid var(--card-border);margin-bottom:24px;">
+      <div style="display:flex;gap:4px;border-bottom:1px solid var(--card-border);margin-bottom:24px;flex-wrap:wrap;">
         <button class="ws-tab active" id="ws-tab-evidence" onclick="switchWsTab('evidence')">Evidence</button>
-        <button class="ws-tab" id="ws-tab-diagnostics" onclick="switchWsTab('diagnostics')">Parse Diagnostics</button>
-        <button class="ws-tab" id="ws-tab-findings" onclick="switchWsTab('findings')">Findings</button>
-        <button class="ws-tab" id="ws-tab-hypotheses" onclick="switchWsTab('hypotheses')">Hypotheses</button>
+        <button class="ws-tab" id="ws-tab-diagnostics" onclick="switchWsTab('diagnostics')">Diagnostics</button>
         <button class="ws-tab" id="ws-tab-plugins" onclick="switchWsTab('plugins')">Plugins</button>
+        <button class="ws-tab" id="ws-tab-findings" onclick="switchWsTab('findings')">Findings</button>
+        <button class="ws-tab" id="ws-tab-timeline" onclick="switchWsTab('timeline')">Timeline</button>
+        <button class="ws-tab" id="ws-tab-charts" onclick="switchWsTab('charts')">Charts</button>
+        <button class="ws-tab" id="ws-tab-hypotheses" onclick="switchWsTab('hypotheses')">Hypotheses</button>
+        <button class="ws-tab" id="ws-tab-exports" onclick="switchWsTab('exports')">Exports</button>
         <button class="ws-tab" id="ws-tab-audit" onclick="switchWsTab('audit')">Audit Trail</button>
       </div>
 
@@ -2132,6 +2135,27 @@
       <div id="ws-plugins-panel" style="display:none;">
         <div id="ws-plugins-content">
           <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Loading plugin inventory...</div>
+        </div>
+      </div>
+
+      <!-- Timeline tab -->
+      <div id="ws-timeline-panel" style="display:none;">
+        <div id="ws-timeline-content">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Load timeline to see flight events.</div>
+        </div>
+      </div>
+
+      <!-- Charts tab -->
+      <div id="ws-charts-panel" style="display:none;">
+        <div id="ws-charts-content">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Select streams and load chart data.</div>
+        </div>
+      </div>
+
+      <!-- Exports tab -->
+      <div id="ws-exports-panel" style="display:none;">
+        <div id="ws-exports-content">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Export case bundles for sharing.</div>
         </div>
       </div>
 
@@ -2210,6 +2234,18 @@
 
   const HISTORY_KEY  = 'goose_history';
   const HISTORY_MAX  = 50;
+
+  /* Sprint 6: workspace state for cross-tab context preservation */
+  const workspaceState = {
+    caseId: null,
+    runId: null,
+    activeFindingId: null,
+    chartStart: null,
+    chartEnd: null,
+    chartStreams: [],
+    findingsFilter: 'all',
+    timelineData: null,
+  };
 
   /* ════════════════════════════════════════════════════════════
      Tab navigation
@@ -3767,7 +3803,7 @@
         <div class="case-card" onclick="openCase('${c.case_id}')">
           <div class="case-card-id">${c.case_id}</div>
           <div class="case-card-meta">${date} · ${evLabel}${runLabel}${tags}</div>
-          ${c.notes ? `<div style="font-size:11px;color:var(--text-sec);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notes}</div>` : ''}
+          ${c.notes ? `<div style="font-size:12px;color:var(--text-sec);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notes}</div>` : ''}
           <span class="case-card-status">${c.status}</span>
         </div>`;
     }).join('');
@@ -3807,11 +3843,24 @@
 
   async function openCase(caseId) {
     activeCaseId = caseId;
+    workspaceState.caseId = caseId;
+    workspaceState.runId = null;
+    workspaceState.activeFindingId = null;
+    workspaceState.chartStart = null;
+    workspaceState.chartEnd = null;
+    workspaceState.chartStreams = [];
+    workspaceState.findingsFilter = 'all';
+    workspaceState.timelineData = null;
     try {
       const res = await fetch(`/api/cases/${caseId}`);
       const data = await res.json();
       if (!data.ok) return;
       const c = data.case;
+
+      // Extract run_id from latest analysis run if available
+      if (c.analysis_runs && c.analysis_runs.length > 0) {
+        workspaceState.runId = c.analysis_runs[c.analysis_runs.length - 1].run_id;
+      }
 
       // Show workspace, hide dashboard
       document.getElementById('cases-dashboard').style.display = 'none';
@@ -3838,15 +3887,21 @@
   }
 
   function switchWsTab(tab) {
-    ['evidence','diagnostics','findings','hypotheses','plugins','audit'].forEach(t => {
-      document.getElementById(`ws-tab-${t}`).classList.toggle('active', t === tab);
-      document.getElementById(`ws-${t}-panel`).style.display = t === tab ? '' : 'none';
+    const allTabs = ['evidence','diagnostics','findings','hypotheses','plugins','audit','timeline','charts','exports'];
+    allTabs.forEach(t => {
+      const tabBtn = document.getElementById(`ws-tab-${t}`);
+      const panel = document.getElementById(`ws-${t}-panel`);
+      if (tabBtn) tabBtn.classList.toggle('active', t === tab);
+      if (panel) panel.style.display = t === tab ? '' : 'none';
     });
     if (tab === 'audit' && activeCaseId) loadAuditLog(activeCaseId);
     if (tab === 'findings' && activeCaseId) loadFindings(activeCaseId);
     if (tab === 'diagnostics' && activeCaseId) loadParseDiagnostics(activeCaseId);
     if (tab === 'hypotheses' && activeCaseId) loadHypotheses(activeCaseId);
     if (tab === 'plugins' && activeCaseId) loadPlugins(activeCaseId);
+    if (tab === 'timeline' && activeCaseId) loadTimeline(activeCaseId);
+    if (tab === 'charts' && activeCaseId) renderChartsPanel(activeCaseId);
+    if (tab === 'exports' && activeCaseId) loadExports(activeCaseId);
   }
 
   async function loadHypotheses(caseId) {
@@ -3867,41 +3922,72 @@
 
   function renderHypothesesPanel(hypotheses) {
     const statusColor = s => ({
-      candidate: 'var(--text-sec)',
+      candidate: '#888',
       supported: 'var(--green)',
       refuted: 'var(--red)',
       inconclusive: 'var(--yellow,#f59e0b)',
     }[s] || 'var(--text-sec)');
 
+    const statusBg = s => ({
+      candidate: 'rgba(136,136,136,0.1)',
+      supported: 'var(--green-glow)',
+      refuted: 'var(--red-glow)',
+      inconclusive: 'var(--amber-glow)',
+    }[s] || 'var(--card)');
+
     const bandColor = b => ({high:'var(--green)',medium:'var(--yellow,#f59e0b)',low:'var(--red)',unknown:'var(--text-sec)'}[b]||'var(--text-sec)');
 
+    function jumpToFinding(findingId) {
+      workspaceState.activeFindingId = findingId;
+      switchWsTab('findings');
+    }
+
     return `
-      <div style="margin-bottom:8px;font-size:12px;color:var(--text-sec);">
-        <strong>Hypotheses are auto-generated root-cause candidates.</strong>
-        They are distinct from findings and must be reviewed by an analyst.
+      <div style="background:rgba(91,155,213,0.08);border:1px solid rgba(91,155,213,0.3);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#5B9BD5;">
+        Hypotheses are auto-generated <strong>CANDIDATES</strong> based on finding patterns. Always verify against evidence.
         Confidence here is investigative confidence — not parser or finding confidence.
       </div>
-      ${hypotheses.map(h => `
+      ${hypotheses.map(h => {
+        const sColor = statusColor(h.status);
+        const sBg = statusBg(h.status);
+
+        const supportLinks = (h.supporting_finding_ids || []).map(fid =>
+          `<span onclick="workspaceState.activeFindingId='${fid}';switchWsTab('findings');" style="font-size:12px;color:var(--green);cursor:pointer;text-decoration:underline;">${fid}</span>`
+        ).join(', ');
+
+        const contradictLinks = (h.contradicting_finding_ids || []).map(fid =>
+          `<span onclick="workspaceState.activeFindingId='${fid}';switchWsTab('findings');" style="font-size:12px;color:var(--red);cursor:pointer;text-decoration:underline;">${fid}</span>`
+        ).join(', ');
+
+        return `
         <div class="card" style="margin-bottom:12px;padding:16px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-            <div>
-              <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:${statusColor(h.status)};">${h.status}</span>
-              <span style="font-size:11px;color:var(--text-sec);margin-left:8px;">${h.theme || ''}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;font-weight:700;text-transform:uppercase;padding:2px 10px;border-radius:8px;background:${sBg};color:${sColor};border:1px solid ${sColor};">${h.status}</span>
+              <span style="font-size:12px;color:var(--text-sec);">${h.theme || ''}</span>
             </div>
-            <span style="font-size:12px;font-weight:600;color:${bandColor(h.confidence_band)};">${Math.round((h.confidence||0)*100)}% confidence</span>
+            <span style="font-size:13px;font-weight:600;color:${bandColor(h.confidence_band)};">${Math.round((h.confidence||0)*100)}% confidence</span>
           </div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:8px;">${h.statement}</div>
-          <div style="display:flex;gap:16px;font-size:12px;margin-bottom:8px;">
-            <span style="color:var(--green);">▲ ${h.supporting_finding_ids.length} supporting</span>
-            <span style="color:var(--red);">▼ ${h.contradicting_finding_ids.length} contradicting</span>
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;">${h.statement}</div>
+          <div style="margin-bottom:8px;">
+            <div style="font-size:12px;color:var(--text-sec);margin-bottom:4px;">
+              <span style="color:var(--green);">Supporting (${(h.supporting_finding_ids||[]).length}):</span>
+              ${supportLinks || '<span style="color:var(--text-sec);">none</span>'}
+            </div>
+            <div style="font-size:12px;color:var(--text-sec);">
+              <span style="color:var(--red);">Contradicting (${(h.contradicting_finding_ids||[]).length}):</span>
+              ${contradictLinks || '<span style="color:var(--text-sec);">none</span>'}
+            </div>
           </div>
           ${h.unresolved_questions && h.unresolved_questions.length > 0 ? `
-            <div style="margin-top:8px;">
-              <div style="font-size:11px;font-weight:600;color:var(--text-sec);margin-bottom:4px;">UNRESOLVED QUESTIONS</div>
-              ${h.unresolved_questions.map(q => `<div style="font-size:12px;color:var(--text-sec);padding:4px 0;border-left:2px solid var(--card-border);padding-left:8px;margin-bottom:4px;">${q}</div>`).join('')}
+            <div style="margin-top:10px;">
+              <div style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:4px;">UNRESOLVED QUESTIONS</div>
+              <ul style="margin:0;padding-left:18px;">
+                ${h.unresolved_questions.map(q => `<li style="font-size:12px;color:var(--text-sec);margin-bottom:3px;">${q}</li>`).join('')}
+              </ul>
             </div>` : ''}
-          <div style="font-size:10px;color:var(--text-dim,#555);margin-top:8px;">${h.hypothesis_id} · scope: ${h.confidence_scope}</div>
-        </div>`).join('')}`;
+          <div style="font-size:12px;color:var(--text-dim,#555);margin-top:10px;">${h.hypothesis_id} · scope: ${h.confidence_scope}</div>
+        </div>`}).join('')}`;
   }
 
   async function loadPlugins(caseId) {
@@ -3936,46 +4022,74 @@
       enterprise_trusted:'#6ECC72', blocked:'var(--red)'
     }[t] || 'var(--text-sec)');
 
-    const trustLabel = t => t.replace(/_/g, ' ');
+    const trustLabel = t => (t||'').replace(/_/g, ' ').toUpperCase();
+
+    // Compute summary counts
+    let ranCount = 0, skippedCount = 0, blockedCount = 0;
+    manifests.forEach(m => {
+      const ri = runMap[m.plugin_id];
+      if (ri) {
+        if (ri.blocked) blockedCount++;
+        else if (ri.skipped) skippedCount++;
+        else if (ri.executed) ranCount++;
+      }
+    });
+    const hasRunInfo = runInfo.length > 0;
+    const runId = runInfo.length > 0 ? runInfo[0].run_id : workspaceState.runId;
+
+    const statusBadgeHtml = (ri) => {
+      if (!ri) return `<span style="font-size:12px;padding:2px 8px;border-radius:10px;background:var(--card);color:var(--text-sec);border:1px solid var(--card-border);">NOT RUN</span>`;
+      const status = ri.execution_status || (ri.blocked ? 'BLOCKED' : ri.skipped ? 'SKIPPED' : ri.executed ? 'RAN' : 'NOT_RUN');
+      if (status === 'BLOCKED') return `<span style="font-size:12px;padding:2px 8px;border-radius:10px;background:var(--red-glow);color:var(--red);border:1px solid var(--red);">BLOCKED</span>`;
+      if (status === 'SKIPPED') return `<span style="font-size:12px;padding:2px 8px;border-radius:10px;background:var(--amber-glow);color:var(--amber);border:1px solid var(--amber);">SKIPPED</span>`;
+      if (status === 'RAN') return `<span style="font-size:12px;padding:2px 8px;border-radius:10px;background:var(--green-glow);color:var(--green);border:1px solid var(--green);">RAN</span>`;
+      return `<span style="font-size:12px;padding:2px 8px;border-radius:10px;background:var(--card);color:var(--text-sec);border:1px solid var(--card-border);">${status}</span>`;
+    };
 
     return `
-      <div style="margin-bottom:12px;font-size:12px;color:var(--text-sec);">
-        <strong>${manifests.length} registered plugin(s).</strong>
-        Each plugin declares required streams, trust state, and output types.
+      <div style="margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Analysis Plugin Status${runId ? ' — ' + runId : ''}</div>
+        ${hasRunInfo ? `<div style="font-size:13px;color:var(--text-sec);">${ranCount} ran | ${skippedCount} skipped | ${blockedCount} blocked</div>` : `<div style="font-size:13px;color:var(--text-sec);">${manifests.length} registered plugins. Run analysis to see execution status.</div>`}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;">
       ${manifests.map(m => {
         const ri = runMap[m.plugin_id];
-        const statusBadge = ri
-          ? (ri.skipped
-            ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--amber-glow);color:var(--amber);border:1px solid var(--amber);">SKIPPED</span>`
-            : `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--green-glow);color:var(--green);border:1px solid var(--green);">RAN</span>`)
-          : `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--card);color:var(--text-sec);border:1px solid var(--card-border);">NOT RUN</span>`;
         const findingsCount = ri && ri.executed ? ri.findings_emitted : null;
         const skipReason = ri && ri.skipped ? ri.skip_reason : '';
+        const blockReason = ri && ri.blocked ? ri.block_reason : '';
         const durationMs = ri ? ri.execution_duration_ms : null;
+        const missingStreams = ri ? (ri.missing_streams || []) : [];
+        const tState = ri && ri.trust_state ? ri.trust_state : m.trust_state;
+        const isBlocked = tState === 'blocked';
+
+        // Required streams with check marks
+        const reqStreamsHtml = m.required_streams.map(s => {
+          const present = missingStreams.indexOf(s) === -1;
+          return `<span style="font-size:12px;color:${present ? 'var(--green)' : 'var(--red)'};">${present ? '&#10003;' : '&#10007;'} ${s}</span>`;
+        }).join(' &nbsp; ');
 
         return `
-          <div class="card" style="padding:16px;">
+          <div class="card" style="padding:16px;${isBlocked ? 'opacity:0.5;text-decoration:line-through;' : ''}">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
               <div>
-                <div style="font-size:14px;font-weight:600;">${m.name}</div>
-                <div style="font-size:11px;color:var(--text-sec);">v${m.version} by ${m.author}</div>
+                <span style="font-size:14px;font-weight:600;">${m.name}</span>
+                <span style="font-size:12px;color:var(--text-sec);margin-left:6px;">v${m.version}</span>
               </div>
-              ${statusBadge}
+              ${statusBadgeHtml(ri)}
             </div>
             <div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${m.description}</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-              <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:8px;border:1px solid ${catColor(m.category)};color:${catColor(m.category)};">${m.category}</span>
-              <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:8px;border:1px solid ${trustColor(m.trust_state)};color:${trustColor(m.trust_state)};">${trustLabel(m.trust_state)}</span>
+              <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:8px;border:1px solid ${catColor(m.category)};color:${catColor(m.category)};">${m.category}</span>
+              <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:8px;border:1px solid ${trustColor(tState)};color:${trustColor(tState)};">${trustLabel(tState)}</span>
             </div>
-            <div style="font-size:11px;color:var(--text-sec);">
-              ${m.required_streams.length > 0 ? `<div>Required: <span style="color:var(--text);">${m.required_streams.join(', ')}</span></div>` : '<div>No required streams</div>'}
-              ${m.optional_streams.length > 0 ? `<div>Optional: ${m.optional_streams.join(', ')}</div>` : ''}
+            <div style="font-size:12px;color:var(--text-sec);margin-bottom:6px;">
+              ${m.required_streams.length > 0 ? `<div>Required: ${reqStreamsHtml}</div>` : '<div>No required streams</div>'}
+              ${m.optional_streams.length > 0 ? `<div style="margin-top:2px;">Optional: ${m.optional_streams.join(', ')}</div>` : ''}
             </div>
-            ${findingsCount !== null ? `<div style="font-size:11px;margin-top:6px;color:var(--text-sec);">Findings emitted: <strong style="color:var(--text);">${findingsCount}</strong>${durationMs !== null ? ` in ${durationMs.toFixed(0)}ms` : ''}</div>` : ''}
-            ${skipReason ? `<div style="font-size:11px;margin-top:4px;color:var(--amber);">${skipReason}</div>` : ''}
-            <div style="font-size:10px;color:var(--text-dim,#555);margin-top:6px;">${m.plugin_id} &middot; contract v${m.minimum_contract_version}</div>
+            ${findingsCount !== null ? `<div style="font-size:12px;margin-top:6px;color:var(--text-sec);">Findings: <strong style="color:var(--text);">${findingsCount}</strong>${durationMs !== null ? ` · ${durationMs.toFixed(0)}ms` : ''}</div>` : ''}
+            ${skipReason ? `<div style="font-size:12px;margin-top:4px;color:var(--amber);">Skip reason: ${skipReason}</div>` : ''}
+            ${blockReason ? `<div style="font-size:12px;margin-top:4px;color:var(--red);">Block reason: ${blockReason}</div>` : ''}
+            <div style="font-size:12px;color:var(--text-dim,#555);margin-top:6px;">${m.plugin_id} · contract v${m.minimum_contract_version}</div>
           </div>`;
       }).join('')}
       </div>`;
@@ -4031,29 +4145,64 @@
         ${items.map(m => `<div style="font-size:12px;padding:6px 10px;border-radius:6px;background:var(--card);border-left:3px solid ${color};margin-bottom:4px;">${m}</div>`).join('')}
       </div>` : '';
 
+    // Stream coverage table with completeness/continuity/corruption
+    let streamTableHtml = '';
+    if (d.stream_coverage && d.stream_coverage.length > 0) {
+      const scRows = d.stream_coverage.map(s => {
+        const completeness = s.completeness != null ? Math.round(s.completeness * 100) : (s.present ? 100 : 0);
+        const continuity = s.continuity != null ? Math.round(s.continuity * 100) : (s.present ? 100 : 0);
+        const corrupt = s.corruption_detected ? '<span style="color:var(--red);font-weight:600;">YES</span>' : '<span style="color:var(--green);">No</span>';
+        return `<tr style="border-bottom:1px solid var(--card-border);">
+          <td style="padding:6px 10px;font-size:12px;">${s.stream_name}</td>
+          <td style="padding:6px 10px;font-size:12px;text-align:center;">${s.present ? `<span style="color:var(--green);">✓</span> ${s.row_count} rows` : '<span style="color:var(--text-sec);">—</span>'}</td>
+          <td style="padding:6px 10px;font-size:12px;text-align:center;">${completeness}%</td>
+          <td style="padding:6px 10px;font-size:12px;text-align:center;">${continuity}%</td>
+          <td style="padding:6px 10px;font-size:12px;text-align:center;">${corrupt}</td>
+        </tr>`;
+      }).join('');
+      streamTableHtml = `
+        <div style="margin-top:16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Stream Coverage</div>
+          <table style="width:100%;border-collapse:collapse;border:1px solid var(--card-border);border-radius:6px;">
+            <thead><tr style="background:var(--card);border-bottom:1px solid var(--card-border);">
+              <th style="padding:6px 10px;font-size:12px;text-align:left;color:var(--text-sec);">Stream</th>
+              <th style="padding:6px 10px;font-size:12px;text-align:center;color:var(--text-sec);">Present</th>
+              <th style="padding:6px 10px;font-size:12px;text-align:center;color:var(--text-sec);">Completeness</th>
+              <th style="padding:6px 10px;font-size:12px;text-align:center;color:var(--text-sec);">Continuity</th>
+              <th style="padding:6px 10px;font-size:12px;text-align:center;color:var(--text-sec);">Corruption</th>
+            </tr></thead>
+            <tbody>${scRows}</tbody>
+          </table>
+        </div>`;
+    }
+
     return `
       <div>
+        <div style="background:rgba(239,159,39,0.08);border:1px solid rgba(239,159,39,0.3);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--amber);">
+          This shows <strong>parser quality</strong>, not root-cause confidence. Scope: <code>parser_parse_quality</code>
+        </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:8px;">
           <div class="card" style="padding:12px 16px;">
-            <div style="font-size:11px;color:var(--text-sec);margin-bottom:2px;">PARSER</div>
+            <div style="font-size:12px;color:var(--text-sec);margin-bottom:2px;">PARSER</div>
             <div style="font-size:14px;font-weight:600;">${d.parser_selected || '—'}</div>
-            <div style="font-size:11px;color:var(--text-sec);">v${d.parser_version || '?'}</div>
+            <div style="font-size:12px;color:var(--text-sec);">v${d.parser_version || '?'}</div>
           </div>
           <div class="card" style="padding:12px 16px;">
-            <div style="font-size:11px;color:var(--text-sec);margin-bottom:2px;">FORMAT</div>
+            <div style="font-size:12px;color:var(--text-sec);margin-bottom:2px;">FORMAT</div>
             <div style="font-size:14px;font-weight:600;">${d.detected_format || '—'}</div>
-            <div style="font-size:11px;">${badge(d.supported,'Supported','Unsupported')} · confidence ${conf(d.format_confidence)}</div>
+            <div style="font-size:12px;">${badge(d.supported,'Supported','Unsupported')} · confidence ${conf(d.format_confidence)}</div>
           </div>
           <div class="card" style="padding:12px 16px;">
-            <div style="font-size:11px;color:var(--text-sec);margin-bottom:2px;">PARSE CONFIDENCE</div>
+            <div style="font-size:12px;color:var(--text-sec);margin-bottom:2px;">PARSE CONFIDENCE</div>
             <div style="font-size:22px;font-weight:700;">${conf(d.parser_confidence)}</div>
           </div>
           <div class="card" style="padding:12px 16px;">
-            <div style="font-size:11px;color:var(--text-sec);margin-bottom:2px;">PARSE DURATION</div>
+            <div style="font-size:12px;color:var(--text-sec);margin-bottom:2px;">PARSE DURATION</div>
             <div style="font-size:22px;font-weight:700;">${durationMs}</div>
           </div>
         </div>
-        ${streamsHtml}
+        ${streamTableHtml}
+        ${streamsHtml && !streamTableHtml ? streamsHtml : ''}
         ${listSection('Warnings', d.warnings, 'var(--yellow,#f59e0b)')}
         ${listSection('Errors', d.errors, 'var(--red)')}
         ${listSection('Corruption Indicators', d.corruption_indicators, 'var(--red)')}
@@ -4064,6 +4213,12 @@
             Missing streams: ${d.missing_streams.join(', ')}
           </div>` : ''}
       </div>`;
+  }
+
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/(1024*1024)).toFixed(2) + ' MB';
   }
 
   function renderEvidenceList(evidence) {
@@ -4078,14 +4233,29 @@
 
     btn.disabled = false;
     list.innerHTML = evidence.map(ev => {
-      const size = (ev.size_bytes / 1024).toFixed(1);
+      const size = formatFileSize(ev.size_bytes);
       const date = new Date(ev.acquired_at).toLocaleString();
+      const ext = ev.filename.split('.').pop().toLowerCase();
+      const parserEligible = ext === 'ulg' ? 'ULog Parser' : ext === 'bin' ? 'DataFlash Parser' : 'Unknown';
+      const sha256Short = ev.sha256 ? ev.sha256.slice(0,16) + '...' : '—';
+      const sha512Short = ev.sha512 ? ev.sha512.slice(0,16) + '...' : '—';
       return `
-        <div class="ev-row">
-          <div class="ev-row-name">${ev.filename} <span style="font-weight:400;color:var(--text-sec);">(${size} KB)</span></div>
-          <div class="ev-row-hash">SHA-256: ${ev.sha256}</div>
-          ${ev.sha512 ? `<div class="ev-row-hash">SHA-512: ${ev.sha512.slice(0,32)}…</div>` : ''}
-          <div class="ev-row-meta">${ev.evidence_id} · Acquired ${date} via ${ev.source_acquisition_mode} · ${ev.immutable ? 'Immutable ✓' : 'Mutable'}</div>
+        <div class="card" style="padding:16px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+            <div>
+              <div style="font-size:14px;font-weight:600;">${ev.filename}</div>
+              <div style="font-size:12px;color:var(--text-sec);">${ev.evidence_id} · ${size}</div>
+            </div>
+            ${ev.immutable ? '<span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:10px;background:rgba(110,204,114,0.12);color:var(--green);border:1px solid var(--green);">IMMUTABLE</span>' : '<span style="font-size:12px;padding:2px 10px;border-radius:10px;background:var(--red-glow);color:var(--red);border:1px solid var(--red);">MUTABLE</span>'}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
+            <div style="color:var(--text-sec);">SHA-256: <span title="${ev.sha256||''}" style="color:var(--text);cursor:help;">${sha256Short}</span></div>
+            <div style="color:var(--text-sec);">SHA-512: <span title="${ev.sha512||''}" style="color:var(--text);cursor:help;">${sha512Short}</span></div>
+            <div style="color:var(--text-sec);">Acquired: <span style="color:var(--text);">${date}</span></div>
+            <div style="color:var(--text-sec);">Source: <span style="color:var(--text);">${ev.source_acquisition_mode}</span></div>
+            <div style="color:var(--text-sec);">Parser: <span style="color:var(--text);">${parserEligible}</span></div>
+            <div style="color:var(--text-sec);">Content type: <span style="color:var(--text);">${ev.content_type || 'application/octet-stream'}</span></div>
+          </div>
         </div>`;
     }).join('');
   }
@@ -4146,6 +4316,8 @@
       if (data.ok) {
         btn.textContent = 'Analyze';
         btn.disabled = false;
+        // Store run context
+        if (data.run_id) workspaceState.runId = data.run_id;
         // Render diagnostics in background so the tab is ready
         if (data.parse_diagnostics) {
           document.getElementById('ws-diagnostics-content').innerHTML =
@@ -4187,7 +4359,7 @@
       <div style="display:flex;gap:20px;margin-bottom:20px;">
         <div style="background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px 24px;text-align:center;">
           <div style="font-size:28px;font-weight:700;color:${scoreColor};">${score}</div>
-          <div style="font-size:11px;color:var(--text-sec);margin-top:4px;">${scoreLabel}</div>
+          <div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${scoreLabel}</div>
         </div>
         <div style="flex:1;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px;">
           <div style="font-size:13px;color:var(--text);line-height:1.6;">${data.narrative_human || data.narrative || ''}</div>
@@ -4203,7 +4375,7 @@
           <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;">Warnings (${warnings.length})</div>
           ${warnings.map(f => renderForensicFindingCard(f, 'var(--amber)', 'var(--amber-glow)', 'rgba(239,159,39,0.2)')).join('')}
         </div>` : ''}
-      <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+      <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">
         ${passes.length} checks passed · ${summary.plugins_run || 0} plugins · ${summary.hypotheses_count || 0} hypotheses
         · Run ID: ${data.run_id || 'unknown'}${data.evidence_id ? ` · Evidence: ${data.evidence_id}` : ''}
       </div>
@@ -4212,34 +4384,119 @@
       </div>`;
   }
 
+  function sevColorMap(sev) {
+    return {critical:'var(--red)', warning:'var(--amber)', info:'#5B9BD5', pass:'var(--green-pass)'}[sev] || 'var(--text-sec)';
+  }
+  function sevBgMap(sev) {
+    return {critical:'var(--red-glow)', warning:'var(--amber-glow)', info:'rgba(91,155,213,0.1)', pass:'rgba(99,153,34,0.08)'}[sev] || 'var(--card)';
+  }
+  function sevBorderMap(sev) {
+    return {critical:'rgba(226,75,74,0.3)', warning:'rgba(239,159,39,0.3)', info:'rgba(91,155,213,0.3)', pass:'rgba(99,153,34,0.3)'}[sev] || 'var(--card-border)';
+  }
+  function confBandLabel(conf) {
+    if (conf >= 0.80) return 'HIGH';
+    if (conf >= 0.50) return 'MEDIUM';
+    if (conf >= 0.25) return 'LOW';
+    return 'UNKNOWN';
+  }
+
   function renderForensicFindingCard(f, colorVar, bgVar, borderVar) {
+    const sev = f.severity || 'info';
+    const color = colorVar || sevColorMap(sev);
+    const bg = bgVar || sevBgMap(sev);
+    const border = borderVar || sevBorderMap(sev);
+
     const refs = (f.evidence_references || []);
     const refHtml = refs.length > 0 ? `
-      <div style="margin-top:8px;padding-top:8px;border-top:1px solid ${borderVar};">
-        <div style="font-size:10px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Evidence References</div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid ${border};">
+        <div style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Evidence References</div>
         ${refs.map(r => `
-          <div style="font-size:11px;color:var(--text-sec);display:flex;gap:8px;align-items:baseline;margin-bottom:2px;">
+          <div style="font-size:12px;color:var(--text-sec);display:flex;gap:8px;align-items:baseline;margin-bottom:2px;">
             <span style="font-weight:600;">${r.evidence_id}</span>
             ${r.stream_name ? `<span>· ${r.stream_name}</span>` : ''}
-            ${r.time_range_start != null ? `<span>· ${r.time_range_start.toFixed(1)}s–${(r.time_range_end||r.time_range_start).toFixed(1)}s</span>` : ''}
+            ${r.time_range_start != null ? `<span>· T+${r.time_range_start.toFixed(1)}s to T+${(r.time_range_end||r.time_range_start).toFixed(1)}s</span>` : ''}
           </div>
-          ${r.support_summary ? `<div style="font-size:11px;color:var(--text-sec);margin-bottom:4px;font-style:italic;">"${r.support_summary.slice(0,120)}${r.support_summary.length>120?'…':''}"</div>` : ''}`).join('')}
-      </div>` : `<div style="margin-top:6px;font-size:10px;color:var(--text-dim,#666);">No evidence reference attached.</div>`;
+          ${r.support_summary ? `<div style="font-size:12px;color:var(--text-sec);margin-bottom:4px;font-style:italic;">"${r.support_summary.slice(0,150)}${r.support_summary.length>150?'...':''}"</div>` : ''}`).join('')}
+      </div>` : '';
 
-    const confBand = f.confidence_band || '';
     const confPct = f.confidence != null ? Math.round(f.confidence * 100) : null;
-    const confStr = confPct != null ? ` · ${confPct}% confidence (${confBand})` : '';
+    const confBand = f.confidence_band || (confPct != null ? confBandLabel(f.confidence) : '');
+    const confStr = confPct != null ? `${confPct}% (${confBand})` : '';
+
+    const pluginInfo = f.plugin_id ? `from ${f.plugin_id}${f.plugin_version ? ' v'+f.plugin_version : ''}` : '';
+    const tState = f.trust_state ? ` (${f.trust_state.replace(/_/g,' ')})` : '';
+    const timeRange = f.start_time != null ? `T+${f.start_time.toFixed(1)}s${f.end_time != null ? ' to T+'+f.end_time.toFixed(1)+'s' : ''}` : '';
+
+    // Supporting metrics (collapsed by default)
+    const metrics = f.supporting_metrics || {};
+    const metricsKeys = Object.keys(metrics);
+    const metricsId = 'metrics-' + (f.finding_id || Math.random().toString(36).slice(2));
+    const metricsHtml = metricsKeys.length > 0 ? `
+      <div style="margin-top:8px;">
+        <button onclick="var el=document.getElementById('${metricsId}');el.style.display=el.style.display==='none'?'':'none';" style="font-size:12px;background:none;border:none;color:var(--text-sec);cursor:pointer;padding:0;text-decoration:underline;">Supporting metrics (${metricsKeys.length})</button>
+        <div id="${metricsId}" style="display:none;margin-top:4px;padding:8px;background:var(--card);border-radius:6px;font-size:12px;">
+          ${metricsKeys.map(k => `<div><span style="color:var(--text-sec);">${k}:</span> ${JSON.stringify(metrics[k])}</div>`).join('')}
+        </div>
+      </div>` : '';
+
+    // Contradicting metrics
+    const contraMetrics = f.contradicting_metrics || {};
+    const contraKeys = Object.keys(contraMetrics);
+    const contraHtml = contraKeys.length > 0 ? `
+      <div style="margin-top:4px;padding:6px 8px;background:rgba(239,159,39,0.06);border-radius:6px;font-size:12px;">
+        <div style="font-weight:600;color:var(--amber);margin-bottom:2px;">Contradicting:</div>
+        ${contraKeys.map(k => `<div><span style="color:var(--text-sec);">${k}:</span> ${JSON.stringify(contraMetrics[k])}</div>`).join('')}
+      </div>` : '';
+
+    // Jump links
+    const fid = f.finding_id || '';
+    const jumpHtml = `
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        ${f.start_time != null ? `<button onclick="jumpToTimeline('${fid}',${f.start_time})" style="font-size:12px;padding:3px 10px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Timeline</button>` : ''}
+        ${f.start_time != null || (refs.length > 0 && refs[0].stream_name) ? `<button onclick="jumpToCharts('${fid}',${f.start_time||0},${f.end_time||0},'${refs.length>0&&refs[0].stream_name?refs[0].stream_name:''}')" style="font-size:12px;padding:3px 10px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Charts</button>` : ''}
+      </div>`;
 
     return `
-      <div style="background:${bgVar};border:1px solid ${borderVar};border-radius:8px;padding:12px;margin-bottom:6px;">
+      <div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:14px;margin-bottom:8px;" id="finding-card-${fid}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div style="font-size:13px;font-weight:600;color:${colorVar};">${f.title}</div>
-          <div style="font-size:10px;color:var(--text-sec);">score: ${f.score}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:8px;background:${color};color:#fff;">${sev}</span>
+            <span style="font-size:14px;font-weight:600;color:${color};">${f.title}</span>
+          </div>
+          ${confStr ? `<span style="font-size:12px;font-weight:600;color:${color};">${confStr}</span>` : ''}
         </div>
-        <div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${f.description}</div>
-        <div style="font-size:10px;color:var(--text-dim,#666);margin-top:4px;">${f.plugin_id}${confStr}${f.phase ? ` · phase: ${f.phase}` : ''}</div>
+        ${pluginInfo ? `<div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${pluginInfo}${tState}</div>` : ''}
+        <div style="font-size:13px;color:var(--text);margin-top:6px;line-height:1.5;">${f.description}</div>
+        ${f.phase ? `<div style="font-size:12px;color:var(--text-sec);margin-top:4px;">Phase: ${f.phase}</div>` : ''}
+        ${timeRange ? `<div style="font-size:12px;color:var(--text-sec);margin-top:2px;">Time: ${timeRange}</div>` : ''}
         ${refHtml}
+        ${metricsHtml}
+        ${contraHtml}
+        ${jumpHtml}
+        <div style="font-size:12px;color:var(--text-dim,#555);margin-top:6px;">${fid}${f.confidence_scope ? ' · scope: '+f.confidence_scope : ''}</div>
       </div>`;
+  }
+
+  function jumpToTimeline(findingId, time) {
+    workspaceState.activeFindingId = findingId;
+    switchWsTab('timeline');
+  }
+
+  function jumpToCharts(findingId, startTime, endTime, streamName) {
+    workspaceState.activeFindingId = findingId;
+    if (startTime > 0) {
+      workspaceState.chartStart = Math.max(0, startTime - 10);
+      workspaceState.chartEnd = (endTime > startTime ? endTime : startTime) + 10;
+    }
+    if (streamName) {
+      const mapped = {
+        battery: 'battery_voltage', position: 'altitude_m', attitude: 'roll_deg',
+        motors: 'motor_0', vibration: 'vibration_x', gps: 'gps_nsats',
+        rc_input: 'battery_voltage', ekf: 'altitude_m',
+      }[streamName] || 'battery_voltage';
+      workspaceState.chartStreams = [mapped];
+    }
+    switchWsTab('charts');
   }
 
   function viewFullAnalysis(data) {
@@ -4250,24 +4507,363 @@
     switchTab('analyze');
   }
 
+  let _allFindings = [];
   async function loadFindings(caseId) {
     try {
       const res = await fetch(`/api/cases/${caseId}/findings`);
       const data = await res.json();
-      if (!data.ok || !data.findings || data.findings.length === 0) return;
-      // Re-render findings tab with forensic cards (in case tab opened without running analyze first)
       const el = document.getElementById('ws-findings-content');
-      const criticals = data.findings.filter(f => f.severity === 'critical');
-      const warnings  = data.findings.filter(f => f.severity === 'warning');
-      const passes    = data.findings.filter(f => f.severity === 'pass').length;
-      let html = '';
-      if (criticals.length) html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;">Critical (${criticals.length})</div>${criticals.map(f=>renderForensicFindingCard(f,'var(--red)','var(--red-glow)','rgba(226,75,74,0.2)')).join('')}</div>`;
-      if (warnings.length) html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;text-transform:uppercase;">Warnings (${warnings.length})</div>${warnings.map(f=>renderForensicFindingCard(f,'var(--amber)','var(--amber-glow)','rgba(239,159,39,0.2)')).join('')}</div>`;
-      if (html) {
-        html += `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">${passes} checks passed · Evidence: ${data.evidence_id||'—'}</div>`;
-        el.innerHTML = html;
+      if (!data.ok || !data.findings || data.findings.length === 0) {
+        el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">No findings yet — run analysis first.</div>';
+        return;
       }
-    } catch(_) {}
+      _allFindings = data.findings;
+      if (data.run_id) workspaceState.runId = data.run_id;
+      renderFindingsWorkspace(data.findings, data.run_id, data.evidence_id);
+    } catch(e) {
+      document.getElementById('ws-findings-content').innerHTML =
+        `<div style="color:var(--red);font-size:13px;">Failed to load findings: ${e.message}</div>`;
+    }
+  }
+
+  function renderFindingsWorkspace(findings, runId, evidenceId) {
+    const el = document.getElementById('ws-findings-content');
+    const filter = workspaceState.findingsFilter || 'all';
+    const filtered = filter === 'all' ? findings : findings.filter(f => f.severity === filter);
+    const countBySev = {critical:0, warning:0, info:0, pass:0};
+    findings.forEach(f => { if (countBySev[f.severity] !== undefined) countBySev[f.severity]++; });
+    const nonPass = findings.filter(f => f.severity !== 'pass').length;
+
+    const filterBtn = (label, sev) => {
+      const active = filter === sev;
+      const count = sev === 'all' ? findings.length : countBySev[sev] || 0;
+      const color = sev === 'all' ? 'var(--text)' : sevColorMap(sev);
+      return `<button onclick="workspaceState.findingsFilter='${sev}';renderFindingsWorkspace(_allFindings,'${runId||''}','${evidenceId||''}')" style="font-size:12px;padding:4px 12px;border-radius:8px;border:1px solid ${active?color:'var(--card-border)'};background:${active?'rgba(255,255,255,0.05)':'none'};color:${active?color:'var(--text-sec)'};cursor:pointer;font-family:var(--font);font-weight:${active?'600':'400'};">${label} (${count})</button>`;
+    };
+
+    el.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Forensic Findings — ${nonPass} finding(s)${runId ? ' from ' + runId : ''}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${filterBtn('ALL', 'all')}
+          ${filterBtn('CRITICAL', 'critical')}
+          ${filterBtn('WARNING', 'warning')}
+          ${filterBtn('INFO', 'info')}
+          ${filterBtn('PASS', 'pass')}
+        </div>
+      </div>
+      ${filtered.map(f => renderForensicFindingCard(f)).join('')}
+      <div style="font-size:12px;color:var(--text-muted);margin-top:12px;">
+        ${findings.length} total findings · Evidence: ${evidenceId||'—'}
+      </div>`;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Timeline panel
+  ════════════════════════════════════════════════════════════ */
+  async function loadTimeline(caseId) {
+    const el = document.getElementById('ws-timeline-content');
+    el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;">Loading timeline...</div>';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/timeline`);
+      const data = await r.json();
+      if (!data.ok) throw new Error('Failed');
+      workspaceState.timelineData = data.events;
+      renderTimelinePanel(data.events, data.message);
+    } catch(e) {
+      el.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load timeline: ${e.message}</div>`;
+    }
+  }
+
+  function renderTimelinePanel(events, message) {
+    const el = document.getElementById('ws-timeline-content');
+    if (!events || events.length === 0) {
+      el.innerHTML = `
+        <div style="padding:32px 0;text-align:center;">
+          <div style="font-size:13px;color:var(--text-sec);">${message || 'No timeline data available. Run analysis first.'}</div>
+          <button onclick="loadTimeline(activeCaseId)" style="margin-top:12px;padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text-sec);cursor:pointer;">Load Timeline</button>
+        </div>`;
+      return;
+    }
+
+    const typeIcon = t => ({
+      phase: '&#9654;', mode: '&#8644;', event: '&#9888;', finding: '&#9733;', fault: '&#9888;', failsafe: '&#9888;'
+    }[t] || '&#8226;');
+
+    const typeColor = t => ({
+      phase: '#5B9BD5', mode: '#C77DBA', event: 'var(--amber)',
+      finding: 'var(--red)', fault: 'var(--red)', failsafe: 'var(--amber)'
+    }[t] || 'var(--text-sec)');
+
+    const highlightFinding = workspaceState.activeFindingId;
+
+    el.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Flight Timeline — ${events.length} events</div>
+        <button onclick="loadTimeline(activeCaseId)" style="padding:4px 12px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:12px;color:var(--text-sec);cursor:pointer;">Reload</button>
+      </div>
+      <div style="position:relative;padding-left:32px;">
+        <div style="position:absolute;left:14px;top:0;bottom:0;width:2px;background:var(--card-border);"></div>
+        ${events.map(ev => {
+          const isHighlighted = highlightFinding && ev.finding_id === highlightFinding;
+          const sevColor = ev.severity ? sevColorMap(ev.severity) : typeColor(ev.type);
+          return `
+          <div style="position:relative;margin-bottom:12px;${isHighlighted ? 'background:rgba(226,75,74,0.08);border-radius:8px;padding:8px;margin-left:-8px;padding-left:8px;' : ''}">
+            <div style="position:absolute;left:-24px;top:4px;width:12px;height:12px;border-radius:50%;background:${sevColor};border:2px solid var(--bg);"></div>
+            <div style="display:flex;align-items:baseline;gap:10px;">
+              <span style="font-size:12px;font-weight:600;color:var(--text);min-width:60px;">T+${ev.time.toFixed(1)}s</span>
+              <span style="font-size:14px;color:${sevColor};">${typeIcon(ev.type)}</span>
+              <span style="font-size:12px;font-weight:600;text-transform:uppercase;color:${sevColor};min-width:60px;">${ev.type}</span>
+              <span style="font-size:13px;color:var(--text);">${ev.label}</span>
+              ${ev.severity ? `<span style="font-size:12px;padding:1px 6px;border-radius:6px;background:${sevBgMap(ev.severity)};color:${sevColorMap(ev.severity)};">${ev.severity}</span>` : ''}
+            </div>
+            ${ev.description ? `<div style="font-size:12px;color:var(--text-sec);margin-top:2px;margin-left:70px;">${ev.description}</div>` : ''}
+            ${ev.finding_id ? `<div style="margin-left:70px;margin-top:4px;"><button onclick="workspaceState.activeFindingId='${ev.finding_id}';switchWsTab('findings');" style="font-size:12px;padding:2px 8px;background:none;border:1px solid var(--card-border);border-radius:4px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Finding ${ev.finding_id}</button></div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Charts panel
+  ════════════════════════════════════════════════════════════ */
+  function renderChartsPanel(caseId) {
+    const el = document.getElementById('ws-charts-content');
+    const defaultStreams = workspaceState.chartStreams.length > 0
+      ? workspaceState.chartStreams.join(',')
+      : 'battery_voltage,altitude_m';
+    const startVal = workspaceState.chartStart || '';
+    const endVal = workspaceState.chartEnd || '';
+
+    el.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:600;margin-bottom:10px;">Flight Data Charts</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;">
+          <div>
+            <label style="font-size:12px;color:var(--text-sec);display:block;margin-bottom:4px;">Streams (comma-separated)</label>
+            <input id="chart-streams-input" type="text" value="${defaultStreams}" placeholder="battery_voltage,altitude_m,roll_deg"
+              style="width:320px;padding:6px 10px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-sec);display:block;margin-bottom:4px;">Start (s)</label>
+            <input id="chart-start-input" type="number" value="${startVal}" placeholder="0" step="0.1"
+              style="width:80px;padding:6px 10px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-sec);display:block;margin-bottom:4px;">End (s)</label>
+            <input id="chart-end-input" type="number" value="${endVal}" placeholder="0" step="0.1"
+              style="width:80px;padding:6px 10px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;">
+          </div>
+          <button onclick="loadChartData('${caseId}')" style="padding:6px 16px;background:var(--green);color:#000;border:none;border-radius:6px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Load Chart Data</button>
+          <button onclick="document.getElementById('chart-start-input').value='';document.getElementById('chart-end-input').value='';loadChartData('${caseId}')" style="padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text-sec);cursor:pointer;">Full Flight</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-sec);margin-bottom:12px;">
+          Available: battery_voltage, altitude_m, velocity_m_s, roll_deg, pitch_deg, yaw_deg, motor_0, gps_nsats, vibration_x, battery_current, battery_remaining
+        </div>
+      </div>
+      <div id="chart-render-area">
+        <div style="color:var(--text-sec);font-size:13px;text-align:center;padding:32px 0;">Click "Load Chart Data" to fetch and render charts.</div>
+      </div>`;
+  }
+
+  async function loadChartData(caseId) {
+    const streams = document.getElementById('chart-streams-input').value.trim();
+    const start = parseFloat(document.getElementById('chart-start-input').value) || 0;
+    const end = parseFloat(document.getElementById('chart-end-input').value) || 0;
+
+    if (!streams) {
+      document.getElementById('chart-render-area').innerHTML =
+        '<div style="color:var(--amber);font-size:13px;">Enter at least one stream name.</div>';
+      return;
+    }
+
+    workspaceState.chartStreams = streams.split(',').map(s => s.trim());
+    workspaceState.chartStart = start || null;
+    workspaceState.chartEnd = end || null;
+
+    const area = document.getElementById('chart-render-area');
+    area.innerHTML = '<div style="color:var(--text-sec);font-size:13px;">Loading chart data...</div>';
+
+    try {
+      let url = `/api/cases/${caseId}/charts/data?streams=${encodeURIComponent(streams)}`;
+      if (start > 0) url += `&start=${start}`;
+      if (end > 0) url += `&end=${end}`;
+      const r = await fetch(url);
+      const data = await r.json();
+      if (!data.ok) throw new Error('Failed to load');
+
+      const streamData = data.streams || {};
+      const streamNames = Object.keys(streamData);
+      if (streamNames.length === 0) {
+        area.innerHTML = '<div style="color:var(--text-sec);font-size:13px;text-align:center;padding:32px 0;">No data available for the requested streams. Try running analysis first, or check stream names.</div>';
+        return;
+      }
+
+      // Render canvas charts
+      area.innerHTML = streamNames.map(name => `
+        <div style="margin-bottom:20px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${name} ${streamData[name].units ? '('+streamData[name].units+')' : ''}</div>
+          <canvas id="chart-canvas-${name.replace(/[^a-z0-9]/gi,'_')}" width="900" height="200" style="width:100%;height:200px;background:var(--card);border:1px solid var(--card-border);border-radius:8px;"></canvas>
+        </div>`).join('');
+
+      // Draw each chart
+      streamNames.forEach(name => {
+        const sd = streamData[name];
+        const canvasId = 'chart-canvas-' + name.replace(/[^a-z0-9]/gi, '_');
+        drawLineChart(canvasId, sd.times, sd.values, name, sd.units);
+      });
+
+    } catch(e) {
+      area.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load chart data: ${e.message}</div>`;
+    }
+  }
+
+  function drawLineChart(canvasId, times, values, label, units) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !times || times.length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+    const pad = {top: 20, right: 20, bottom: 30, left: 60};
+    const plotW = w - pad.left - pad.right;
+    const plotH = h - pad.top - pad.bottom;
+
+    const tMin = times[0], tMax = times[times.length - 1];
+    let vMin = Infinity, vMax = -Infinity;
+    for (let i = 0; i < values.length; i++) {
+      if (values[i] < vMin) vMin = values[i];
+      if (values[i] > vMax) vMax = values[i];
+    }
+    if (vMin === vMax) { vMin -= 1; vMax += 1; }
+    const vRange = vMax - vMin;
+    const tRange = tMax - tMin || 1;
+
+    // Background
+    ctx.fillStyle = 'rgba(15,18,22,1)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + (plotH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+    }
+
+    // Axes labels
+    ctx.fillStyle = 'rgba(216,213,206,0.4)';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + (plotH / 4) * i;
+      const val = vMax - (vRange / 4) * i;
+      ctx.fillText(val.toFixed(1), pad.left - 6, y + 4);
+    }
+    ctx.textAlign = 'center';
+    for (let i = 0; i <= 5; i++) {
+      const x = pad.left + (plotW / 5) * i;
+      const t = tMin + (tRange / 5) * i;
+      ctx.fillText(t.toFixed(1) + 's', x, h - 6);
+    }
+
+    // Data line
+    ctx.strokeStyle = '#6ECC72';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let first = true;
+    for (let i = 0; i < times.length; i++) {
+      const x = pad.left + ((times[i] - tMin) / tRange) * plotW;
+      const y = pad.top + plotH - ((values[i] - vMin) / vRange) * plotH;
+      if (first) { ctx.moveTo(x, y); first = false; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Finding markers (red vertical lines)
+    if (_allFindings && _allFindings.length > 0) {
+      ctx.strokeStyle = 'rgba(226,75,74,0.6)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      _allFindings.forEach(f => {
+        if (f.start_time != null && f.start_time >= tMin && f.start_time <= tMax) {
+          const x = pad.left + ((f.start_time - tMin) / tRange) * plotW;
+          ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + plotH); ctx.stroke();
+        }
+      });
+      ctx.setLineDash([]);
+    }
+
+    // Label
+    ctx.fillStyle = 'rgba(216,213,206,0.5)';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(label + (units ? ' (' + units + ')' : ''), pad.left + 6, pad.top + 14);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Exports panel
+  ════════════════════════════════════════════════════════════ */
+  async function loadExports(caseId) {
+    const el = document.getElementById('ws-exports-content');
+    el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;">Loading exports...</div>';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/exports`);
+      const data = await r.json();
+      if (!data.ok) throw new Error('Failed');
+      renderExportsPanel(data.exports || [], caseId);
+    } catch(e) {
+      el.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load exports: ${e.message}</div>`;
+    }
+  }
+
+  function renderExportsPanel(exports, caseId) {
+    const el = document.getElementById('ws-exports-content');
+    el.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:600;margin-bottom:10px;">Case Exports</div>
+        <button onclick="createExportBundle('${caseId}')" style="padding:8px 20px;background:var(--green);color:#000;border:none;border-radius:6px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Export Case Bundle</button>
+        <span id="export-status" style="font-size:13px;color:var(--text-sec);margin-left:12px;"></span>
+      </div>
+      ${exports.length > 0 ? `
+        <div style="margin-top:16px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-sec);margin-bottom:8px;">Existing Exports (${exports.length})</div>
+          ${exports.map(ex => `
+            <div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:13px;font-weight:600;">${ex.filename}</div>
+                <div style="font-size:12px;color:var(--text-sec);">${formatFileSize(ex.size_bytes)} · ${new Date(ex.created_at).toLocaleString()}</div>
+              </div>
+              <a href="/api/cases/${caseId}/exports/files/${ex.filename}" target="_blank" style="font-size:12px;padding:4px 12px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);text-decoration:none;font-family:var(--font);">Download</a>
+            </div>`).join('')}
+        </div>` : '<div style="font-size:13px;color:var(--text-sec);padding:16px 0;">No exports yet. Click "Export Case Bundle" to create one.</div>'}`;
+  }
+
+  async function createExportBundle(caseId) {
+    const statusEl = document.getElementById('export-status');
+    statusEl.style.color = 'var(--text-sec)';
+    statusEl.textContent = 'Creating bundle...';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/exports/bundle`, { method: 'POST' });
+      const data = await r.json();
+      if (data.ok) {
+        statusEl.style.color = 'var(--green)';
+        statusEl.textContent = `Created: ${data.filename} (${formatFileSize(data.size_bytes)})`;
+        // Reload exports list
+        loadExports(caseId);
+      } else {
+        throw new Error(data.detail || 'Unknown error');
+      }
+    } catch(e) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = `Failed: ${e.message}`;
+    }
   }
 
   async function loadAuditLog(caseId) {
@@ -4289,7 +4885,7 @@
             <span class="audit-row-action">${e.action}</span>
             <span style="margin:0 8px;opacity:0.4">·</span>${e.actor}
             <span style="margin:0 8px;opacity:0.4">·</span>${ts}
-            ${details ? `<div style="margin-top:3px;font-size:11px;opacity:0.6;">${details}</div>` : ''}
+            ${details ? `<div style="margin-top:3px;font-size:12px;opacity:0.6;">${details}</div>` : ''}
           </div>`;
       }).join('');
     } catch(err) {

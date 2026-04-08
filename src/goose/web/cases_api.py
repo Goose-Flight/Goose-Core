@@ -680,6 +680,340 @@ async def get_plugins(case_id: str) -> JSONResponse:
     })
 
 
+@router.get("/{case_id}/timeline")
+async def get_timeline(case_id: str) -> JSONResponse:
+    """Construct a timeline from flight phases, mode changes, events, and findings."""
+    try:
+        svc = get_service()
+        svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    events: list[dict[str, Any]] = []
+    case_dir = svc.case_dir(case_id)
+
+    # Load findings
+    findings_path = case_dir / "analysis" / "findings.json"
+    if findings_path.exists():
+        try:
+            bundle = json.loads(findings_path.read_text(encoding="utf-8"))
+            for f in bundle.get("findings", []):
+                t = f.get("start_time") or f.get("end_time")
+                if t is not None:
+                    events.append({
+                        "time": t,
+                        "type": "finding",
+                        "label": f.get("title", ""),
+                        "severity": f.get("severity"),
+                        "finding_id": f.get("finding_id"),
+                        "description": f.get("description", ""),
+                    })
+        except Exception:
+            pass
+
+    # Load parse diagnostics for stream info (we don't have a full Flight here,
+    # but we can read persisted artifacts)
+    diag_path = case_dir / "parsed" / "parse_diagnostics.json"
+    if diag_path.exists():
+        try:
+            diag = json.loads(diag_path.read_text(encoding="utf-8"))
+            # If there are mode changes or events serialized, use them
+            for mc in diag.get("mode_changes", []):
+                events.append({
+                    "time": mc.get("timestamp", 0),
+                    "type": "mode",
+                    "label": f"{mc.get('from_mode', '?')} -> {mc.get('to_mode', '?')}",
+                    "severity": None,
+                    "finding_id": None,
+                    "description": "Flight mode change",
+                })
+        except Exception:
+            pass
+
+    # Load provenance for additional context
+    prov_path = case_dir / "parsed" / "provenance.json"
+    if prov_path.exists():
+        try:
+            prov = json.loads(prov_path.read_text(encoding="utf-8"))
+            duration = prov.get("flight_duration_sec")
+            if duration:
+                events.append({
+                    "time": 0,
+                    "type": "phase",
+                    "label": "Flight start",
+                    "severity": None,
+                    "finding_id": None,
+                    "description": f"Total duration: {duration}s",
+                })
+                events.append({
+                    "time": duration,
+                    "type": "phase",
+                    "label": "Flight end",
+                    "severity": None,
+                    "finding_id": None,
+                    "description": "",
+                })
+        except Exception:
+            pass
+
+    events.sort(key=lambda e: e["time"])
+    return JSONResponse({
+        "ok": True,
+        "timeline_version": "1.0",
+        "events": events,
+        "count": len(events),
+        "message": "Timeline constructed from available case artifacts." if events else "No parsed data available yet. Run analysis first.",
+    })
+
+
+@router.get("/{case_id}/charts/data")
+async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, end: float = 0.0) -> JSONResponse:
+    """Return time-series data for requested streams from canonical flight data.
+
+    Query params: ?streams=battery_voltage,altitude_m&start=0&end=100
+    """
+    try:
+        svc = get_service()
+        svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    case_dir = svc.case_dir(case_id)
+
+    # Look for canonical flight data JSON persisted during analysis
+    # The analyze route persists parse_diagnostics and provenance but not
+    # raw time-series as JSON. We need to re-parse or look for cached data.
+    # For now, try to load from a cached charts_data.json if available,
+    # or re-extract from the evidence file.
+
+    result_streams: dict[str, Any] = {}
+    stream_list = [s.strip() for s in streams.split(",") if s.strip()]
+
+    # Try cached canonical flight data
+    canonical_path = case_dir / "parsed" / "canonical_flight.json"
+    if canonical_path.exists():
+        try:
+            canonical = json.loads(canonical_path.read_text(encoding="utf-8"))
+            for stream_name in stream_list:
+                if stream_name in canonical:
+                    sd = canonical[stream_name]
+                    times = sd.get("times", [])
+                    values = sd.get("values", [])
+                    units = sd.get("units", "")
+                    # Apply time filter
+                    if end > start and times:
+                        filtered_t = []
+                        filtered_v = []
+                        for t, v in zip(times, values):
+                            if start <= t <= end:
+                                filtered_t.append(t)
+                                filtered_v.append(v)
+                        times = filtered_t
+                        values = filtered_v
+                    result_streams[stream_name] = {
+                        "times": times,
+                        "values": values,
+                        "units": units,
+                    }
+        except Exception:
+            pass
+
+    # If no canonical file, try re-parsing evidence to extract streams
+    if not result_streams and stream_list:
+        ev_dir = case_dir / "evidence"
+        if ev_dir.exists():
+            ev_files = list(ev_dir.iterdir())
+            if ev_files:
+                try:
+                    from goose.parsers.detect import parse_file
+                    pr = parse_file(str(ev_files[0]))
+                    if pr and pr.success and pr.flight:
+                        flight = pr.flight
+                        # Map requested stream names to Flight attributes
+                        _STREAM_ATTR_MAP = {
+                            "battery_voltage": ("battery", "voltage", "V"),
+                            "altitude_m": ("position", "alt_rel", "m"),
+                            "altitude_msl": ("position", "alt_msl", "m"),
+                            "velocity_m_s": ("velocity", "velocity", "m/s"),
+                            "roll_deg": ("attitude", "roll", "rad"),
+                            "pitch_deg": ("attitude", "pitch", "rad"),
+                            "yaw_deg": ("attitude", "yaw", "rad"),
+                            "motor_0": ("motors", "output_0", ""),
+                            "gps_nsats": ("gps", "satellites_visible", ""),
+                            "vibration_x": ("vibration", "accel_x", "m/s2"),
+                            "battery_current": ("battery", "current", "A"),
+                            "battery_remaining": ("battery", "remaining_pct", "%"),
+                        }
+                        for stream_name in stream_list:
+                            if stream_name in _STREAM_ATTR_MAP:
+                                attr, col, units = _STREAM_ATTR_MAP[stream_name]
+                                df = getattr(flight, attr, None)
+                                if df is not None and not df.empty and "timestamp" in df.columns and col in df.columns:
+                                    times = df["timestamp"].tolist()
+                                    values = df[col].tolist()
+                                    # Clean NaN/Inf
+                                    clean_t, clean_v = [], []
+                                    for t, v in zip(times, values):
+                                        if t is not None and v is not None:
+                                            try:
+                                                tf = float(t)
+                                                vf = float(v)
+                                                if not (math.isnan(tf) or math.isinf(tf) or math.isnan(vf) or math.isinf(vf)):
+                                                    if end > start:
+                                                        if start <= tf <= end:
+                                                            clean_t.append(tf)
+                                                            clean_v.append(vf)
+                                                    else:
+                                                        clean_t.append(tf)
+                                                        clean_v.append(vf)
+                                            except (TypeError, ValueError):
+                                                pass
+                                    result_streams[stream_name] = {
+                                        "times": clean_t,
+                                        "values": clean_v,
+                                        "units": units,
+                                    }
+                except Exception as exc:
+                    logger.warning("Chart data re-parse failed: %s", exc)
+
+    return JSONResponse({
+        "ok": True,
+        "streams": result_streams,
+        "available_streams": [
+            "battery_voltage", "altitude_m", "altitude_msl", "velocity_m_s",
+            "roll_deg", "pitch_deg", "yaw_deg", "motor_0",
+            "gps_nsats", "vibration_x", "battery_current", "battery_remaining",
+        ],
+        "message": "" if result_streams else "No chart data available. Run analysis first or request valid stream names.",
+    })
+
+
+@router.get("/{case_id}/exports")
+async def get_exports(case_id: str) -> JSONResponse:
+    """Return export history from exports/ directory and case metadata."""
+    try:
+        svc = get_service()
+        case = svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    exports_dir = svc.case_dir(case_id) / "exports"
+    export_files: list[dict[str, Any]] = []
+    if exports_dir.exists():
+        for f in sorted(exports_dir.iterdir()):
+            if f.is_file():
+                stat = f.stat()
+                export_files.append({
+                    "filename": f.name,
+                    "size_bytes": stat.st_size,
+                    "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                })
+
+    return JSONResponse({
+        "ok": True,
+        "exports": export_files,
+        "count": len(export_files),
+        "case_id": case_id,
+    })
+
+
+@router.post("/{case_id}/exports/bundle")
+async def create_export_bundle(case_id: str) -> JSONResponse:
+    """Create a JSON case bundle export in exports/ directory."""
+    try:
+        svc = get_service()
+        case = svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    case_dir = svc.case_dir(case_id)
+    exports_dir = case_dir / "exports"
+    exports_dir.mkdir(exist_ok=True)
+
+    bundle: dict[str, Any] = {
+        "bundle_version": "1.0",
+        "exported_at": datetime.now().isoformat(),
+        "engine_version": __version__,
+        "case": _serialize_case_detail(case),
+    }
+
+    # Include evidence manifest
+    bundle["evidence_manifest"] = [_serialize_evidence(ev) for ev in case.evidence_items]
+
+    # Include findings
+    findings_path = case_dir / "analysis" / "findings.json"
+    if findings_path.exists():
+        try:
+            bundle["findings"] = json.loads(findings_path.read_text(encoding="utf-8"))
+        except Exception:
+            bundle["findings"] = None
+
+    # Include hypotheses
+    hyp_path = case_dir / "analysis" / "hypotheses.json"
+    if hyp_path.exists():
+        try:
+            bundle["hypotheses"] = json.loads(hyp_path.read_text(encoding="utf-8"))
+        except Exception:
+            bundle["hypotheses"] = None
+
+    # Include plugin diagnostics
+    pd_path = case_dir / "analysis" / "plugin_diagnostics.json"
+    if pd_path.exists():
+        try:
+            bundle["plugin_diagnostics"] = json.loads(pd_path.read_text(encoding="utf-8"))
+        except Exception:
+            bundle["plugin_diagnostics"] = None
+
+    # Include provenance
+    prov_path = case_dir / "parsed" / "provenance.json"
+    if prov_path.exists():
+        try:
+            bundle["provenance"] = json.loads(prov_path.read_text(encoding="utf-8"))
+        except Exception:
+            bundle["provenance"] = None
+
+    # Include signal quality
+    sq_path = case_dir / "analysis" / "signal_quality.json"
+    if sq_path.exists():
+        try:
+            bundle["signal_quality"] = json.loads(sq_path.read_text(encoding="utf-8"))
+        except Exception:
+            bundle["signal_quality"] = None
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"case_bundle_{case_id}_{ts}.json"
+    filepath = exports_dir / filename
+    filepath.write_text(json.dumps(bundle, indent=2, default=str), encoding="utf-8")
+
+    return JSONResponse({
+        "ok": True,
+        "filename": filename,
+        "path": str(filepath),
+        "size_bytes": filepath.stat().st_size,
+    })
+
+
+@router.get("/{case_id}/exports/files/{filename}")
+async def get_export_file(case_id: str, filename: str) -> JSONResponse:
+    """Serve an export file from the exports/ directory."""
+    try:
+        svc = get_service()
+        svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    filepath = svc.case_dir(case_id) / "exports" / filename
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail=f"Export file not found: {filename}")
+
+    # Security: ensure the filename doesn't traverse directories
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    from fastapi.responses import FileResponse
+    return FileResponse(str(filepath), media_type="application/json", filename=filename)
+
+
 @router.patch("/{case_id}/status")
 async def update_case_status(case_id: str, body: UpdateStatusRequest) -> JSONResponse:
     """Update the status of a case."""

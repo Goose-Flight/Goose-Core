@@ -177,9 +177,14 @@ _PLUGIN_STREAM_MAP: dict[str, str] = {
     "motor_saturation": "motors",
     "ekf_health": "ekf",
     "ekf_status": "ekf",
+    "ekf_consistency": "ekf",
     "attitude_tracking": "attitude",
+    "position_tracking": "position",
     "mode_analysis": "mode_changes",
     "rc_loss": "rc_input",
+    "rc_signal": "rc_input",
+    "failsafe_events": "events",
+    "log_health": "log_metadata",
     "cpu_load": "cpu",
 }
 

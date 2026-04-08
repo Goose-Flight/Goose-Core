@@ -1,172 +1,124 @@
-# Contributing to Goose
+# Contributing to Goose-Core
 
-Thank you for your interest in contributing to Goose! This document provides guidelines and information for contributors.
+Goose-Core is being built into a top-tier open-source flight forensic platform.
+All contributions must respect the forensic architecture principles in `docs/architecture/`.
 
-## Getting Started
+---
 
-1. Fork the repository
-2. Clone your fork:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/Goose-Core.git
-   cd Goose-Core
-   ```
-3. Install in development mode:
-   ```bash
-   pip install -e ".[dev]"
-   ```
-4. Create a feature branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-## Development Workflow
-
-### Running Tests
+## Development Setup
 
 ```bash
-pytest tests/ -v --cov=goose
+# Clone and install in editable mode with dev deps
+git clone https://github.com/Goose-Flight/Goose-Core.git
+cd Goose-Core
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
 ```
 
-### Linting
+Verify setup:
+```bash
+pytest tests/ -q         # Should pass all tests
+ruff check src/ tests/   # Should report no issues
+mypy src/goose           # Should pass
+```
+
+---
+
+## Running the Local Server
 
 ```bash
-ruff check src/ tests/
-ruff format src/ tests/
+python -m uvicorn goose.web.app:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-### Type Checking
+Open `http://localhost:8001` in your browser.
 
-```bash
-mypy src/goose --strict
+---
+
+## Project Architecture
+
+Before contributing, read:
+- `docs/architecture/audit.md` — current state baseline
+- `docs/architecture/target-architecture.md` — where we're going
+- `docs/architecture/migration-plan.md` — how we get there
+
+The core principle: **Goose is a case-oriented, evidence-preserving, replayable
+forensic platform**. Every significant feature must respect this.
+
+---
+
+## Branch Naming
+
 ```
+feat/<short-description>       # New feature
+fix/<short-description>        # Bug fix
+refactor/<short-description>   # Refactoring
+docs/<short-description>       # Documentation
+ci/<short-description>         # CI/CD changes
+sprint<N>/<short-description>  # Sprint-scoped work
+```
+
+Examples:
+- `feat/case-evidence-models`
+- `sprint1/case-service`
+- `fix/ulog-parser-crash`
+
+---
+
+## Commit Style
+
+Follow conventional commits:
+
+```
+feat: add Case and EvidenceItem models
+fix: handle missing timestamp in ULog parser
+refactor: wrap ULog parser in ParseResult contract
+docs: add Sprint 0 architecture audit
+ci: add GitHub Actions CI pipeline
+test: add immutability tests for CaseService
+```
+
+---
+
+## Definition of Done
+
+A feature is done when:
+
+- [ ] Code is written and linted (`ruff check` passes)
+- [ ] Type annotations are correct (`mypy` passes)
+- [ ] Tests cover the new behavior (including edge cases)
+- [ ] CI passes on the PR branch
+- [ ] Relevant docs are updated
+- [ ] PR template is filled out completely
+- [ ] No forensic architecture rules are violated (see PR template checklist)
+
+---
+
+## Forensic Architecture Rules (Non-Negotiable)
+
+1. **Evidence integrity** — original evidence must not be mutated
+2. **Findings must cite evidence** — no finding without an evidence basis
+3. **No bypasses** — GUI, CLI, and portal must call the same core services
+4. **Parser honesty** — unsupported formats must fail clearly, not silently
+5. **Explicit uncertainty** — missing data and parser warnings must be surfaced
+6. **No LLMs in evidentiary core** — LLMs may summarize but not decide forensic truth
+7. **Deterministic analysis** — same input + same plugin version = same output
+
+---
 
 ## Writing Plugins
 
-Goose uses a plugin architecture for flight analysis. See [docs/writing-plugins.md](docs/writing-plugins.md) for the full guide.
+Quick summary:
+- Plugins receive canonical `Flight` data (not raw log bytes)
+- Plugins must declare a `PluginManifest` (id, version, category, required streams)
+- Plugins must return `PluginResult` (findings, diagnostics, confidence notes)
+- Findings must include `evidence_references` where possible
+- Plugins must fail gracefully with diagnostics if required data is missing
 
-### Plugin Requirements
+See `docs/plugins/` for the full plugin development guide.
 
-Plugins must:
-- Inherit from `goose.plugins.base.Plugin`
-- Implement the `analyze(flight, config)` method
-- Return a list of `Finding` objects
-- Work fully offline (no network calls)
-- Handle missing data gracefully
+---
 
-### Plugin Development Workflow
+## Questions?
 
-1. **Create your plugin** in `src/goose/plugins/`:
-   ```python
-   from goose.plugins.base import Plugin, Finding, Severity
-   
-   class MyPlugin(Plugin):
-       name = "my_plugin"
-       version = "1.0.0"
-       description = "Your plugin description"
-       
-       def analyze(self, flight, config):
-           findings = []
-           # Your analysis logic here
-           return findings
-   ```
-
-2. **Write unit tests** in `tests/plugins/test_my_plugin.py`:
-   ```python
-   import pytest
-   from goose.plugins.my_plugin import MyPlugin
-   
-   def test_detects_issue(sample_flight_with_issue):
-       plugin = MyPlugin()
-       findings = plugin.analyze(sample_flight_with_issue, {})
-       assert len(findings) > 0
-   ```
-
-3. **Test with real logs**: Use actual flight logs from `tests/data/` to validate behavior
-
-4. **Document your plugin**: Add a section to [docs/writing-plugins.md](docs/writing-plugins.md) with:
-   - Purpose and scope
-   - Configuration parameters
-   - Interpretation guide
-
-### Testing Plugins
-
-Run plugin-specific tests:
-```bash
-pytest tests/plugins/test_my_plugin.py -v
-```
-
-Run all plugin tests:
-```bash
-pytest tests/plugins/ -v --cov=goose.plugins
-```
-
-Ensure your plugin:
-- Handles missing or invalid data without crashing
-- Produces consistent results for the same input
-- Completes analysis in reasonable time (< 5 seconds for typical logs)
-
-## Pull Request Process
-
-1. Ensure all tests pass and linting is clean
-2. Update documentation if adding new features
-3. Write tests for new functionality
-4. Use conventional commit messages:
-   - `feat: add new feature`
-   - `fix: fix a bug`
-   - `docs: update documentation`
-   - `test: add or update tests`
-   - `chore: maintenance tasks`
-5. Open a PR against the `dev` branch
-
-## Code Style
-
-- Follow PEP 8 (enforced by ruff)
-- Use type annotations for all public functions
-- Keep functions focused and small
-- Prefer clarity over cleverness
-
-## Reporting Issues
-
-- Use GitHub Issues for bug reports and feature requests
-- Include log format, Python version, and OS in bug reports
-- Attach (or describe) the flight log that triggered the issue
-
-## Deployment & Release Process
-
-### Version Bumping
-
-Update the version in:
-- `src/goose/__init__.py` (if it exists)
-- `pyproject.toml` or `setup.py`
-- Create a git tag: `git tag v1.0.0`
-
-### Building a Release
-
-```bash
-# Install build tools
-pip install build twine
-
-# Build distribution
-python -m build
-
-# Upload to PyPI
-python -m twine upload dist/*
-```
-
-### Release Checklist
-
-- [ ] All tests pass (`pytest` with coverage)
-- [ ] No linting issues (`ruff check`)
-- [ ] Documentation is up to date
-- [ ] Changelog is updated
-- [ ] Version number bumped
-- [ ] Git tag created
-- [ ] Package published to PyPI
-
-### Publishing Documentation
-
-Documentation is published automatically from the `docs/` directory. Update `.md` files for changes to appear on the live site.
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the Apache 2.0 License.
+Open a GitHub issue with the `type:docs` label if something is unclear.

@@ -1,0 +1,26 @@
+# CODEOWNERS for Goose-Core
+# Format: <pattern> <owner>
+# Owners are notified for review when a PR touches matching paths.
+
+# Default owner for everything
+* @goose-flight
+
+# Forensic core — requires careful review
+src/goose/forensics/   @goose-flight
+src/goose/core/        @goose-flight
+
+# Parser subsystem — truthfulness is critical
+src/goose/parsers/     @goose-flight
+
+# Plugin framework and trust model
+src/goose/plugins/     @goose-flight
+
+# Web API and GUI — case workflow must be correct
+src/goose/web/         @goose-flight
+
+# Architecture docs — must be kept up to date
+docs/architecture/     @goose-flight
+docs/adr/              @goose-flight
+
+# CI/CD configuration
+.github/               @goose-flight

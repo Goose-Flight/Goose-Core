@@ -209,6 +209,12 @@ def create_app():
         app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
     # ------------------------------------------------------------------
+    # Case-oriented routes (Sprint 2+)
+    # ------------------------------------------------------------------
+    from goose.web.cases_api import router as cases_router
+    app.include_router(cases_router)
+
+    # ------------------------------------------------------------------
     # Routes
     # ------------------------------------------------------------------
 

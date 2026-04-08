@@ -124,6 +124,8 @@ class AnalysisRun:
     ruleset_version: str | None
     findings_count: int
     status: str                        # "completed" | "failed" | "in_progress"
+    engine_version: str = ""           # goose version at time of run — required for replay
+    tuning_profile: str | None = None  # named tuning profile if non-default
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -135,6 +137,8 @@ class AnalysisRun:
             "ruleset_version": self.ruleset_version,
             "findings_count": self.findings_count,
             "status": self.status,
+            "engine_version": self.engine_version,
+            "tuning_profile": self.tuning_profile,
             "error": self.error,
         }
 
@@ -235,11 +239,12 @@ class Provenance:
     Written by the parser framework alongside canonical flight data.
     """
 
-    source_evidence_id: str
-    parser_name: str
-    parser_version: str
-    detected_format: str
-    parsed_at: datetime
+    provenance_version: str = "1.0"    # schema version for forward-compat
+    source_evidence_id: str = ""
+    parser_name: str = ""
+    parser_version: str = ""
+    detected_format: str = ""
+    parsed_at: datetime = field(default_factory=lambda: datetime.now().replace(microsecond=0))
     transformation_chain: list[str] = field(default_factory=list)
     config_references: dict[str, str] = field(default_factory=dict)
     engine_version: str = ""

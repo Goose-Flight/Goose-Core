@@ -138,6 +138,96 @@
     .nav-tab:hover { color: var(--text); background: var(--card); }
     .nav-tab.active { color: var(--green); background: var(--green-glow); }
 
+    /* ── Cases UI ────────────────────────────────────────────── */
+    .pill-btn {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pill-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+    .pill-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pill-btn-green { border-color: var(--green); color: var(--green); background: var(--green-glow); }
+    .pill-btn-green:hover { background: rgba(110,204,114,0.2); }
+
+    .ghost-btn {
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: none;
+      color: var(--text-sec);
+      cursor: pointer;
+    }
+    .ghost-btn:hover { color: var(--text); background: var(--card); }
+
+    .ws-tab {
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: none;
+      color: var(--text-sec);
+      cursor: pointer;
+      margin-bottom: -1px;
+    }
+    .ws-tab:hover { color: var(--text); }
+    .ws-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+    .case-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .case-card:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.1); }
+    .case-card-id { font-size: 12px; font-weight: 700; color: var(--text); min-width: 160px; }
+    .case-card-meta { font-size: 12px; color: var(--text-sec); flex: 1; }
+    .case-card-status {
+      font-size: 11px;
+      padding: 2px 9px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      color: var(--text-sec);
+    }
+
+    .ev-row {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+    }
+    .ev-row-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .ev-row-hash { font-size: 11px; color: var(--text-sec); word-break: break-all; margin-top: 4px; }
+    .ev-row-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+    .audit-row {
+      font-size: 12px;
+      padding: 8px 12px;
+      border-left: 2px solid var(--card-border);
+      margin-bottom: 6px;
+      color: var(--text-sec);
+    }
+    .audit-row-action { color: var(--text); font-weight: 600; }
+
     /* ── Layout ──────────────────────────────────────────────── */
     main {
       flex: 1;
@@ -1628,7 +1718,8 @@
   <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
 
   <nav>
-    <button class="nav-tab active" id="nav-analyze" onclick="switchTab('analyze')">Analyze</button>
+    <button class="nav-tab active" id="nav-cases" onclick="switchTab('cases')">Cases</button>
+    <button class="nav-tab" id="nav-analyze" onclick="switchTab('analyze')">Quick Analysis</button>
     <button class="nav-tab" id="tab-crash" onclick="switchTab('crash')" style="display:none">Crash</button>
     <button class="nav-tab" id="nav-plugins" onclick="switchTab('plugins')">Plugins</button>
     <button class="nav-tab" id="nav-history" onclick="switchTab('history')">History</button>
@@ -1953,6 +2044,104 @@
     </div>
   </div>
 
+  <!-- ── Cases view ──────────────────────────────────────────── -->
+  <div id="cases-view" class="tab-view" style="padding:32px 0;">
+
+    <!-- Dashboard: case list -->
+    <div id="cases-dashboard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+        <div>
+          <h2 style="font-size:18px;font-weight:600;color:var(--text);">Investigation Cases</h2>
+          <p style="font-size:13px;color:var(--text-sec);margin-top:4px;">Each case holds evidence, analysis runs, and findings with full audit trail.</p>
+        </div>
+        <button class="pill-btn" onclick="showNewCaseModal()">+ New Case</button>
+      </div>
+      <div id="cases-list-container">
+        <div id="cases-loading" style="color:var(--text-sec);font-size:14px;text-align:center;padding:48px 0;">Loading cases…</div>
+        <div id="cases-empty" style="display:none;text-align:center;padding:64px 0;">
+          <div style="font-size:32px;margin-bottom:12px;">📁</div>
+          <div style="font-size:15px;color:var(--text);">No cases yet</div>
+          <div style="font-size:13px;color:var(--text-sec);margin-top:6px;">Create a case to start a forensic investigation.</div>
+          <button class="pill-btn" style="margin-top:20px;" onclick="showNewCaseModal()">+ New Case</button>
+        </div>
+        <div id="cases-list"></div>
+      </div>
+    </div>
+
+    <!-- Case workspace (shown when a case is open) -->
+    <div id="case-workspace" style="display:none;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <button class="ghost-btn" onclick="closeCaseWorkspace()">← Cases</button>
+        <div>
+          <h2 id="ws-case-id" style="font-size:16px;font-weight:600;color:var(--text);"></h2>
+          <div id="ws-case-meta" style="font-size:12px;color:var(--text-sec);margin-top:2px;"></div>
+        </div>
+        <span id="ws-status-badge" style="margin-left:auto;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--card);border:1px solid var(--card-border);"></span>
+      </div>
+
+      <!-- Workspace tabs -->
+      <div style="display:flex;gap:4px;border-bottom:1px solid var(--card-border);margin-bottom:24px;">
+        <button class="ws-tab active" id="ws-tab-evidence" onclick="switchWsTab('evidence')">Evidence</button>
+        <button class="ws-tab" id="ws-tab-findings" onclick="switchWsTab('findings')">Findings</button>
+        <button class="ws-tab" id="ws-tab-audit" onclick="switchWsTab('audit')">Audit Trail</button>
+      </div>
+
+      <!-- Evidence tab -->
+      <div id="ws-evidence-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="font-size:13px;color:var(--text-sec);">Files ingested as immutable evidence into this case.</div>
+          <div style="display:flex;gap:8px;">
+            <label class="pill-btn" style="cursor:pointer;">
+              Upload Evidence
+              <input type="file" style="display:none;" id="ws-file-input" onchange="ingestEvidence(event)">
+            </label>
+            <button class="pill-btn pill-btn-green" id="ws-analyze-btn" onclick="analyzeCase()" disabled>Analyze</button>
+          </div>
+        </div>
+        <div id="ws-evidence-list">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">No evidence yet — upload a flight log to begin.</div>
+        </div>
+        <div id="ws-ingest-status" style="display:none;font-size:13px;padding:12px;border-radius:8px;margin-top:12px;"></div>
+      </div>
+
+      <!-- Findings tab -->
+      <div id="ws-findings-panel" style="display:none;">
+        <div id="ws-findings-content">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Run analysis to see findings.</div>
+        </div>
+      </div>
+
+      <!-- Audit trail tab -->
+      <div id="ws-audit-panel" style="display:none;">
+        <div id="ws-audit-content">
+          <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Loading audit trail…</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- New Case Modal -->
+  <div id="new-case-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;">
+    <div style="background:var(--surface);border:1px solid var(--card-border);border-radius:var(--radius);padding:32px;width:420px;max-width:90vw;">
+      <h3 style="font-size:15px;font-weight:600;margin-bottom:20px;">New Investigation Case</h3>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px;color:var(--text-sec);display:block;margin-bottom:6px;">Notes (optional)</label>
+        <textarea id="new-case-notes" placeholder="Describe this investigation…" rows="3"
+          style="width:100%;background:var(--bg);border:1px solid var(--card-border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font);font-size:13px;resize:vertical;"></textarea>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px;color:var(--text-sec);display:block;margin-bottom:6px;">Tags (comma-separated, optional)</label>
+        <input id="new-case-tags" type="text" placeholder="crash, px4, outdoor"
+          style="width:100%;background:var(--bg);border:1px solid var(--card-border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font);font-size:13px;">
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="ghost-btn" onclick="hideNewCaseModal()">Cancel</button>
+        <button class="pill-btn pill-btn-green" onclick="createCase()">Create Case</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── History view ────────────────────────────────────────── -->
   <div id="history-view" style="display:none" class="tab-view">
     <div class="history-header">
@@ -1992,7 +2181,8 @@
   let lastResults    = null;
   let activeFilter   = 'all';
   let activeFinding  = null;
-  let currentTab     = 'analyze'; // 'analyze' | 'plugins' | 'history'
+  let currentTab     = 'cases'; // 'cases' | 'analyze' | 'plugins' | 'history'
+  let activeCaseId   = null;
 
   const HISTORY_KEY  = 'goose_history';
   const HISTORY_MAX  = 50;
@@ -2004,18 +2194,24 @@
     currentTab = tab;
 
     // Update nav highlights
+    document.getElementById('nav-cases').classList.toggle('active', tab === 'cases');
     document.getElementById('nav-analyze').classList.toggle('active', tab === 'analyze');
     document.getElementById('nav-plugins').classList.toggle('active', tab === 'plugins');
     document.getElementById('nav-history').classList.toggle('active', tab === 'history');
 
     // Hide all views
+    document.getElementById('cases-view').style.display     = 'none';
     document.getElementById('upload-view').style.display    = 'none';
     document.getElementById('loading-view').style.display   = 'none';
     document.getElementById('results-view').style.display   = 'none';
     document.getElementById('plugins-view').style.display   = 'none';
     document.getElementById('history-view').style.display   = 'none';
 
-    if (tab === 'analyze') {
+    if (tab === 'cases') {
+      document.getElementById('cases-view').style.display = '';
+      document.getElementById('tab-crash').style.display = 'none';
+      loadCasesList();
+    } else if (tab === 'analyze') {
       // Show whichever analyze sub-view is appropriate
       if (lastResults) {
         document.getElementById('results-view').style.display = '';
@@ -3511,6 +3707,322 @@
       e.target.click();
     }
   });
+
+  /* ════════════════════════════════════════════════════════════
+     Cases — Case Management UI
+  ════════════════════════════════════════════════════════════ */
+
+  async function loadCasesList() {
+    try {
+      const res = await fetch('/api/cases');
+      const data = await res.json();
+      renderCasesList(data.cases || []);
+    } catch (err) {
+      document.getElementById('cases-loading').textContent = 'Failed to load cases.';
+    }
+  }
+
+  function renderCasesList(cases) {
+    const loading = document.getElementById('cases-loading');
+    const empty   = document.getElementById('cases-empty');
+    const list    = document.getElementById('cases-list');
+    loading.style.display = 'none';
+
+    if (cases.length === 0) {
+      empty.style.display = '';
+      list.innerHTML = '';
+      return;
+    }
+    empty.style.display = 'none';
+    list.innerHTML = cases.map(c => {
+      const date = new Date(c.created_at).toLocaleString();
+      const evLabel = c.evidence_count === 1 ? '1 evidence file' : `${c.evidence_count} evidence files`;
+      const runLabel = c.analysis_run_count > 0 ? ` · ${c.analysis_run_count} run${c.analysis_run_count > 1 ? 's' : ''}` : '';
+      const tags = (c.tags || []).length > 0 ? `<span style="margin-left:8px;opacity:0.6">${c.tags.join(', ')}</span>` : '';
+      return `
+        <div class="case-card" onclick="openCase('${c.case_id}')">
+          <div class="case-card-id">${c.case_id}</div>
+          <div class="case-card-meta">${date} · ${evLabel}${runLabel}${tags}</div>
+          ${c.notes ? `<div style="font-size:11px;color:var(--text-sec);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notes}</div>` : ''}
+          <span class="case-card-status">${c.status}</span>
+        </div>`;
+    }).join('');
+  }
+
+  function showNewCaseModal() {
+    const modal = document.getElementById('new-case-modal');
+    modal.style.display = 'flex';
+    document.getElementById('new-case-notes').value = '';
+    document.getElementById('new-case-tags').value = '';
+  }
+
+  function hideNewCaseModal() {
+    document.getElementById('new-case-modal').style.display = 'none';
+  }
+
+  async function createCase() {
+    const notes = document.getElementById('new-case-notes').value.trim();
+    const rawTags = document.getElementById('new-case-tags').value.trim();
+    const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    hideNewCaseModal();
+    try {
+      const res = await fetch('/api/cases', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ created_by: 'gui', notes, tags }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        openCase(data.case.case_id);
+      }
+    } catch (err) {
+      console.error('Create case failed:', err);
+    }
+  }
+
+  async function openCase(caseId) {
+    activeCaseId = caseId;
+    try {
+      const res = await fetch(`/api/cases/${caseId}`);
+      const data = await res.json();
+      if (!data.ok) return;
+      const c = data.case;
+
+      // Show workspace, hide dashboard
+      document.getElementById('cases-dashboard').style.display = 'none';
+      document.getElementById('case-workspace').style.display = '';
+
+      document.getElementById('ws-case-id').textContent = c.case_id;
+      document.getElementById('ws-case-meta').textContent =
+        `Created ${new Date(c.created_at).toLocaleString()} by ${c.created_by}` +
+        (c.notes ? ` · ${c.notes}` : '');
+      document.getElementById('ws-status-badge').textContent = c.status;
+
+      renderEvidenceList(c.evidence_items || []);
+      switchWsTab('evidence');
+    } catch (err) {
+      console.error('Open case failed:', err);
+    }
+  }
+
+  function closeCaseWorkspace() {
+    activeCaseId = null;
+    document.getElementById('case-workspace').style.display = 'none';
+    document.getElementById('cases-dashboard').style.display = '';
+    loadCasesList();
+  }
+
+  function switchWsTab(tab) {
+    ['evidence','findings','audit'].forEach(t => {
+      document.getElementById(`ws-tab-${t}`).classList.toggle('active', t === tab);
+      document.getElementById(`ws-${t}-panel`).style.display = t === tab ? '' : 'none';
+    });
+    if (tab === 'audit' && activeCaseId) loadAuditLog(activeCaseId);
+    if (tab === 'findings' && activeCaseId) loadFindings(activeCaseId);
+  }
+
+  function renderEvidenceList(evidence) {
+    const list = document.getElementById('ws-evidence-list');
+    const btn  = document.getElementById('ws-analyze-btn');
+
+    if (evidence.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">No evidence yet — upload a flight log to begin.</div>';
+      btn.disabled = true;
+      return;
+    }
+
+    btn.disabled = false;
+    list.innerHTML = evidence.map(ev => {
+      const size = (ev.size_bytes / 1024).toFixed(1);
+      const date = new Date(ev.acquired_at).toLocaleString();
+      return `
+        <div class="ev-row">
+          <div class="ev-row-name">${ev.filename} <span style="font-weight:400;color:var(--text-sec);">(${size} KB)</span></div>
+          <div class="ev-row-hash">SHA-256: ${ev.sha256}</div>
+          ${ev.sha512 ? `<div class="ev-row-hash">SHA-512: ${ev.sha512.slice(0,32)}…</div>` : ''}
+          <div class="ev-row-meta">${ev.evidence_id} · Acquired ${date} via ${ev.source_acquisition_mode} · ${ev.immutable ? 'Immutable ✓' : 'Mutable'}</div>
+        </div>`;
+    }).join('');
+  }
+
+  async function ingestEvidence(event) {
+    const file = event.target.files[0];
+    if (!file || !activeCaseId) return;
+
+    const status = document.getElementById('ws-ingest-status');
+    status.style.display = '';
+    status.style.background = 'var(--card)';
+    status.style.border = '1px solid var(--card-border)';
+    status.style.color = 'var(--text-sec)';
+    status.textContent = `Uploading ${file.name}…`;
+
+    const form = new FormData();
+    form.append('file', file);
+
+    try {
+      const res = await fetch(`/api/cases/${activeCaseId}/evidence`, {
+        method: 'POST',
+        body: form,
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        status.style.background = 'var(--green-glow)';
+        status.style.border = '1px solid var(--green)';
+        status.style.color = 'var(--green)';
+        status.textContent = `Evidence ingested: ${data.evidence.filename} · SHA-256: ${data.evidence.sha256.slice(0,16)}…`;
+        // Reload evidence list
+        const caseRes = await fetch(`/api/cases/${activeCaseId}`);
+        const caseData = await caseRes.json();
+        renderEvidenceList(caseData.case.evidence_items || []);
+      } else {
+        throw new Error(data.detail || 'Unknown error');
+      }
+    } catch (err) {
+      status.style.background = 'var(--red-glow)';
+      status.style.border = '1px solid var(--red)';
+      status.style.color = 'var(--red)';
+      status.textContent = `Upload failed: ${err.message}`;
+    }
+    // Reset input so same file can be re-uploaded
+    event.target.value = '';
+  }
+
+  async function analyzeCase() {
+    if (!activeCaseId) return;
+    const btn = document.getElementById('ws-analyze-btn');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing…';
+
+    try {
+      const res = await fetch(`/api/cases/${activeCaseId}/analyze`, { method: 'POST' });
+      const data = await res.json();
+
+      if (data.ok) {
+        btn.textContent = 'Analyze';
+        btn.disabled = false;
+        // Switch to findings tab
+        switchWsTab('findings');
+        renderCaseFindingsSummary(data);
+      } else {
+        throw new Error(data.detail || 'Analysis failed');
+      }
+    } catch (err) {
+      btn.textContent = 'Analyze';
+      btn.disabled = false;
+      const status = document.getElementById('ws-ingest-status');
+      status.style.display = '';
+      status.style.background = 'var(--red-glow)';
+      status.style.border = '1px solid var(--red)';
+      status.style.color = 'var(--red)';
+      status.textContent = `Analysis failed: ${err.message}`;
+    }
+  }
+
+  function renderCaseFindingsSummary(data) {
+    const container = document.getElementById('ws-findings-content');
+    const score = data.overall_score;
+    const summary = data.summary || {};
+    const findings = data.findings || [];
+    const bySev = summary.by_severity || {};
+
+    const scoreColor = score >= 80 ? 'var(--green)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+    const scoreLabel = score >= 80 ? 'Nominal' : score >= 50 ? 'Degraded' : 'Critical';
+
+    const criticals = findings.filter(f => f.severity === 'critical');
+    const warnings  = findings.filter(f => f.severity === 'warning');
+    const passes    = findings.filter(f => f.severity === 'pass');
+
+    container.innerHTML = `
+      <div style="display:flex;gap:20px;margin-bottom:20px;">
+        <div style="background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px 24px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:${scoreColor};">${score}</div>
+          <div style="font-size:11px;color:var(--text-sec);margin-top:4px;">${scoreLabel}</div>
+        </div>
+        <div style="flex:1;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px;">
+          <div style="font-size:13px;color:var(--text);line-height:1.6;">${data.narrative_human || data.narrative || ''}</div>
+        </div>
+      </div>
+      ${criticals.length > 0 ? `
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;">Critical (${criticals.length})</div>
+          ${criticals.map(f => `
+            <div style="background:var(--red-glow);border:1px solid rgba(226,75,74,0.2);border-radius:8px;padding:12px;margin-bottom:6px;">
+              <div style="font-size:13px;font-weight:600;color:var(--red);">${f.title}</div>
+              <div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${f.description}</div>
+            </div>`).join('')}
+        </div>` : ''}
+      ${warnings.length > 0 ? `
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;">Warnings (${warnings.length})</div>
+          ${warnings.map(f => `
+            <div style="background:var(--amber-glow);border:1px solid rgba(239,159,39,0.2);border-radius:8px;padding:12px;margin-bottom:6px;">
+              <div style="font-size:13px;font-weight:600;color:var(--amber);">${f.title}</div>
+              <div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${f.description}</div>
+            </div>`).join('')}
+        </div>` : ''}
+      <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+        ${passes.length} checks passed · ${summary.plugins_run || 0} plugins · Run ID: ${data.run_id || 'unknown'}
+        ${data.evidence_id ? ` · Evidence: ${data.evidence_id}` : ''}
+      </div>
+      <div style="margin-top:16px;">
+        <button class="ghost-btn" onclick="viewFullAnalysis(${JSON.stringify(data).replace(/"/g, '&quot;')})">View Full Analysis →</button>
+      </div>`;
+  }
+
+  function viewFullAnalysis(data) {
+    lastResults = data;
+    activeFilter = 'all';
+    activeFinding = null;
+    renderResults(data);
+    switchTab('analyze');
+  }
+
+  async function loadFindings(caseId) {
+    try {
+      const res = await fetch(`/api/cases/${caseId}/findings`);
+      const data = await res.json();
+      if (data.findings && data.findings.length > 0) {
+        // findings already rendered from analyze response — skip if already shown
+      }
+    } catch(_) {}
+  }
+
+  async function loadAuditLog(caseId) {
+    const container = document.getElementById('ws-audit-content');
+    container.innerHTML = '<div style="color:var(--text-sec);font-size:13px;padding:16px 0;">Loading…</div>';
+    try {
+      const res = await fetch(`/api/cases/${caseId}/audit`);
+      const data = await res.json();
+      const entries = data.audit || [];
+      if (entries.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-sec);font-size:13px;">No audit entries yet.</div>';
+        return;
+      }
+      container.innerHTML = entries.map(e => {
+        const ts = new Date(e.timestamp).toLocaleString();
+        const details = Object.entries(e.details || {}).map(([k,v]) => `${k}: ${v}`).join(' · ');
+        return `
+          <div class="audit-row">
+            <span class="audit-row-action">${e.action}</span>
+            <span style="margin:0 8px;opacity:0.4">·</span>${e.actor}
+            <span style="margin:0 8px;opacity:0.4">·</span>${ts}
+            ${details ? `<div style="margin-top:3px;font-size:11px;opacity:0.6;">${details}</div>` : ''}
+          </div>`;
+      }).join('');
+    } catch(err) {
+      container.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load audit log.</div>`;
+    }
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('new-case-modal').addEventListener('click', function(e) {
+    if (e.target === this) hideNewCaseModal();
+  });
+
+  // Default to Cases tab on load
+  switchTab('cases');
 </script>
 <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
 <script src="/static/cockpit.js"></script>

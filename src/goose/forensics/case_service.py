@@ -364,7 +364,6 @@ class CaseService:
             f.write(entry.to_jsonl() + "\n")
 
     def _next_case_id(self) -> str:
-        year = datetime.utcnow().year
         year = datetime.now().year
         existing = [
             d.name for d in self.base_dir.iterdir()

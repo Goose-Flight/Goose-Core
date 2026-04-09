@@ -152,12 +152,15 @@ class TestParseResultModel:
 # ---------------------------------------------------------------------------
 
 class TestStubParsers:
-    """Stubs must not claim can_parse and must return unsupported diagnostics."""
+    """Stubs must not claim can_parse and must return unsupported diagnostics.
+
+    CSVParser is intentionally excluded from the stub parametrize sets because
+    it is a fully-implemented parser (implemented = True) as of Sprint 4.
+    """
 
     @pytest.mark.parametrize("parser_cls,ext", [
         (DataFlashParser, ".bin"),
         (TLogParser, ".tlog"),
-        (CSVParser, ".csv"),
     ])
     def test_not_implemented(self, parser_cls: type, ext: str) -> None:
         parser = parser_cls()
@@ -166,7 +169,6 @@ class TestStubParsers:
     @pytest.mark.parametrize("parser_cls,ext", [
         (DataFlashParser, ".bin"),
         (TLogParser, ".tlog"),
-        (CSVParser, ".csv"),
     ])
     def test_can_parse_returns_false(self, parser_cls: type, ext: str) -> None:
         parser = parser_cls()
@@ -175,7 +177,6 @@ class TestStubParsers:
     @pytest.mark.parametrize("parser_cls,ext", [
         (DataFlashParser, ".bin"),
         (TLogParser, ".tlog"),
-        (CSVParser, ".csv"),
     ])
     def test_parse_returns_failure_not_exception(self, parser_cls: type, ext: str, tmp_path: Path) -> None:
         parser = parser_cls()
@@ -187,6 +188,12 @@ class TestStubParsers:
         assert result.flight is None
         assert len(result.diagnostics.errors) > 0
         assert not result.diagnostics.supported
+
+    def test_csv_parser_is_implemented(self) -> None:
+        """CSVParser graduated from stub to full implementation in Sprint 4."""
+        parser = CSVParser()
+        assert parser.implemented
+        assert parser.can_parse("flight.csv")
 
 
 # ---------------------------------------------------------------------------
@@ -253,11 +260,14 @@ class TestDetectModule:
         assert "tlog" in names
         assert "csv" in names
 
-    def test_supported_formats_only_ulog_implemented(self) -> None:
+    def test_supported_formats_implemented(self) -> None:
+        """ULog and CSV are both fully implemented; DataFlash and TLog remain stubs."""
         formats = supported_formats()
-        implemented = [f for f in formats if f["implemented"]]
-        assert len(implemented) == 1
-        assert implemented[0]["format_name"] == "ulog"
+        implemented_names = {f["format_name"] for f in formats if f["implemented"]}
+        assert "ulog" in implemented_names
+        assert "csv" in implemented_names
+        assert "dataflash" not in implemented_names
+        assert "tlog" not in implemented_names
 
 
 # ---------------------------------------------------------------------------

@@ -136,8 +136,9 @@ def build_timeline_from_findings(
 def build_timeline_from_flight(flight: Flight, run_id: str) -> list[TimelineEvent]:
     """Extract timeline events from the canonical Flight object.
 
-    Handles flight phases, mode changes, arming/failsafe events, and
-    flight-end bookends. Safe to call on a partially populated Flight.
+    Handles flight phases, mode changes, arming/failsafe events, battery
+    warning threshold crossings, GPS degradation windows, and flight-end
+    bookends. Safe to call on a partially populated Flight.
     """
     events: list[TimelineEvent] = []
 
@@ -188,6 +189,20 @@ def build_timeline_from_flight(flight: Flight, run_id: str) -> list[TimelineEven
             severity=sev,
         ))
 
+    # --- Battery warning threshold crossings ------------------------------
+    # Detect when voltage drops below warning thresholds or remaining_pct
+    # drops below 20% and 10%.  Emit FAULT events at each crossing point.
+    battery = getattr(flight, "battery", None)
+    if battery is not None and not battery.empty:
+        events.extend(_extract_battery_warning_events(battery))
+
+    # --- GPS degradation windows ------------------------------------------
+    # Detect when fix_type drops below 3D fix or satellite count falls below
+    # a threshold, and emit FAULT events covering those windows.
+    gps = getattr(flight, "gps", None)
+    if gps is not None and not gps.empty:
+        events.extend(_extract_gps_degradation_events(gps))
+
     # --- Flight start / end bookends --------------------------------------
     duration = 0.0
     meta = getattr(flight, "metadata", None)
@@ -212,6 +227,178 @@ def build_timeline_from_flight(flight: Flight, run_id: str) -> list[TimelineEven
         ))
 
     return events
+
+
+# ---------------------------------------------------------------------------
+# Battery and GPS event extraction helpers
+# ---------------------------------------------------------------------------
+
+_BATTERY_WARN_PCT = 20.0   # remaining_pct below this → battery warning
+_BATTERY_CRIT_PCT = 10.0   # remaining_pct below this → battery critical
+_BATTERY_WARN_V = 14.4     # voltage per 4S cell group — approximate threshold
+_GPS_MIN_FIX = 3           # fix_type below this = degraded (1=no fix, 2=2D, 3=3D)
+_GPS_MIN_SATS = 6          # satellite count below this = degraded
+
+
+def _extract_battery_warning_events(battery: Any) -> list[TimelineEvent]:
+    """Detect battery warning threshold crossings from telemetry.
+
+    Emits a FAULT event at the first timestamp where:
+    - remaining_pct drops below 20% (warning) or 10% (critical), OR
+    - voltage drops below an approximate low-voltage threshold.
+
+    Each threshold is only triggered once per flight to avoid event spam.
+    """
+    import pandas as pd
+    events: list[TimelineEvent] = []
+
+    if not isinstance(battery, pd.DataFrame) or battery.empty:
+        return events
+    if "timestamp" not in battery.columns:
+        return events
+
+    # remaining_pct thresholds
+    if "remaining_pct" in battery.columns:
+        pct = battery["remaining_pct"]
+        ts = battery["timestamp"]
+
+        for threshold, label, sev in [
+            (_BATTERY_CRIT_PCT, "Battery critical (<10% remaining)", "critical"),
+            (_BATTERY_WARN_PCT, "Battery warning (<20% remaining)", "warning"),
+        ]:
+            below = pct < threshold
+            if below.any():
+                first_idx = below.idxmax()
+                t = float(ts.loc[first_idx])
+                pct_val = float(pct.loc[first_idx])
+                events.append(TimelineEvent(
+                    event_id=_new_event_id(),
+                    event_type=TimelineEventType.FAULT,
+                    event_category=TimelineEventCategory.ANOMALY,
+                    label=label,
+                    start_time=t,
+                    source="parser",
+                    severity=sev,
+                    notes=f"Battery remaining: {pct_val:.1f}%",
+                ))
+
+    # Low voltage crossing (only if voltage present but no remaining_pct)
+    if "voltage" in battery.columns and "remaining_pct" not in battery.columns:
+        voltage = battery["voltage"]
+        ts = battery["timestamp"]
+        # Rough 4S warning voltage: 14.4V = 3.6V/cell
+        below_v = voltage < _BATTERY_WARN_V
+        if below_v.any():
+            first_idx = below_v.idxmax()
+            t = float(ts.loc[first_idx])
+            v_val = float(voltage.loc[first_idx])
+            events.append(TimelineEvent(
+                event_id=_new_event_id(),
+                event_type=TimelineEventType.FAULT,
+                event_category=TimelineEventCategory.ANOMALY,
+                label=f"Low voltage detected ({v_val:.2f}V)",
+                start_time=t,
+                source="parser",
+                severity="warning",
+                notes=f"Voltage: {v_val:.2f}V (below {_BATTERY_WARN_V}V threshold)",
+            ))
+
+    return events
+
+
+def _extract_gps_degradation_events(gps: Any) -> list[TimelineEvent]:
+    """Detect GPS degradation windows from telemetry.
+
+    Emits interval FAULT events covering windows where:
+    - fix_type < 3 (not a 3D fix), OR
+    - satellites < 6 (insufficient geometry).
+
+    Merges consecutive degraded samples into windows (minimum 2 seconds).
+    """
+    import pandas as pd
+    events: list[TimelineEvent] = []
+
+    if not isinstance(gps, pd.DataFrame) or gps.empty:
+        return events
+    if "timestamp" not in gps.columns:
+        return events
+
+    ts = gps["timestamp"]
+
+    # fix_type degradation: fix_type < 3 means no 3D fix
+    if "fix_type" in gps.columns:
+        fix = gps["fix_type"]
+        degraded = fix < _GPS_MIN_FIX
+        windows = _find_windows(ts, degraded, min_duration_sec=2.0)
+        for (t_start, t_end) in windows:
+            events.append(TimelineEvent(
+                event_id=_new_event_id(),
+                event_type=TimelineEventType.FAULT,
+                event_category=TimelineEventCategory.ANOMALY,
+                label="GPS degraded (no 3D fix)",
+                start_time=t_start,
+                end_time=t_end,
+                source="parser",
+                severity="warning",
+                notes=f"GPS fix type below 3D for {t_end - t_start:.1f}s",
+            ))
+
+    # Low satellite count
+    if "satellites" in gps.columns:
+        sats = gps["satellites"]
+        low_sats = sats < _GPS_MIN_SATS
+        windows = _find_windows(ts, low_sats, min_duration_sec=2.0)
+        for (t_start, t_end) in windows:
+            events.append(TimelineEvent(
+                event_id=_new_event_id(),
+                event_type=TimelineEventType.FAULT,
+                event_category=TimelineEventCategory.ANOMALY,
+                label=f"Low GPS satellite count (<{_GPS_MIN_SATS})",
+                start_time=t_start,
+                end_time=t_end,
+                source="parser",
+                severity="warning",
+                notes=f"Satellite count below {_GPS_MIN_SATS} for {t_end - t_start:.1f}s",
+            ))
+
+    return events
+
+
+def _find_windows(
+    timestamps: Any,
+    mask: Any,
+    min_duration_sec: float = 2.0,
+) -> list[tuple[float, float]]:
+    """Find contiguous True windows in a boolean mask, filtered by minimum duration.
+
+    Returns list of (start_time, end_time) tuples.
+    """
+    windows: list[tuple[float, float]] = []
+    if not mask.any():
+        return windows
+
+    in_window = False
+    win_start = 0.0
+
+    for i in range(len(mask)):
+        if mask.iloc[i]:
+            if not in_window:
+                in_window = True
+                win_start = float(timestamps.iloc[i])
+        else:
+            if in_window:
+                win_end = float(timestamps.iloc[i])
+                if win_end - win_start >= min_duration_sec:
+                    windows.append((win_start, win_end))
+                in_window = False
+
+    # Handle window still open at end
+    if in_window and len(timestamps) > 0:
+        win_end = float(timestamps.iloc[-1])
+        if win_end - win_start >= min_duration_sec:
+            windows.append((win_start, win_end))
+
+    return windows
 
 
 def build_full_timeline(

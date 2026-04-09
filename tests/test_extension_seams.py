@@ -53,8 +53,13 @@ class TestGetAllPlugins:
         b = get_all_plugins()
         assert a is not b
 
-    def test_core_plugins_take_precedence_over_pro(self, monkeypatch):
-        """If a Pro plugin has the same plugin_id as a Core plugin, Core wins."""
+    def test_pro_plugins_take_precedence_over_core(self, monkeypatch):
+        """Pro plugin with same plugin_id as a Core plugin wins (Pro-upgrade model).
+
+        This is intentional: official Pro packages use identical plugin_ids to
+        upgrade Core implementations with enhanced versions. Third-party extensions
+        that should NOT override Core should use unique plugin_ids.
+        """
         from goose.plugins import get_all_plugins, PLUGIN_REGISTRY
         from goose.plugins.base import Plugin
         from goose.plugins.contract import PluginManifest, PluginCategory, PluginTrustState
@@ -89,9 +94,9 @@ class TestGetAllPlugins:
         monkeypatch.setattr(reg_mod, "discover_pro_plugins", lambda: [fake_pro_instance])
 
         result = get_all_plugins()
-        # Core plugin must win
-        assert result[core_pid] is PLUGIN_REGISTRY[core_pid]
-        assert result[core_pid].manifest.version != "99.0.0"
+        # Pro plugin must win — same plugin_id → Pro overrides Core
+        assert result[core_pid] is fake_pro_instance
+        assert result[core_pid].manifest.version == "99.0.0"
 
     def test_pro_plugins_added_when_not_conflicting(self, monkeypatch):
         """A Pro plugin with a unique plugin_id is included in the merged set."""

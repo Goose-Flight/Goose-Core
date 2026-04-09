@@ -116,16 +116,17 @@ def get_all_plugins() -> dict[str, Plugin]:
     ``goose.plugins`` group.  Installing a Pro package is sufficient —
     ``get_all_plugins()`` discovers them automatically at call time.
 
-    Core built-ins always take precedence: if an extension registers a plugin
-    with the same plugin_id as a Core plugin, the Core plugin wins.
+    Extension plugins (e.g. from goose-pro) take precedence over Core built-ins
+    when they share the same plugin_id. This allows an official Pro package to
+    upgrade a Core plugin with an enhanced implementation. Third-party extensions
+    that should NOT override Core should use unique plugin_ids.
 
     Returns a new dict on every call so callers may mutate it safely.
     """
     from goose.plugins.registry import discover_pro_plugins
 
-    merged: dict[str, Plugin] = dict(PLUGIN_REGISTRY)  # Core plugins first
+    # Start with Core, then let Pro overrides win
+    merged: dict[str, Plugin] = dict(PLUGIN_REGISTRY)
     for ext_plugin in discover_pro_plugins():
-        pid = ext_plugin.manifest.plugin_id
-        if pid not in merged:  # Core always wins
-            merged[pid] = ext_plugin
+        merged[ext_plugin.manifest.plugin_id] = ext_plugin  # Pro wins
     return merged

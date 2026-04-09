@@ -49,6 +49,12 @@ attitude_tracking = "goose.plugins.attitude_tracking:AttitudeTrackingPlugin"
 position_tracking = "goose.plugins.position_tracking:PositionTrackingPlugin"
 failsafe_events = "goose.plugins.failsafe_events:FailsafeEventsPlugin"
 log_health = "goose.plugins.log_health:LogHealthPlugin"
+payload_change_detection = "goose.plugins.payload_change_detection:PayloadChangeDetectionPlugin"
+mission_phase_anomaly = "goose.plugins.mission_phase_anomaly:MissionPhaseAnomalyPlugin"
+operator_action_sequence = "goose.plugins.operator_action_sequence:OperatorActionSequencePlugin"
+environment_conditions = "goose.plugins.environment_conditions:EnvironmentConditionsPlugin"
+damage_impact_classification = "goose.plugins.damage_impact_classification:DamageImpactClassificationPlugin"
+link_telemetry_health = "goose.plugins.link_telemetry_health:LinkTelemetryHealthPlugin"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/goose"]

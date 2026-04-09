@@ -151,8 +151,8 @@ async def get_replay_verification(case_id: str, run_id: str) -> JSONResponse:
 
 @router.post("/{case_id}/compare-runs")
 async def compare_runs_endpoint(case_id: str, body: CompareRunsRequest) -> JSONResponse:
-    """Compare two runs within a case and return the structured diff."""
-    from goose.forensics.diff import compare_runs
+    """Compare two runs within a case, persist the comparison, and return the structured diff."""
+    from goose.forensics.diff import compare_runs, save_comparison
     from goose.web.cases_api import get_service
 
     try:
@@ -167,5 +167,48 @@ async def compare_runs_endpoint(case_id: str, body: CompareRunsRequest) -> JSONR
     except Exception as exc:
         logger.exception("Run comparison failed")
         raise HTTPException(status_code=500, detail=f"Compare failed: {exc}") from exc
+
+    # Persist the comparison so it can be retrieved later without re-computing
+    try:
+        save_comparison(case_dir, comparison)
+    except Exception:
+        logger.warning("Failed to persist comparison %s — returning result anyway", comparison.comparison_id)
+
+    return JSONResponse({"ok": True, "comparison": comparison.to_dict()})
+
+
+@router.get("/{case_id}/comparisons")
+async def list_comparisons_endpoint(case_id: str) -> JSONResponse:
+    """Return the index of all saved run comparisons for a case."""
+    from goose.forensics.diff import list_comparisons
+    from goose.web.cases_api import get_service
+
+    try:
+        svc = get_service()
+        svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    case_dir = svc.case_dir(case_id)
+    entries = list_comparisons(case_dir)
+    return JSONResponse({"ok": True, "comparisons": entries, "count": len(entries)})
+
+
+@router.get("/{case_id}/comparisons/{comparison_id}")
+async def get_comparison_endpoint(case_id: str, comparison_id: str) -> JSONResponse:
+    """Return a saved comparison by ID."""
+    from goose.forensics.diff import load_comparison
+    from goose.web.cases_api import get_service
+
+    try:
+        svc = get_service()
+        svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    case_dir = svc.case_dir(case_id)
+    comparison = load_comparison(case_dir, comparison_id)
+    if comparison is None:
+        raise HTTPException(status_code=404, detail=f"Comparison not found: {comparison_id}")
 
     return JSONResponse({"ok": True, "comparison": comparison.to_dict()})

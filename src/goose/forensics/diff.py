@@ -1,6 +1,17 @@
 """Run diff engine for Goose-Core.
 
 Advanced Forensic Validation Sprint — Structured comparison of analysis runs.
+Sprint 3 — Comparison persistence: save/load/list comparisons to case directory.
+
+Persistence contract
+--------------------
+Comparisons are stored under ``{case_dir}/comparisons/{comparison_id}.json``.
+The index file ``{case_dir}/comparisons/index.json`` holds a list of summary
+records so callers can list comparisons without reading every comparison file.
+
+Idempotency note: ``compare_runs()`` still generates a new ``comparison_id``
+on every call.  If you want to avoid duplicates for the same run pair, call
+``find_comparison()`` first and return the cached result.
 """
 
 from __future__ import annotations
@@ -443,3 +454,139 @@ def _load_run_hypotheses(analysis_dir: Path, run_id: str) -> list[dict[str, Any]
         except Exception:
             pass
     return []
+
+
+# ---------------------------------------------------------------------------
+# Comparison persistence
+# ---------------------------------------------------------------------------
+
+_COMPARISONS_DIR = "comparisons"
+_INDEX_FILE = "index.json"
+
+
+def save_comparison(case_dir: Path, comparison: RunComparison) -> Path:
+    """Persist a RunComparison to ``{case_dir}/comparisons/{comparison_id}.json``.
+
+    Also updates the index file ``{case_dir}/comparisons/index.json`` with a
+    summary record so callers can list comparisons without reading every file.
+
+    Returns the path to the saved comparison file.
+
+    This function is idempotent for the same ``comparison_id``: writing again
+    overwrites the prior file with updated data (e.g. if the caller enriches
+    the comparison after creation).
+    """
+    comp_dir = case_dir / _COMPARISONS_DIR
+    comp_dir.mkdir(parents=True, exist_ok=True)
+
+    comp_path = comp_dir / f"{comparison.comparison_id}.json"
+    comp_path.write_text(
+        json.dumps(comparison.to_dict(), indent=2),
+        encoding="utf-8",
+    )
+
+    # Update index
+    _upsert_index(comp_dir, comparison)
+
+    return comp_path
+
+
+def list_comparisons(case_dir: Path) -> list[dict[str, Any]]:
+    """Return the index of saved comparisons for a case.
+
+    Each entry is a summary dict:
+    ``{comparison_id, case_id, run_a_id, run_b_id, compared_at,
+       risk_assessment, summary, has_differences}``
+
+    Returns an empty list if no comparisons have been saved.
+    Entries are sorted by ``compared_at`` descending (newest first).
+    """
+    index_path = case_dir / _COMPARISONS_DIR / _INDEX_FILE
+    if not index_path.exists():
+        return []
+    try:
+        data = json.loads(index_path.read_text(encoding="utf-8"))
+        entries: list[dict[str, Any]] = data.get("comparisons", [])
+        # Sort newest first
+        return sorted(entries, key=lambda e: e.get("compared_at", ""), reverse=True)
+    except Exception:
+        return []
+
+
+def load_comparison(case_dir: Path, comparison_id: str) -> RunComparison | None:
+    """Load a saved RunComparison by ID.
+
+    Returns ``None`` if the comparison file does not exist or cannot be parsed.
+    Never raises.
+    """
+    comp_path = case_dir / _COMPARISONS_DIR / f"{comparison_id}.json"
+    if not comp_path.exists():
+        return None
+    try:
+        data = json.loads(comp_path.read_text(encoding="utf-8"))
+        return RunComparison.from_dict(data)
+    except Exception:
+        return None
+
+
+def find_comparison(
+    case_dir: Path, run_a_id: str, run_b_id: str
+) -> RunComparison | None:
+    """Return the most recent saved comparison for a given run pair, if any.
+
+    Checks both (run_a_id, run_b_id) and (run_b_id, run_a_id) orderings so
+    callers don't need to care about which run was "A" and which was "B".
+    Returns the newest match or ``None``.
+    """
+    entries = list_comparisons(case_dir)
+    # Entries are already sorted newest-first
+    for entry in entries:
+        a = entry.get("run_a_id", "")
+        b = entry.get("run_b_id", "")
+        if (a == run_a_id and b == run_b_id) or (a == run_b_id and b == run_a_id):
+            return load_comparison(case_dir, entry["comparison_id"])
+    return None
+
+
+def _upsert_index(comp_dir: Path, comparison: RunComparison) -> None:
+    """Update (or create) the index.json with a summary record for this comparison.
+
+    If an entry with the same comparison_id already exists it is replaced in-place.
+    """
+    index_path = comp_dir / _INDEX_FILE
+    entries: list[dict[str, Any]] = []
+    if index_path.exists():
+        try:
+            data = json.loads(index_path.read_text(encoding="utf-8"))
+            entries = data.get("comparisons", [])
+        except Exception:
+            entries = []
+
+    summary_record = {
+        "comparison_id": comparison.comparison_id,
+        "case_id": comparison.case_id,
+        "run_a_id": comparison.run_a_id,
+        "run_b_id": comparison.run_b_id,
+        "compared_at": comparison.compared_at,
+        "risk_assessment": comparison.risk_assessment,
+        "summary": comparison.summary,
+        "has_differences": comparison.has_differences,
+        "finding_differences_count": len(comparison.finding_differences),
+        "hypothesis_differences_count": len(comparison.hypothesis_differences),
+        "plugin_differences_count": len(comparison.plugin_differences),
+    }
+
+    # Replace existing entry or append
+    updated = False
+    for i, e in enumerate(entries):
+        if e.get("comparison_id") == comparison.comparison_id:
+            entries[i] = summary_record
+            updated = True
+            break
+    if not updated:
+        entries.append(summary_record)
+
+    index_path.write_text(
+        json.dumps({"comparisons": entries}, indent=2),
+        encoding="utf-8",
+    )

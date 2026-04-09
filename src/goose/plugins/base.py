@@ -58,7 +58,6 @@ class Plugin(ABC):
             EvidenceReference,
             FindingSeverity,
             ForensicFinding,
-            _PLUGIN_STREAM_MAP,
         )
 
         t0 = time.perf_counter()
@@ -103,7 +102,7 @@ class Plugin(ABC):
         warnings: list[str] = []
 
         for thin in thin_findings:
-            stream = _PLUGIN_STREAM_MAP.get(thin.plugin_name)
+            stream = self.manifest.primary_stream or ""
 
             ev_ref = EvidenceReference(
                 evidence_id=evidence_id,

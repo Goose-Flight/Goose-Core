@@ -59,6 +59,7 @@ class PluginManifest:
     trust_state: PluginTrustState = PluginTrustState.BUILTIN_TRUSTED
     sha256_hash: str = ""
     signature: str = ""
+    primary_stream: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {

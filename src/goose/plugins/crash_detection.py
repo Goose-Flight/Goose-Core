@@ -83,6 +83,7 @@ class CrashDetectionPlugin(Plugin):
         required_streams=["position"],
         optional_streams=["attitude", "attitude_setpoint", "motors", "vibration"],
         output_finding_types=["crash_detected", "altitude_loss", "attitude_divergence", "motor_failure", "impact"],
+        primary_stream="position",
     )
 
     # Configurable thresholds (overridable via config dict)

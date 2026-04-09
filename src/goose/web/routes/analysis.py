@@ -300,7 +300,8 @@ async def analyze_case(case_id: str) -> JSONResponse:
     analysis_dir = case_dir / "analysis"
     analysis_dir.mkdir(exist_ok=True)
 
-    # findings.json
+    # findings.json — latest-run pointer (for UI convenience)
+    # findings_{run_id}.json — run-specific archive (for multi-run diff/replay)
     findings_bundle = {
         "findings_version": "2.0",
         "run_id": run_id,
@@ -308,20 +309,21 @@ async def analyze_case(case_id: str) -> JSONResponse:
         "generated_at": completed_at.isoformat(),
         "findings": [f.to_dict() for f in forensic_findings],
     }
-    (analysis_dir / "findings.json").write_text(
-        json.dumps(findings_bundle, indent=2), encoding="utf-8"
-    )
+    findings_json = json.dumps(findings_bundle, indent=2)
+    (analysis_dir / "findings.json").write_text(findings_json, encoding="utf-8")
+    (analysis_dir / f"findings_{run_id}.json").write_text(findings_json, encoding="utf-8")
 
-    # hypotheses.json
+    # hypotheses.json — latest-run pointer
+    # hypotheses_{run_id}.json — run-specific archive
     hypotheses_bundle = {
         "hypotheses_version": "1.0",
         "run_id": run_id,
         "generated_at": completed_at.isoformat(),
         "hypotheses": [h.to_dict() for h in hypotheses],
     }
-    (analysis_dir / "hypotheses.json").write_text(
-        json.dumps(hypotheses_bundle, indent=2), encoding="utf-8"
-    )
+    hypotheses_json = json.dumps(hypotheses_bundle, indent=2)
+    (analysis_dir / "hypotheses.json").write_text(hypotheses_json, encoding="utf-8")
+    (analysis_dir / f"hypotheses_{run_id}.json").write_text(hypotheses_json, encoding="utf-8")
 
     # timeline.json (v11 Strategy Sprint — structured event timeline)
     from goose.forensics.timeline import build_full_timeline

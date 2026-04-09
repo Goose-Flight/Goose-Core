@@ -72,6 +72,7 @@ class BatterySagPlugin(Plugin):
         required_streams=["battery"],
         optional_streams=[],
         output_finding_types=["low_voltage", "voltage_sag", "low_remaining_pct", "sudden_voltage_drop"],
+        primary_stream="battery",
     )
 
     # Default threshold constants — exposed so tuning profile wiring can

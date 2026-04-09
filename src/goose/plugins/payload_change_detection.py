@@ -11,6 +11,15 @@ Use cases:
     - tactical payload event review
     - unintentional payload detach detection
     - load / snag events
+
+Downstream surfaces this plugin touches (Convergence Sprint 1):
+    - findings:    yes — emitted via base.py Plugin.forensic_analyze() lifting path
+    - hypotheses:  yes — drives "impact_damage" theme (payload physical mass change
+                   is correlated with crash/impact events) and "payload_mass_change"
+                   theme (standalone: payload drop/release/addition during flight,
+                   emitted when no crash/impact findings are present)
+    - timeline:    no — not yet wired to timeline layer
+    - reports:     no — no dedicated report section at this time
 """
 
 from __future__ import annotations
@@ -73,6 +82,7 @@ class PayloadChangeDetectionPlugin(Plugin):
         minimum_contract_version="2.0",
         plugin_type="builtin",
         trust_state=PluginTrustState.BUILTIN_TRUSTED,
+        primary_stream="battery",
     )
 
     # Default thresholds — all overridable via config / tuning profile.

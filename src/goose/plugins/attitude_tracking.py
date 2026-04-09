@@ -59,6 +59,7 @@ class AttitudeTrackingPlugin(Plugin):
         required_streams=["attitude", "attitude_setpoint"],
         optional_streams=[],
         output_finding_types=["tracking_error", "attitude_oscillation"],
+        primary_stream="attitude",
     )
 
     DEFAULT_TRACKING_ERROR_WARNING_DEG = TRACKING_ERROR_WARNING_DEG

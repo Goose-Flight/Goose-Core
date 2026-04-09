@@ -167,27 +167,6 @@ class EvidenceReference:
 # ForensicFinding
 # ---------------------------------------------------------------------------
 
-# Maps plugin.name → primary telemetry stream for EvidenceReference auto-population.
-# Sprint 5 will let plugins declare this directly; for now it's a static table.
-_PLUGIN_STREAM_MAP: dict[str, str] = {
-    "battery_sag": "battery",
-    "crash_detection": "position",
-    "vibration": "vibration",
-    "gps_health": "gps",
-    "motor_saturation": "motors",
-    "ekf_health": "ekf",
-    "ekf_status": "ekf",
-    "ekf_consistency": "ekf",
-    "attitude_tracking": "attitude",
-    "position_tracking": "position",
-    "mode_analysis": "mode_changes",
-    "rc_loss": "rc_input",
-    "rc_signal": "rc_input",
-    "failsafe_events": "events",
-    "log_health": "log_metadata",
-    "cpu_load": "cpu",
-}
-
 
 @dataclass
 class ForensicFinding:
@@ -316,6 +295,8 @@ class Hypothesis:
     statement: str                              # plain-language root cause claim
     supporting_finding_ids: list[str] = field(default_factory=list)
     contradicting_finding_ids: list[str] = field(default_factory=list)
+    # Structured contradicting findings: list of dicts with finding_id, title, severity
+    contradicting_findings: list[dict[str, Any]] = field(default_factory=list)
     confidence: float = 0.0                     # 0.0–1.0, root-cause confidence
     confidence_scope: str = "hypothesis_root_cause"  # explicit — not parser confidence
     status: HypothesisStatus = HypothesisStatus.CANDIDATE
@@ -336,6 +317,7 @@ class Hypothesis:
             "statement": self.statement,
             "supporting_finding_ids": self.supporting_finding_ids,
             "contradicting_finding_ids": self.contradicting_finding_ids,
+            "contradicting_findings": list(self.contradicting_findings),
             "confidence": self.confidence,
             "confidence_scope": self.confidence_scope,
             "confidence_band": ConfidenceBand.from_score(self.confidence).value,

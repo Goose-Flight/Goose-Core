@@ -267,160 +267,36 @@ def create_app():
     @app.post("/api/analyze")
     async def analyze(file: UploadFile = File(...)) -> JSONResponse:
         """
-        Accept a flight log upload, run all plugins, and return analysis results.
+        DEPRECATED — This endpoint is removed.
 
-        Supported formats: .ulg (ULog/PX4), .bin/.log (DataFlash/ArduPilot),
-        .tlog (MAVLink telemetry), .csv (generic CSV).
+        It emitted thin findings without evidence references, audit trail, or
+        tuning provenance and bypassed the case system entirely.
+
+        Use instead:
+          POST /api/quick-analysis          — session-only triage (no case created)
+          POST /api/cases                   — create a persistent investigation case
+          POST /api/cases/{id}/analyze      — run full forensic analysis on a case
         """
-        if file.filename is None or file.filename == "":
-            raise HTTPException(status_code=400, detail="No filename provided")
-
-        original_name = Path(file.filename)
-        suffix = original_name.suffix.lower()
-
-        # Write upload to a named temp file (suffix matters for parsers)
-        tmp_path: str | None = None
-        try:
-            with tempfile.NamedTemporaryFile(
-                suffix=suffix, delete=False, prefix="goose_upload_"
-            ) as tmp:
-                tmp_path = tmp.name
-                content = await file.read()
-                if not content:
-                    raise HTTPException(status_code=400, detail="Uploaded file is empty")
-                tmp.write(content)
-
-            # ----------------------------------------------------------
-            # Parser selection via formal ParseResult contract
-            # ----------------------------------------------------------
-            from goose.parsers.detect import parse_file as _parse_file
-            _parse_result = _parse_file(tmp_path)
-            if not _parse_result.success:
-                errors = "; ".join(_parse_result.diagnostics.errors)
-                detail = (
-                    f"Could not parse '{original_name.name}'. "
-                    f"Supported format: .ulg. Error: {errors}"
-                )
-                raise HTTPException(status_code=422, detail=detail)
-            flight = _parse_result.flight
-
-            # ----------------------------------------------------------
-            # Run plugins
-            # ----------------------------------------------------------
-            try:
-                from goose.plugins.registry import load_plugins
-                plugins = load_plugins()
-            except Exception as exc:
-                logger.warning("Plugin loading failed: %s", exc)
-                plugins = []
-
-            all_findings: list[Any] = []
-            plugin_errors: list[dict[str, str]] = []
-
-            for plugin in plugins:
-                try:
-                    findings = plugin.analyze(flight, {})
-                    all_findings.extend(findings)
-                except Exception as exc:
-                    logger.warning("Plugin %s failed: %s", plugin.name, exc)
-                    plugin_errors.append({"plugin": plugin.name, "error": str(exc)})
-
-            # ----------------------------------------------------------
-            # Build response
-            # ----------------------------------------------------------
-            overall_score = _compute_overall_score(all_findings)
-
-            meta = flight.metadata
-            start_time_str: str | None = None
-            if meta.start_time_utc is not None:
-                start_time_str = meta.start_time_utc.isoformat()
-
-            duration_sec = meta.duration_sec
-            duration_str = _format_duration(duration_sec)
-
-            findings_by_severity: dict[str, int] = {
-                "critical": 0,
-                "warning": 0,
-                "info": 0,
-                "pass": 0,
-            }
-            for f in all_findings:
-                sev = f.severity if f.severity in findings_by_severity else "info"
-                findings_by_severity[sev] += 1
-
-            # Extract time-series for cockpit charts
-            try:
-                timeseries = _extract_timeseries(flight)
-            except Exception as ts_exc:
-                logger.warning("Time-series extraction failed: %s", ts_exc)
-                timeseries = {}
-
-            # Generate flight narrative
-            try:
-                from goose.core.narrative import generate_narrative, generate_human_narrative
-                narr_meta = {
-                    "duration_str": duration_str,
-                    "vehicle_type": meta.vehicle_type,
-                    "primary_mode": flight.primary_mode,
-                    "firmware_version": meta.firmware_version,
-                    "hardware": meta.hardware,
-                    "crashed": flight.crashed,
-                }
-                narrative = generate_narrative(
-                    all_findings, metadata=narr_meta, overall_score=overall_score,
-                )
-                narrative_human = generate_human_narrative(
-                    all_findings, metadata=narr_meta, overall_score=overall_score,
-                )
-            except Exception as narr_exc:
-                logger.warning("Narrative generation failed: %s", narr_exc)
-                narrative = None
-                narrative_human = None
-
-            return JSONResponse({
-                "ok": True,
-                "overall_score": overall_score,
-                "narrative": narrative,
-                "narrative_human": narrative_human,
-                "timeseries": timeseries,
-                "metadata": {
-                    "filename": original_name.name,
-                    "autopilot": meta.autopilot,
-                    "vehicle_type": meta.vehicle_type,
-                    "firmware_version": meta.firmware_version,
-                    "hardware": meta.hardware,
-                    "duration_sec": round(duration_sec, 1),
-                    "duration_str": duration_str,
-                    "start_time_utc": start_time_str,
-                    "log_format": meta.log_format,
-                    "motor_count": meta.motor_count,
-                    "primary_mode": flight.primary_mode,
-                    "crashed": flight.crashed,
+        # Consume the upload to avoid client-side connection errors
+        await file.read()
+        return JSONResponse(
+            status_code=410,
+            content={
+                "error": "gone",
+                "message": (
+                    "POST /api/analyze is removed. It produced forensic results "
+                    "without evidence references, audit trail, or tuning provenance. "
+                    "Use POST /api/quick-analysis for session-only triage, or "
+                    "POST /api/cases + POST /api/cases/{id}/analyze for a persistent "
+                    "investigation case with full chain-of-custody."
+                ),
+                "alternatives": {
+                    "quick_triage": "POST /api/quick-analysis",
+                    "create_case": "POST /api/cases",
+                    "analyze_case": "POST /api/cases/{case_id}/analyze",
                 },
-                "summary": {
-                    "total_findings": len(all_findings),
-                    "by_severity": findings_by_severity,
-                    "plugins_run": len(plugins),
-                    "plugin_errors": plugin_errors,
-                },
-                "findings": [_finding_to_dict(f) for f in all_findings],
-            })
-
-        except HTTPException:
-            raise
-        except Exception as exc:
-            logger.exception("Unexpected error during analysis")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Internal analysis error: {exc}",
-            ) from exc
-        finally:
-            # Always clean up the temp file
-            if tmp_path and os.path.exists(tmp_path):
-                try:
-                    os.unlink(tmp_path)
-                except OSError:
-                    pass
+            },
+        )
 
     return app
 

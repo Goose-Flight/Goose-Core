@@ -302,29 +302,53 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
 
 
 def _load_run_findings(analysis_dir: Path, run_id: str) -> list[dict[str, Any]]:
-    """Load findings for a specific run from analysis dir."""
-    findings_path = analysis_dir / "findings.json"
-    if not findings_path.exists():
-        return []
-    try:
-        bundle = json.loads(findings_path.read_text(encoding="utf-8"))
-        # Only return if this matches the requested run
-        if bundle.get("run_id") == run_id:
+    """Load findings for a specific run.
+
+    Prefers the run-specific archive ``findings_{run_id}.json`` written since
+    Convergence Sprint 1.  Falls back to ``findings.json`` only when the
+    run_id matches (covers pre-sprint cases that only have the latest pointer).
+    """
+    # Preferred: run-specific file (written for every run since CS-1)
+    specific_path = analysis_dir / f"findings_{run_id}.json"
+    if specific_path.exists():
+        try:
+            bundle = json.loads(specific_path.read_text(encoding="utf-8"))
             return bundle.get("findings", [])
-        return []
-    except Exception:
-        return []
+        except Exception:
+            pass
+
+    # Fallback: shared pointer only when it matches the requested run_id
+    fallback_path = analysis_dir / "findings.json"
+    if fallback_path.exists():
+        try:
+            bundle = json.loads(fallback_path.read_text(encoding="utf-8"))
+            if bundle.get("run_id") == run_id:
+                return bundle.get("findings", [])
+        except Exception:
+            pass
+    return []
 
 
 def _load_run_hypotheses(analysis_dir: Path, run_id: str) -> list[dict[str, Any]]:
-    """Load hypotheses for a specific run from analysis dir."""
-    hyp_path = analysis_dir / "hypotheses.json"
-    if not hyp_path.exists():
-        return []
-    try:
-        bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
-        if bundle.get("run_id") == run_id:
+    """Load hypotheses for a specific run.
+
+    Prefers the run-specific archive ``hypotheses_{run_id}.json``.
+    Falls back to ``hypotheses.json`` only when run_id matches.
+    """
+    specific_path = analysis_dir / f"hypotheses_{run_id}.json"
+    if specific_path.exists():
+        try:
+            bundle = json.loads(specific_path.read_text(encoding="utf-8"))
             return bundle.get("hypotheses", [])
-        return []
-    except Exception:
-        return []
+        except Exception:
+            pass
+
+    hyp_path = analysis_dir / "hypotheses.json"
+    if hyp_path.exists():
+        try:
+            bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
+            if bundle.get("run_id") == run_id:
+                return bundle.get("hypotheses", [])
+        except Exception:
+            pass
+    return []

@@ -39,6 +39,7 @@ class EkfConsistencyPlugin(Plugin):
         required_streams=["ekf"],
         optional_streams=[],
         output_finding_types=["velocity_innovation", "position_innovation", "ekf_fault_flags"],
+        primary_stream="ekf",
     )
 
     DEFAULT_INNOVATION_WARNING = INNOV_WARNING

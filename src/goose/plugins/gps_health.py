@@ -50,6 +50,7 @@ class GPSHealthPlugin(Plugin):
         required_streams=["gps"],
         optional_streams=[],
         output_finding_types=["satellite_count", "hdop", "position_jump", "gps_dropout"],
+        primary_stream="gps",
     )
 
     DEFAULT_MIN_SATELLITES = MIN_SATELLITES

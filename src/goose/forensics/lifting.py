@@ -38,7 +38,6 @@ from goose.forensics.canonical import (
     Hypothesis,
     HypothesisStatus,
     SignalQuality,
-    _PLUGIN_STREAM_MAP,
 )
 
 
@@ -66,7 +65,8 @@ def lift_finding(
 
     Evidence reference construction:
     - Always attaches evidence_id from the case evidence item.
-    - Maps plugin_id → stream_name via _PLUGIN_STREAM_MAP.
+    - Resolves stream_name from the plugin's manifest.primary_stream via
+      PLUGIN_REGISTRY lookup.  Falls back to "" if the plugin is not registered.
     - Copies timestamp_start/timestamp_end as time_range when present.
     - Uses the finding description as support_summary.
 
@@ -80,7 +80,9 @@ def lift_finding(
     - Copies thin finding's evidence dict as supporting_metrics.
     - contradicting_metrics is empty — Sprint 5 plugins will declare their own.
     """
-    stream = _PLUGIN_STREAM_MAP.get(thin.plugin_name)
+    from goose.plugins import PLUGIN_REGISTRY
+    _plugin = PLUGIN_REGISTRY.get(thin.plugin_name)
+    stream = _plugin.manifest.primary_stream if _plugin is not None else ""
 
     ev_ref = EvidenceReference(
         evidence_id=evidence_item.evidence_id,
@@ -154,6 +156,15 @@ def lift_findings(
 #   severity_filter    — severities counted as supporting evidence
 #   required_streams   — telemetry streams relied on (for missing-data penalty)
 #   recommendations    — default analyst recommendations for this theme
+def _build_impact_damage_plugin_ids() -> set[str]:
+    """Build impact_damage plugin_ids, including payload_change_detection if registered."""
+    from goose.plugins import PLUGIN_REGISTRY
+    ids: set[str] = {"crash_detection", "vibration", "motor_saturation"}
+    if "payload_change_detection" in PLUGIN_REGISTRY:
+        ids.add("payload_change_detection")
+    return ids
+
+
 _HYPOTHESIS_THEMES: list[dict[str, Any]] = [
     {
         "theme": "crash",
@@ -233,6 +244,58 @@ _HYPOTHESIS_THEMES: list[dict[str, Any]] = [
             "Correlate tracking errors with RC input and mode changes",
         ],
     },
+    {
+        "theme": "communications_link",
+        "category": "communications / link issue",
+        "statement": "Communications or link degradation contributed to the event.",
+        "plugin_ids": {"rc_signal", "failsafe_events"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": set(),
+        "recommendations": [
+            "Review RC RSSI and dropout events in the telemetry log",
+            "Check antenna placement and radio frequency interference sources",
+            "Verify failsafe configuration and RTL trigger thresholds",
+        ],
+    },
+    {
+        "theme": "operator_action",
+        "category": "operator-action contribution",
+        "statement": "Operator action or control input sequence contributed to the event.",
+        "plugin_ids": {"failsafe_events", "rc_signal"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": set(),
+        "recommendations": [
+            "Review RC input trace around the event window",
+            "Interview the pilot about intended actions at the time of the anomaly",
+            "Check for mode switch commands or arming/disarming sequences",
+        ],
+    },
+    {
+        "theme": "environmental",
+        "category": "environmental contribution",
+        "statement": "Environmental conditions (wind, GPS multipath, interference) contributed to degraded performance.",
+        "plugin_ids": {"gps_health", "ekf_consistency"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": set(),
+        "recommendations": [
+            "Review wind speed and direction records for the flight location and time",
+            "Inspect GPS satellite geometry and signal quality metrics",
+            "Check for nearby RF interference sources (cellular, Wi-Fi, radar)",
+        ],
+    },
+    {
+        "theme": "impact_damage",
+        "category": "impact / damage class",
+        "statement": "Physical impact or damage occurred and may have caused or resulted from the event.",
+        "plugin_ids": _build_impact_damage_plugin_ids,  # callable — evaluated lazily at runtime
+        "severity_filter": {"critical", "warning"},
+        "required_streams": set(),
+        "recommendations": [
+            "Inspect airframe and components for mechanical damage",
+            "Check motor outputs for asymmetric failure signatures",
+            "Correlate vibration spikes with crash detection timestamps",
+        ],
+    },
 ]
 
 
@@ -269,14 +332,21 @@ def generate_hypotheses(
     - The hypothesis references finding_ids — it does not embed findings.
     - Parser confidence is not used here.
     """
+    from goose.plugins import PLUGIN_REGISTRY
+
     hypotheses: list[Hypothesis] = []
     missing_streams = _diag_missing_streams(parse_diag)
+    max_confidence_seen: float = 0.0
 
     for theme_entry in _HYPOTHESIS_THEMES:
         theme = theme_entry["theme"]
         category = theme_entry["category"]
         statement = theme_entry["statement"]
-        plugin_ids = theme_entry["plugin_ids"]
+        # plugin_ids may be a callable (for dynamic sets) or a plain set
+        plugin_ids = (
+            theme_entry["plugin_ids"]() if callable(theme_entry["plugin_ids"])
+            else theme_entry["plugin_ids"]
+        )
         sev_filter = theme_entry["severity_filter"]
         required_streams = theme_entry.get("required_streams", set())
         recommendations = list(theme_entry.get("recommendations", []))
@@ -292,9 +362,19 @@ def generate_hypotheses(
             f.finding_id for f in theme_findings
             if f.severity.value in sev_filter
         ]
-        contradicting_ids = [
-            f.finding_id for f in theme_findings
+        contradicting_findings_raw = [
+            f for f in theme_findings
             if f.severity == FindingSeverity.PASS
+        ]
+        contradicting_ids = [f.finding_id for f in contradicting_findings_raw]
+        # E1: structured contradicting_findings list
+        contradicting_findings_structured = [
+            {
+                "finding_id": f.finding_id,
+                "title": f.title,
+                "severity": f.severity.value,
+            }
+            for f in contradicting_findings_raw
         ]
 
         if not supporting_ids:
@@ -327,11 +407,15 @@ def generate_hypotheses(
                 + ", ".join(sorted(theme_missing))
             )
 
+        if confidence > max_confidence_seen:
+            max_confidence_seen = confidence
+
         hypotheses.append(Hypothesis(
             hypothesis_id=f"HYP-{uuid.uuid4().hex[:8].upper()}",
             statement=statement,
             supporting_finding_ids=supporting_ids,
             contradicting_finding_ids=contradicting_ids,
+            contradicting_findings=contradicting_findings_structured,
             confidence=confidence,
             # confidence_scope defaults to "hypothesis_root_cause" — not parser or finding confidence
             status=HypothesisStatus.CANDIDATE,
@@ -340,6 +424,84 @@ def generate_hypotheses(
             theme=theme,
             category=category,
             recommendations=recommendations,
+            generated_by="system",
+        ))
+
+    # E3: Payload mass change — emit standalone hypothesis when payload findings
+    # exist but no crash/impact findings are present.
+    if "payload_change_detection" in PLUGIN_REGISTRY:
+        payload_findings = [
+            f for f in forensic_findings
+            if f.plugin_id == "payload_change_detection"
+            and f.severity.value in {"critical", "warning"}
+        ]
+        crash_findings = [
+            f for f in forensic_findings
+            if f.plugin_id in {"crash_detection"}
+            and f.severity.value in {"critical", "warning"}
+        ]
+        if payload_findings and not crash_findings:
+            payload_contradicting_raw = [
+                f for f in forensic_findings
+                if f.plugin_id == "payload_change_detection"
+                and f.severity == FindingSeverity.PASS
+            ]
+            p_supporting_ids = [f.finding_id for f in payload_findings]
+            p_contradicting_ids = [f.finding_id for f in payload_contradicting_raw]
+            p_contradicting_structured = [
+                {"finding_id": f.finding_id, "title": f.title, "severity": f.severity.value}
+                for f in payload_contradicting_raw
+            ]
+            p_total = len(p_supporting_ids) + len(p_contradicting_ids)
+            p_confidence = round(len(p_supporting_ids) / p_total, 2) if p_total > 0 else 0.0
+            if p_confidence > max_confidence_seen:
+                max_confidence_seen = p_confidence
+            hypotheses.append(Hypothesis(
+                hypothesis_id=f"HYP-{uuid.uuid4().hex[:8].upper()}",
+                statement="A payload mass change event (drop, release, or addition) occurred during flight.",
+                supporting_finding_ids=p_supporting_ids,
+                contradicting_finding_ids=p_contradicting_ids,
+                contradicting_findings=p_contradicting_structured,
+                confidence=p_confidence,
+                status=HypothesisStatus.CANDIDATE,
+                unresolved_questions=[
+                    "Payload change detection is a low-confidence Phase 1 signal — "
+                    "corroborate with video evidence or operator testimony.",
+                ],
+                run_id=run_id,
+                theme="payload_mass_change",
+                category="propulsion / motor issue",
+                recommendations=[
+                    "Review current draw trace and motor output around the candidate event timestamp",
+                    "Correlate with video or operator records of any payload release/attachment",
+                ],
+                generated_by="system",
+            ))
+
+    # E2 unknown_mixed: emit when no other hypothesis has confidence >= 0.3
+    if max_confidence_seen < 0.3:
+        unknown_confidence = max(0.1, round(0.3 - max_confidence_seen, 2)) if max_confidence_seen > 0 else 0.2
+        hypotheses.append(Hypothesis(
+            hypothesis_id=f"HYP-{uuid.uuid4().hex[:8].upper()}",
+            statement="Root cause is unclear or involves multiple interacting factors.",
+            supporting_finding_ids=[f.finding_id for f in forensic_findings],
+            contradicting_finding_ids=[],
+            contradicting_findings=[],
+            confidence=unknown_confidence,
+            status=HypothesisStatus.CANDIDATE,
+            unresolved_questions=[
+                "No single theme reached sufficient confidence — a multi-factor or "
+                "undetermined root cause should be considered.",
+                "Additional manual investigation or data collection is recommended.",
+            ],
+            run_id=run_id,
+            theme="unknown_mixed",
+            category="unknown / mixed-factor event",
+            recommendations=[
+                "Perform a detailed manual walkthrough of the full flight log",
+                "Request additional sensor data or pilot account of events",
+                "Consider whether multiple simultaneous failure modes may have interacted",
+            ],
             generated_by="system",
         ))
 

@@ -50,6 +50,7 @@ class PositionTrackingPlugin(Plugin):
         required_streams=["position", "position_setpoint"],
         optional_streams=["velocity"],
         output_finding_types=["horizontal_error", "vertical_error", "hover_drift"],
+        primary_stream="position",
     )
 
     DEFAULT_WARN_MEAN_ERROR_M = WARN_MEAN_ERROR_M

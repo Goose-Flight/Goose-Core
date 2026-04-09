@@ -42,6 +42,7 @@ class RcSignalPlugin(Plugin):
         required_streams=["rc_input"],
         optional_streams=[],
         output_finding_types=["rssi_level", "rc_dropout", "stuck_channel"],
+        primary_stream="rc_channels",
     )
 
     DEFAULT_RSSI_WARNING_PCT = RSSI_WARNING

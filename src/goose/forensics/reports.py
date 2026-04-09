@@ -36,6 +36,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from goose.forensics.profiles import WordingPack, get_profile
+
 
 # ---------------------------------------------------------------------------
 # Replay verification
@@ -134,6 +136,8 @@ class MissionSummaryReport:
     report_type: str = "mission_summary"
     report_version: str = "1.0"
     profile: str = "default"
+    profile_id: str = "default"
+    wording: dict[str, Any] = field(default_factory=dict)
     engine_version: str = ""
     mission_metadata: dict[str, Any] = field(default_factory=dict)
     platform_metadata: dict[str, Any] = field(default_factory=dict)
@@ -154,6 +158,8 @@ class MissionSummaryReport:
             "run_id": self.run_id,
             "generated_at": self.generated_at,
             "profile": self.profile,
+            "profile_id": self.profile_id,
+            "wording": self.wording,
             "engine_version": self.engine_version,
             "flight_duration_s": self.flight_duration_s,
             "total_findings": self.total_findings,
@@ -198,6 +204,8 @@ class AnomalyReport:
     # v11 extensions
     report_type: str = "anomaly_report"
     report_version: str = "1.0"
+    profile_id: str = "default"
+    wording: dict[str, Any] = field(default_factory=dict)
     anomaly_classification: str = ""
     affected_phase: str | None = None
     chronology_snippet: list[dict[str, Any]] = field(default_factory=list)
@@ -215,6 +223,8 @@ class AnomalyReport:
             "case_id": self.case_id,
             "run_id": self.run_id,
             "generated_at": self.generated_at,
+            "profile_id": self.profile_id,
+            "wording": self.wording,
             "anomaly_classification": self.anomaly_classification,
             "affected_phase": self.affected_phase,
             "findings": self.findings,
@@ -253,6 +263,8 @@ class CrashMishapReport:
     # v11 extensions
     report_type: str = "crash_mishap_report"
     report_version: str = "1.0"
+    profile_id: str = "default"
+    wording: dict[str, Any] = field(default_factory=dict)
     event_classification: str = ""
     severity: str = ""
     damage_summary: str = ""
@@ -277,6 +289,8 @@ class CrashMishapReport:
             "case_id": self.case_id,
             "run_id": self.run_id,
             "generated_at": self.generated_at,
+            "profile_id": self.profile_id,
+            "wording": self.wording,
             "crash_detected": self.crash_detected,
             "crash_findings": self.crash_findings,
             "crash_hypotheses": self.crash_hypotheses,
@@ -676,9 +690,14 @@ def generate_mission_summary_report(
     case_id: str,
     run_id: str,
     engine_version: str = "0.6.0",
+    profile_id: str = "default",
 ) -> MissionSummaryReport:
     """Build an extended MissionSummaryReport from case artifacts."""
     case = _load_case_summary(case_dir)
+    # Resolve profile_id: explicit param takes priority, then case.json, then "default"
+    resolved_profile_id = profile_id or case.get("profile", "default") or "default"
+    profile_cfg = get_profile(resolved_profile_id)
+    wording: WordingPack = profile_cfg.wording
     findings = _load_findings(case_dir)
     hypotheses = _load_hypotheses(case_dir)
     parse_diag = _load_parse_diagnostics(case_dir)
@@ -724,7 +743,9 @@ def generate_mission_summary_report(
         top_hypothesis_confidence=top_conf,
         parser_confidence=parse_diag.get("parser_confidence") if parse_diag else None,
         signal_quality_summary={},
-        profile=case.get("profile", "default"),
+        profile=resolved_profile_id,
+        profile_id=resolved_profile_id,
+        wording=wording.to_dict(),
         engine_version=engine_version,
         mission_metadata=mission_meta,
         platform_metadata=platform_meta,
@@ -732,6 +753,8 @@ def generate_mission_summary_report(
         environment_summary=case.get("environment_summary") or "",
         flight_summary={
             "duration_s": flight_duration,
+            # Use profile wording: "workflow_label Run/Sortie/Case"
+            "workflow_label": wording.workflow_label,
             "phases": [],
         },
         major_findings=_top_findings(findings, 5),
@@ -746,10 +769,12 @@ def generate_forensic_case_report(
     case_dir: Path,
     run_id: str,
     engine_version: str = "0.6.0",
+    profile_id: str = "default",
 ) -> ForensicCaseReport:
     """Load all artifacts from case_dir and produce a ForensicCaseReport."""
     case = _load_case_summary(case_dir)
     case_id = case.get("case_id", case_dir.name)
+    resolved_profile_id = profile_id or case.get("profile", "default") or "default"
     findings = _load_findings(case_dir)
     hypotheses = _load_hypotheses(case_dir)
     timeline = _load_timeline(case_dir)
@@ -803,7 +828,7 @@ def generate_forensic_case_report(
         generated_at=_now_iso(),
         case_id=case_id,
         run_id=run_id,
-        profile=case.get("profile", "default"),
+        profile=resolved_profile_id,
         engine_version=engine_version,
         case_summary=case_summary,
         evidence_inventory=evidence,
@@ -818,7 +843,7 @@ def generate_forensic_case_report(
     )
 
 
-def generate_evidence_manifest_report(case_dir: Path) -> EvidenceManifestReport:
+def generate_evidence_manifest_report(case_dir: Path, profile_id: str = "default") -> EvidenceManifestReport:
     """Load evidence and attachment manifests from case_dir."""
     case = _load_case_summary(case_dir)
     case_id = case.get("case_id", case_dir.name)
@@ -1036,4 +1061,90 @@ def generate_quick_analysis_summary(
         primary_hypothesis=primary,
         quick_checks=checks,
         limitations=limitations or [],
+    )
+
+
+def generate_anomaly_report(
+    case_dir: Path,
+    case_id: str,
+    run_id: str,
+    profile_id: str = "default",
+) -> AnomalyReport:
+    """Build an AnomalyReport from case artifacts (WARNING+ findings, confident hypotheses)."""
+    case = _load_case_summary(case_dir)
+    resolved_profile_id = profile_id or case.get("profile", "default") or "default"
+    profile_cfg = get_profile(resolved_profile_id)
+    wording: WordingPack = profile_cfg.wording
+
+    all_findings = _load_findings(case_dir)
+    findings = [f for f in all_findings if f.get("severity") in ("critical", "warning")]
+
+    all_hypotheses = _load_hypotheses(case_dir)
+    hypotheses = [h for h in all_hypotheses if float(h.get("confidence", 0) or 0) >= 0.5]
+
+    return AnomalyReport(
+        case_id=case_id,
+        run_id=run_id,
+        generated_at=_now_iso(),
+        findings=findings,
+        hypotheses=hypotheses,
+        profile_id=resolved_profile_id,
+        wording=wording.to_dict(),
+        # anomaly_classification uses the profile's event_label as a heading prefix
+        anomaly_classification=wording.event_label,
+    )
+
+
+def generate_crash_mishap_report(
+    case_dir: Path,
+    case_id: str,
+    run_id: str,
+    profile_id: str = "default",
+) -> CrashMishapReport:
+    """Build a CrashMishapReport from case artifacts."""
+    case = _load_case_summary(case_dir)
+    resolved_profile_id = profile_id or case.get("profile", "default") or "default"
+    profile_cfg = get_profile(resolved_profile_id)
+    wording: WordingPack = profile_cfg.wording
+
+    all_findings = _load_findings(case_dir)
+    crash_keywords = ["crash", "impact", "freefall", "free fall", "disarm", "flip"]
+    crash_findings = []
+    evidence_refs: list[dict[str, Any]] = []
+    for f in all_findings:
+        title = (f.get("title", "") or "").lower()
+        desc = (f.get("description", "") or "").lower()
+        plugin = (f.get("plugin_id", "") or "").lower()
+        is_crash = (
+            any(kw in title for kw in crash_keywords)
+            or any(kw in desc for kw in crash_keywords)
+            or "crash" in plugin
+            or f.get("severity") == "critical"
+        )
+        if is_crash:
+            crash_findings.append(f)
+            for ref in f.get("evidence_references", []):
+                evidence_refs.append(ref)
+
+    all_hypotheses = _load_hypotheses(case_dir)
+    crash_hypotheses = [
+        h for h in all_hypotheses
+        if any(kw in (h.get("statement", "") or "").lower() for kw in crash_keywords)
+        or float(h.get("confidence", 0) or 0) >= 0.7
+    ]
+
+    crash_detected = len(crash_findings) > 0
+
+    return CrashMishapReport(
+        case_id=case_id,
+        run_id=run_id,
+        generated_at=_now_iso(),
+        crash_detected=crash_detected,
+        crash_findings=crash_findings,
+        crash_hypotheses=crash_hypotheses,
+        evidence_references=evidence_refs,
+        profile_id=resolved_profile_id,
+        wording=wording.to_dict(),
+        # event_classification uses profile's event_label ("Crash"/"Mishap"/"Incident")
+        event_classification=wording.event_label,
     )

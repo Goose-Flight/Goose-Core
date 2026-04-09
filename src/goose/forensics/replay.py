@@ -434,7 +434,8 @@ def execute_replay(
     )
 
     # 7. Determine status
-    has_version_drift = bool(drift_cats & {
+    # drift_cats is a list — convert to set before intersection to avoid TypeError
+    has_version_drift = bool(set(drift_cats) & {
         DriftCategory.ENGINE_VERSION, DriftCategory.PARSER_VERSION,
         DriftCategory.PLUGIN_VERSION, DriftCategory.TUNING_PROFILE,
     })

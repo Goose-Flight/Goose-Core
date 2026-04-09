@@ -68,6 +68,7 @@ class VibrationPlugin(Plugin):
         required_streams=["vibration"],
         optional_streams=[],
         output_finding_types=["vibration_level", "sensor_clipping", "vibration_degradation"],
+        primary_stream="vibration",
     )
 
     DEFAULT_VIBRATION_GOOD_MS2 = VIBRATION_GOOD

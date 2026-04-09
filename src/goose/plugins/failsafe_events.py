@@ -39,6 +39,7 @@ class FailsafeEventsPlugin(Plugin):
         required_streams=[],
         optional_streams=["mode_changes", "events"],
         output_finding_types=["failsafe_event", "emergency_mode_transition"],
+        primary_stream="flight_mode",
     )
 
     DEFAULT_EMERGENCY_MODES = "rtl,return,land,emergency,failsafe,parachute,termination"

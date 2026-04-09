@@ -43,6 +43,7 @@ class LogHealthPlugin(Plugin):
         required_streams=[],
         optional_streams=["position", "attitude", "battery", "gps", "motors"],
         output_finding_types=["missing_stream", "data_dropout", "low_data_rate", "duration_mismatch"],
+        primary_stream="meta",
     )
 
     DEFAULT_DROPOUT_GAP_SEC = DROPOUT_GAP_SEC

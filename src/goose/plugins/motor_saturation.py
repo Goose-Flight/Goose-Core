@@ -40,6 +40,7 @@ class MotorSaturationPlugin(Plugin):
         required_streams=["motors"],
         optional_streams=[],
         output_finding_types=["motor_saturation", "motor_imbalance", "sustained_saturation"],
+        primary_stream="motors",
     )
 
     DEFAULT_SATURATION_THRESHOLD = SATURATION_THRESHOLD

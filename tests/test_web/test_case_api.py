@@ -248,30 +248,31 @@ class TestUpdateStatus:
 # POST /api/analyze — backward-compatibility shim
 # ---------------------------------------------------------------------------
 
-class TestAnalyzeShim:
-    def test_shim_still_works_with_empty_file(self, client: TestClient):
-        """The shim should return 400 for empty files (same as before)."""
+class TestAnalyzeEndpointDeprecated:
+    """POST /api/analyze was removed in Convergence Sprint 1.
+
+    It bypassed the case system and emitted thin findings without evidence
+    references, audit trail, or tuning provenance.  It now returns 410 Gone
+    for all inputs.  See tests/test_convergence/ for the replacement tests.
+    """
+
+    def test_returns_410_for_any_upload(self, client: TestClient):
+        res = client.post(
+            "/api/analyze",
+            files={"file": ("flight.ulg", io.BytesIO(b"fake"), "application/octet-stream")},
+        )
+        assert res.status_code == 410
+
+    def test_returns_gone_error_key(self, client: TestClient):
         res = client.post(
             "/api/analyze",
             files={"file": ("empty.ulg", io.BytesIO(b""), "application/octet-stream")},
         )
-        assert res.status_code == 400
+        assert res.json()["error"] == "gone"
 
-    def test_shim_still_works_with_no_filename(self, client: TestClient):
+    def test_returns_alternatives(self, client: TestClient):
         res = client.post(
             "/api/analyze",
-            files={"file": ("", io.BytesIO(b"data"), "application/octet-stream")},
+            files={"file": ("x.ulg", io.BytesIO(b"x"), "application/octet-stream")},
         )
-        # FastAPI or our handler rejects empty filenames — 400 or 422 both acceptable
-        assert res.status_code in (400, 422)
-
-    def test_shim_response_shape_unchanged(self, client: TestClient, fake_ulg: bytes):
-        """If the file fails to parse (fake ULog), response must still be 422 with detail."""
-        res = client.post(
-            "/api/analyze",
-            files={"file": ("flight.ulg", io.BytesIO(fake_ulg), "application/octet-stream")},
-        )
-        # fake_ulg is not a real ULog so should 422
-        assert res.status_code in (200, 422)
-        if res.status_code == 422:
-            assert "detail" in res.json()
+        assert "alternatives" in res.json()

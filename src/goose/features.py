@@ -157,8 +157,8 @@ class FeatureGate:
     OSS_CORE default:
     -----------------
     The open-source build runs at OSS_CORE and never degrades functionality
-    below it. All 12 plugins, the full case system, Quick Analysis, profiles,
-    GUI, and CLI are available at OSS_CORE.
+    below it. All 17 built-in plugins, the full case system, Quick Analysis,
+    profiles, GUI, and CLI are available at OSS_CORE.
 
     Tier upgrade path:
     ------------------
@@ -226,6 +226,33 @@ class FeatureGate:
                 for feature, level in FEATURE_TIER_MATRIX.items()
             },
         }
+
+
+def register_capability(
+    feature_name: str,
+    required_level: EntitlementLevel,
+) -> None:
+    """Register a named feature capability from a Pro or extension package.
+
+    Pro packages call this at import time (e.g. in their package's ``__init__.py``)
+    to add their capabilities to the feature tier matrix.  Once registered, the
+    capability is available via ``is_feature_enabled()`` and visible through the
+    ``/api/features`` route.
+
+    If ``feature_name`` is already registered, the existing entry is overwritten.
+    Core capabilities (defined in ``FEATURE_TIER_MATRIX`` above) should NOT be
+    overwritten by extension packages — doing so is undefined behavior.
+
+    Example (Pro package)::
+
+        from goose.features import register_capability, EntitlementLevel
+        register_capability("advanced_crash_reconstruction", EntitlementLevel.LOCAL_PRO)
+
+    Args:
+        feature_name:    Unique string key for this feature (e.g. ``"my_pro_feature"``).
+        required_level:  Minimum EntitlementLevel at which this feature is available.
+    """
+    FEATURE_TIER_MATRIX[feature_name] = required_level
 
 
 def is_feature_enabled(feature_name: str) -> bool:

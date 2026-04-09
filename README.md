@@ -53,7 +53,7 @@ Profiles bias which plugins are emphasized, which charts appear first, which cas
 
 **Parser framework with diagnostics** — `ParseResult` contract returns `(Flight, ParseDiagnostics, Provenance)` for every parse operation. Diagnostics include format confidence, parse confidence, stream coverage across 20 telemetry streams, corruption indicators, and timebase anomaly detection. The parser never raises — it always returns structured output.
 
-**12 built-in analyzers** — crash_detection, battery_sag, gps_health, vibration, motor_saturation, attitude_tracking, ekf_consistency, rc_signal, position_tracking, failsafe_events, log_health, and payload_change_detection. Each plugin emits findings with severity, scores, and confidence, and declares a formal `PluginManifest` with required streams, trust state, and output finding types.
+**17 built-in analyzers** — crash_detection, battery_sag, gps_health, vibration, motor_saturation, attitude_tracking, ekf_consistency, rc_signal, position_tracking, failsafe_events, log_health, payload_change_detection, mission_phase_anomaly, operator_action_sequence, environment_conditions, damage_impact_classification, and link_telemetry_health. Each plugin emits findings with severity, scores, and confidence, and declares a formal `PluginManifest` with required streams, trust state, and output finding types.
 
 **Plugin trust model** — Every plugin declares a `PluginManifest` with a `PluginTrustState` (`builtin_trusted`, `local_signed`, `community`, etc.). Runtime `PluginDiagnostics` report execution status (`RAN` / `SKIPPED` / `BLOCKED`), missing streams, and warnings per run.
 
@@ -215,7 +215,7 @@ See [docs/api-reference.md](docs/api-reference.md) for full API documentation.
 
 ## Plugins
 
-Goose ships with 12 built-in analyzers:
+Goose ships with 17 built-in analyzers:
 
 | Plugin | What It Checks |
 |--------|---------------|
@@ -231,6 +231,11 @@ Goose ships with 12 built-in analyzers:
 | `failsafe_events` | Failsafe triggers and flight termination events |
 | `log_health` | Log integrity, data gaps, sensor dropout |
 | `payload_change_detection` | Candidate mid-flight payload / mass-change events (Phase 1) |
+| `mission_phase_anomaly` | Anomalous behavior within mission phases (takeoff, cruise, landing) |
+| `operator_action_sequence` | Operator input patterns — mode switches, arm/disarm, RC commands |
+| `environment_conditions` | Environmental inference — wind estimation, GPS multipath indicators |
+| `damage_impact_classification` | Post-impact damage signature classification |
+| `link_telemetry_health` | Telemetry link quality, dropout events, RSSI degradation |
 
 Plugins are discoverable via Python entry points and declare a formal `PluginManifest` (required streams, trust state, output finding types). See [docs/writing-plugins.md](docs/writing-plugins.md) for the plugin development guide.
 
@@ -249,7 +254,7 @@ Log File (.ulg)
      |
      v
  [ Plugin Engine ]  <-- Tuning Profile (thresholds)
-  |    |    |    |    ... (12 analyzers)
+  |    |    |    |    ... (17 analyzers)
   v    v    v    v
  [ ForensicFinding + EvidenceReference + PluginDiagnostics ]
      |
@@ -274,7 +279,7 @@ See [docs/architecture/](docs/architecture/) for the full architecture audit, ta
 
 | Tier | Status | Scope |
 |------|--------|-------|
-| **OSS Core** | Available today | Local-first, free. Full case system, all 12 built-in analyzers, Quick Analysis, profiles, GUI and CLI. |
+| **OSS Core** | Available today | Local-first, free. Full case system, all 17 built-in analyzers, Quick Analysis, profiles, GUI and CLI. |
 | **Local Pro** | Coming | Advanced local workflows — reserved for future work. |
 | **Hosted / Team** | Planned | Shared cases, org-level audit, team collaboration. |
 

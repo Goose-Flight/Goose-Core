@@ -6,6 +6,24 @@ Only parsers with ``implemented = True`` are returned from ``detect_parser()``.
 Parsers registered here but marked ``implemented = False`` will return an
 unsupported-format ParseResult rather than silently failing.
 
+Parser Extension Seam
+---------------------
+Pro parser packages can add new parsers at runtime by calling
+``register_parser()`` with an instantiated parser object.  Registered parsers
+are appended to ``_ALL_PARSERS`` after the Core parsers so Core detection order
+is never disrupted.
+
+Pro packages should call ``register_parser()`` at import time, typically in
+their ``__init__.py``::
+
+    from goose.parsers.detect import register_parser
+    from my_pro_package.parsers import MyProParser
+    register_parser(MyProParser())
+
+After registration, ``detect_parser()`` and ``parse_file()`` will consider the
+Pro parser for any file it claims.  Core parsers always take priority because
+they appear earlier in the list.
+
 Sprint 3 — Parser Framework
 """
 
@@ -20,7 +38,9 @@ from goose.parsers.diagnostics import ParseDiagnostics, ParseResult
 from goose.parsers.tlog import TLogParser
 from goose.parsers.ulog import ULogParser
 
-# All known parsers — order matters for detection (more specific first)
+# All known parsers — order matters for detection (more specific first).
+# This list is mutable so Pro extension packages can append via register_parser().
+# Core parsers must always appear before extension parsers.
 _ALL_PARSERS: list[BaseParser] = [
     ULogParser(),
     DataFlashParser(),
@@ -28,8 +48,37 @@ _ALL_PARSERS: list[BaseParser] = [
     CSVParser(),
 ]
 
-# Implemented parsers only (used for capability display in GUI)
+# Implemented parsers only (used for capability display in GUI).
+# Rebuilt whenever _ALL_PARSERS is extended via register_parser().
 _IMPLEMENTED_PARSERS: list[BaseParser] = [p for p in _ALL_PARSERS if p.implemented]
+
+
+def register_parser(parser_instance: BaseParser) -> None:
+    """Register an additional parser from a Pro or extension package.
+
+    Pro packages should call this at import time or via a plugin registration
+    hook.  Registered parsers are appended to the detection order after Core
+    parsers so Core detection priority is never disrupted.
+
+    The ``_IMPLEMENTED_PARSERS`` cache is updated immediately so the new parser
+    is picked up by ``detect_parser()`` and ``parse_file()`` on the next call.
+
+    Args:
+        parser_instance: An instantiated ``BaseParser`` subclass.  Must have
+            ``can_parse()``, ``parse()``, ``file_extensions``, ``format_name``,
+            and ``implemented`` attributes.
+
+    Raises:
+        TypeError: If ``parser_instance`` is not a ``BaseParser`` instance.
+    """
+    if not isinstance(parser_instance, BaseParser):
+        raise TypeError(
+            f"register_parser() requires a BaseParser instance, got {type(parser_instance).__name__}"
+        )
+    _ALL_PARSERS.append(parser_instance)
+    # Rebuild the implemented cache in-place
+    _IMPLEMENTED_PARSERS.clear()
+    _IMPLEMENTED_PARSERS.extend(p for p in _ALL_PARSERS if p.implemented)
 
 
 def detect_parser(filepath: str | Path) -> BaseParser | None:

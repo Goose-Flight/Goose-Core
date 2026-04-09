@@ -3,8 +3,17 @@
 Sprint 5 — Plugin Formalization
 
 Every analysis plugin must implement the AnalyzerPlugin protocol and
-declare a PluginManifest. Plugins emit ForensicFinding directly (not
-thin Finding objects) and return PluginDiagnostics alongside results.
+declare a PluginManifest.  Plugins emit ForensicFinding directly (or via
+the thin-finding bridge in Plugin.forensic_analyze()) and return
+PluginDiagnostics alongside results.
+
+Key types
+---------
+PluginCategory     — functional category enum for grouping/filtering plugins
+PluginTrustState   — trust level declared by the plugin and enforced by TrustPolicy
+PluginManifest     — declarative metadata struct every plugin must declare
+PluginDiagnostics  — per-execution runtime report (RAN / SKIPPED / BLOCKED)
+AnalyzerPlugin     — Protocol that all forensic analyzer plugins must satisfy
 """
 
 from __future__ import annotations
@@ -21,6 +30,20 @@ if TYPE_CHECKING:
 
 
 class PluginCategory(str, Enum):
+    """Functional category for grouping and filtering plugins.
+
+    Used in PluginManifest.category and exposed in the ``/api/plugins`` response
+    so the GUI and CLI can group plugins by role.
+
+    HEALTH          — general sensor/system health checks (log_health, gps_health, etc.)
+    CRASH           — crash detection and impact classification
+    FLIGHT_DYNAMICS — attitude/position tracking, control quality
+    NAVIGATION      — GPS, EKF, estimator state
+    PROPULSION      — motor saturation, ESC health
+    RF_COMMS        — RC signal, telemetry link quality
+    MISSION_RULES   — mission phase checks, operator action sequencing
+    REPORTING       — report generation (not currently used by analyzer plugins)
+    """
     HEALTH = "health"
     CRASH = "crash"
     FLIGHT_DYNAMICS = "flight_dynamics"
@@ -32,6 +55,20 @@ class PluginCategory(str, Enum):
 
 
 class PluginTrustState(str, Enum):
+    """Trust level for a plugin, declared in its manifest and enforced by TrustPolicy.
+
+    The forensic engine's TrustPolicy evaluates each plugin's manifest trust
+    state before execution.  Plugins that cannot satisfy the active policy are
+    BLOCKED (not silently skipped — they appear in PluginDiagnostics with
+    blocked=True).
+
+    BUILTIN_TRUSTED   — ships inside goose-flight; hash not checked at runtime
+    LOCAL_UNSIGNED    — installed locally, no signature verification
+    LOCAL_SIGNED      — installed locally, signature verified against known key
+    COMMUNITY         — community plugin, treated as lower trust than signed local
+    ENTERPRISE_TRUSTED — signed and verified against an enterprise key store
+    BLOCKED           — explicitly blocked; plugin will not execute
+    """
     BUILTIN_TRUSTED = "builtin_trusted"
     LOCAL_UNSIGNED = "local_unsigned"
     LOCAL_SIGNED = "local_signed"
@@ -42,7 +79,32 @@ class PluginTrustState(str, Enum):
 
 @dataclass
 class PluginManifest:
-    """Declarative metadata for an analysis plugin."""
+    """Declarative metadata that every analysis plugin must provide.
+
+    Declared as a class-level attribute on Plugin subclasses.  The forensic
+    engine reads this before execution: required_streams drives the skip check,
+    trust_state feeds TrustPolicy, and primary_stream names the EvidenceReference
+    stream attached to findings lifted by the thin-finding bridge.
+
+    Fields
+    ------
+    plugin_id             — stable machine identifier (e.g. ``"battery_sag"``)
+    name                  — human display name
+    version               — semver string (e.g. ``"1.0.0"``)
+    author                — author or maintainer
+    description           — one-sentence description for the GUI
+    category              — PluginCategory enum value
+    supported_vehicle_types — list of vehicle types (e.g. ``["multirotor"]``)
+    required_streams      — Flight attribute names that must be non-empty to run
+    optional_streams      — streams used if present but not required to run
+    output_finding_types  — list of finding type labels this plugin can emit
+    minimum_contract_version — minimum Plugin contract version required
+    plugin_type           — ``"builtin"`` for Core plugins; ``"extension"`` for Pro
+    trust_state           — PluginTrustState declared by this plugin
+    sha256_hash           — SHA-256 of the plugin source (filled by TrustPolicy)
+    signature             — cryptographic signature (for LOCAL_SIGNED plugins)
+    primary_stream        — main telemetry stream for EvidenceReference construction
+    """
 
     plugin_id: str
     name: str

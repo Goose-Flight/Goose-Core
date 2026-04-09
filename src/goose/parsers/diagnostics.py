@@ -29,7 +29,24 @@ if TYPE_CHECKING:
 
 @dataclass
 class StreamCoverage:
-    """Coverage summary for a single telemetry stream/topic."""
+    """Coverage summary for a single telemetry stream/topic.
+
+    Attached to ParseDiagnostics.stream_coverage after a parse.  Represents
+    whether a particular Flight attribute stream was present in the log and,
+    if so, how many rows it contained.
+
+    The forensic engine uses this to:
+    - Drive the plugin skip check (required_streams absent → plugin SKIPPED).
+    - Compute the missing-data penalty for hypothesis confidence.
+    - Build SignalQuality objects for the GUI's diagnostics tab.
+
+    Fields
+    ------
+    stream_name  — name matching a Flight attribute (e.g. ``"battery"``)
+    present      — True if the stream had at least one row
+    row_count    — number of rows parsed (0 if not present)
+    notes        — optional free-text note from the parser about this stream
+    """
 
     stream_name: str
     present: bool

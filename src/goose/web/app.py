@@ -372,7 +372,15 @@ def create_app():
 # ---------------------------------------------------------------------------
 
 def _try_all_parsers(filepath: str, prior_error: str | None) -> tuple[Any, str | None]:
-    """Attempt to parse a file with all available parsers in priority order."""
+    """Attempt to parse a file with all available parsers in priority order.
+
+    DEAD CODE — no caller exists in the current codebase.
+    Parser dispatch is handled exclusively by ``goose.parsers.detect.parse_file()``,
+    which uses the canonical ``_ALL_PARSERS`` registry and returns a ``ParseResult``.
+
+    RETIRE: Remove this function once confirmed unused by any downstream callers.
+    Do not add new callers — use ``parse_file()`` instead.
+    """
     parsers_to_try: list[tuple[str, str]] = [
         ("goose.parsers.dataflash", "DataFlashParser"),
         ("goose.parsers.tlog", "TlogParser"),

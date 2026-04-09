@@ -151,7 +151,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
     # --- Run plugins (Sprint 5: forensic contract) ----------------------------
     from goose.forensics.profiles import get_profile
     from goose.forensics.tuning import TuningProfile
-    from goose.plugins import PLUGIN_REGISTRY
+    from goose.plugins import get_all_plugins
     from goose.plugins.contract import PluginDiagnostics as PDiag
     from goose.plugins.trust import TrustPolicy, fingerprint_plugin
 
@@ -160,6 +160,11 @@ async def analyze_case(case_id: str) -> JSONResponse:
     # constants. Callers may override individual values via `config` dict.
     tuning_profile = TuningProfile.default()
 
+    # Build the merged plugin registry: Core built-ins + any Pro extension plugins.
+    # get_all_plugins() is the single authoritative source for the full plugin set.
+    # Core built-ins take precedence if a Pro plugin shares a plugin_id.
+    merged_registry = get_all_plugins()
+
     # v11 Strategy Sprint — profile-aware plugin ordering.
     # Profiles never change forensic truth — they only bias which plugins run
     # first and which are deprioritized. Unknown plugin_ids in profile lists
@@ -167,15 +172,15 @@ async def analyze_case(case_id: str) -> JSONResponse:
     active_profile_id = getattr(case, "profile", "default") or "default"
     profile_cfg = get_profile(active_profile_id)
 
-    registry_ids = list(PLUGIN_REGISTRY.keys())
-    primary_ids = [pid for pid in profile_cfg.default_plugins if pid in PLUGIN_REGISTRY]
+    registry_ids = list(merged_registry.keys())
+    primary_ids = [pid for pid in profile_cfg.default_plugins if pid in merged_registry]
     secondary_ids = [
         pid for pid in profile_cfg.secondary_plugins
-        if pid in PLUGIN_REGISTRY and pid not in primary_ids
+        if pid in merged_registry and pid not in primary_ids
     ]
     deprioritized_ids = [
         pid for pid in profile_cfg.deprioritized_plugins
-        if pid in PLUGIN_REGISTRY and pid not in primary_ids and pid not in secondary_ids
+        if pid in merged_registry and pid not in primary_ids and pid not in secondary_ids
     ]
     placed = set(primary_ids) | set(secondary_ids) | set(deprioritized_ids)
     remaining_ids = [pid for pid in registry_ids if pid not in placed]
@@ -188,7 +193,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
             primary_ids + secondary_ids + remaining_ids + deprioritized_ids
         )
 
-    plugins = [PLUGIN_REGISTRY[pid] for pid in ordered_plugin_ids]
+    plugins = [merged_registry[pid] for pid in ordered_plugin_ids]
     all_findings: list[Any] = []
     forensic_findings: list[Any] = []
     plugin_errors: list[dict[str, str]] = []
@@ -621,15 +626,16 @@ async def get_plugins(case_id: str) -> JSONResponse:
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
 
-    from goose.plugins import PLUGIN_REGISTRY, get_plugin_manifests
+    from goose.plugins import get_all_plugins, get_plugin_manifests
     from goose.plugins.trust import TrustPolicy, fingerprint_plugin
 
+    merged_registry = get_all_plugins()
     manifests = []
     trust_policy = TrustPolicy()
     for m in get_plugin_manifests():
         md = m.to_dict()
         # Compute fingerprint for trust visibility
-        plugin_inst = PLUGIN_REGISTRY.get(m.plugin_id)
+        plugin_inst = merged_registry.get(m.plugin_id)
         if plugin_inst:
             fp = fingerprint_plugin(plugin_inst)
             md["computed_fingerprint"] = fp

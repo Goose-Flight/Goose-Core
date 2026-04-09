@@ -73,7 +73,7 @@ class Plugin(ABC):
 
         Thin-finding bridge
         -------------------
-        All 12 built-in plugins implement analyze() returning thin
+        All 17 Core built-in plugins implement analyze() returning thin
         goose.core.finding.Finding objects. This method is the bridge that
         lifts them to ForensicFinding without requiring plugins to be rewritten.
 

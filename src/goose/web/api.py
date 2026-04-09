@@ -1,4 +1,17 @@
-"""REST API endpoints for the Goose flight analysis dashboard."""
+"""Legacy REST API router — largely superseded by modular route modules.
+
+STATUS: Legacy / retained for backwards compatibility.
+This router (``/api/health``, ``/api/plugins``, ``/api/analyze``, ``/api/crash``)
+pre-dates the modular ``web/routes/`` layout.  The canonical API surface is now
+in ``web/routes/analysis.py``, ``web/routes/cases.py``, etc.
+
+This file is NOT mounted in ``create_app()`` (``web/app.py``).  It exists as a
+reference implementation and for any external callers that directly imported the
+router.  Do not add new endpoints here.
+
+RETIRE: When confirmed unused by downstream packages, this file can be removed.
+Until then, keep it consistent with the modular routes so comparisons are valid.
+"""
 
 from __future__ import annotations
 

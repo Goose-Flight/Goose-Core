@@ -1,18 +1,39 @@
-"""Lifting layer — promotes thin plugin findings to forensic-grade artifacts.
+"""Thin-finding bridge — promotes legacy plugin findings to forensic-grade artifacts.
 
-Plugins currently emit goose.core.finding.Finding (thin).  This module
-converts them to ForensicFinding and auto-generates Hypothesis candidates
-from correlated findings.
+Role of this module
+-------------------
+This is a **transitional bridge**.  Plugins in goose-flight currently emit
+``goose.core.finding.Finding`` (thin) objects from their ``analyze()`` method.
+This module converts them to ``ForensicFinding`` and auto-generates
+``Hypothesis`` candidates from correlated findings.
 
-Sprint 5 will let plugins emit ForensicFinding directly.  Until then this
-layer bridges the gap without breaking the existing plugin contract.
+The bridge exists so that all 17 built-in plugins continue to work without
+rewriting them.  Plugins that have been ported to native ForensicFinding
+emission (via ``Plugin.forensic_analyze_native()``) bypass this module entirely
+— the base class dispatches to native emission first.
 
-Design rules:
+Planned retirement path
+-----------------------
+The thin-finding bridge (``lift_finding``, ``lift_findings``) will be retired
+progressively as plugins are ported to emit ``ForensicFinding`` directly from
+``forensic_analyze_native()``.  When all plugins are ported:
+
+1. ``lift_finding`` and ``lift_findings`` can be removed.
+2. ``Plugin.forensic_analyze()`` in ``base.py`` can remove the thin-finding
+   fallback path.
+3. ``goose.core.finding.Finding`` (the thin type) can be deprecated.
+
+Do not add new callers to ``lift_finding`` / ``lift_findings``.  New plugins
+should override ``forensic_analyze_native()`` and return ``ForensicFinding``
+directly.
+
+Design rules
+------------
 - Every ForensicFinding must have at least one EvidenceReference.
-- Confidence is derived from the finding score (score / 100) — a reasonable
-  proxy until Sprint 5 plugins declare their own confidence.
+- Confidence is derived from the finding score (score / 100) — a proxy until
+  plugins declare their own confidence via native emission.
 - Hypothesis generation is rule-based and conservative; it flags correlations
-  but does not invent claims the findings don't support.
+  but does not invent claims the findings do not support.
 - Parser confidence, finding confidence, and hypothesis confidence remain
   explicitly distinct throughout.
 

@@ -290,6 +290,22 @@ async def get_export_file(case_id: str, filename: str) -> JSONResponse:
 # New routes — Replay verification and report generation
 # ---------------------------------------------------------------------------
 
+@router.get("/{case_id}/tuning-profile")
+async def get_tuning_profile(case_id: str) -> JSONResponse:
+    """Return the current/default tuning profile as JSON."""
+    from goose.forensics.tuning import TuningProfile
+    from goose.web.cases_api import get_service
+
+    try:
+        svc = get_service()
+        svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    profile = TuningProfile.default()
+    return JSONResponse({"ok": True, "tuning_profile": profile.to_dict()})
+
+
 @router.post("/{case_id}/exports/verify-replay")
 async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse:
     """Compare a bundle's versions with the current engine/parser/plugins.

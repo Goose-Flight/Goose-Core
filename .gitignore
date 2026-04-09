@@ -32,6 +32,9 @@ htmlcov/
 # Mypy
 .mypy_cache/
 
+# Validation harness runtime output (regenerated each run)
+validation_results/
+
 # Log files (keep directory structure, ignore binary logs)
 logs/**/*.ulg
 logs/**/*.bin

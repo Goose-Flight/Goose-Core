@@ -115,7 +115,12 @@ class EvidenceManifest:
 
 @dataclass
 class AnalysisRun:
-    """Record of a single analysis execution on a case."""
+    """Record of a single analysis execution on a case.
+
+    Extended in the Advanced Forensic Validation Sprint with richer metadata
+    for replay determinism, run comparison, and tuning provenance. All new
+    fields have defaults for backward compatibility with existing case.json.
+    """
 
     run_id: str
     started_at: datetime
@@ -127,6 +132,21 @@ class AnalysisRun:
     engine_version: str = ""           # goose version at time of run — required for replay
     tuning_profile: str | None = None  # named tuning profile if non-default
     error: str | None = None
+    # --- Advanced Forensic Validation Sprint additions ---
+    case_id: str = ""
+    evidence_id: str = ""
+    parser_name: str = ""
+    parser_version: str = ""
+    plugin_ids_used: list[str] = field(default_factory=list)
+    plugin_trust_states: dict[str, str] = field(default_factory=dict)
+    tuning_profile_id: str = "default"
+    tuning_profile_version: str = "1.0.0"
+    critical_count: int = 0
+    warning_count: int = 0
+    hypotheses_count: int = 0
+    is_replay: bool = False
+    source_run_id: str | None = None
+    replay_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -140,6 +160,20 @@ class AnalysisRun:
             "engine_version": self.engine_version,
             "tuning_profile": self.tuning_profile,
             "error": self.error,
+            "case_id": self.case_id,
+            "evidence_id": self.evidence_id,
+            "parser_name": self.parser_name,
+            "parser_version": self.parser_version,
+            "plugin_ids_used": self.plugin_ids_used,
+            "plugin_trust_states": self.plugin_trust_states,
+            "tuning_profile_id": self.tuning_profile_id,
+            "tuning_profile_version": self.tuning_profile_version,
+            "critical_count": self.critical_count,
+            "warning_count": self.warning_count,
+            "hypotheses_count": self.hypotheses_count,
+            "is_replay": self.is_replay,
+            "source_run_id": self.source_run_id,
+            "replay_id": self.replay_id,
         }
 
     @classmethod
@@ -148,6 +182,9 @@ class AnalysisRun:
         d["started_at"] = datetime.fromisoformat(d["started_at"])
         if d.get("completed_at"):
             d["completed_at"] = datetime.fromisoformat(d["completed_at"])
+        # Drop keys unknown to the dataclass (forward-compat)
+        known = {f.name for f in __import__("dataclasses").fields(cls)}
+        d = {k: v for k, v in d.items() if k in known}
         return cls(**d)
 
 

@@ -259,7 +259,30 @@ async def analyze_case(case_id: str) -> JSONResponse:
         json.dumps(plugin_diag, indent=2), encoding="utf-8"
     )
 
+    # --- Write tuning profile used for this run ------------------------------
+    from goose.forensics.tuning import TuningProfile
+    tuning_profile = TuningProfile.default()
+    (analysis_dir / "tuning_profile.json").write_text(
+        json.dumps(tuning_profile.to_dict(), indent=2), encoding="utf-8",
+    )
+
     # --- Record analysis run in case -----------------------------------------
+    # Collect trust states and plugin ids
+    plugin_trust_states: dict[str, str] = {}
+    plugin_ids_used: list[str] = []
+    for plugin in plugins:
+        plugin_ids_used.append(plugin.manifest.plugin_id)
+        plugin_trust_states[plugin.manifest.plugin_id] = plugin.manifest.trust_state.value
+
+    critical_count = sum(1 for f in forensic_findings if f.severity == "critical")
+    warning_count = sum(1 for f in forensic_findings if f.severity == "warning")
+
+    parser_name = ""
+    parser_version = ""
+    if parse_result.provenance:
+        parser_name = parse_result.provenance.parser_name
+        parser_version = parse_result.provenance.parser_version
+
     run = AnalysisRun(
         run_id=run_id,
         started_at=started_at,
@@ -269,6 +292,19 @@ async def analyze_case(case_id: str) -> JSONResponse:
         findings_count=len([f for f in forensic_findings if f.severity != "pass"]),
         status="completed",
         engine_version=__version__,
+        tuning_profile=tuning_profile.profile_id,
+        case_id=case_id,
+        evidence_id=ev.evidence_id,
+        parser_name=parser_name,
+        parser_version=parser_version,
+        plugin_ids_used=plugin_ids_used,
+        plugin_trust_states=plugin_trust_states,
+        tuning_profile_id=tuning_profile.profile_id,
+        tuning_profile_version=tuning_profile.version,
+        critical_count=critical_count,
+        warning_count=warning_count,
+        hypotheses_count=len(hypotheses),
+        is_replay=False,
     )
     case = svc.get_case(case_id)  # refresh
     case.analysis_runs.append(run)

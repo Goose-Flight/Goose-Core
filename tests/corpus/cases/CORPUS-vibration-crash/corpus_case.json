@@ -1,0 +1,21 @@
+{
+  "corpus_id": "CORPUS-vibration-crash",
+  "description": "PX4 log of a crash preceded by high vibration.",
+  "category": "vibration",
+  "evidence_filename": "px4_vibration_crash.ulg",
+  "expected_parser": {
+    "should_succeed": true,
+    "expected_format": "ulog",
+    "min_parser_confidence": 0.5
+  },
+  "expected_analyzers": [
+    {
+      "plugin_id": "vibration",
+      "should_run": true,
+      "should_find": [],
+      "should_not_find": []
+    }
+  ],
+  "notes": "Must parse and run vibration analyzer.",
+  "active": true
+}

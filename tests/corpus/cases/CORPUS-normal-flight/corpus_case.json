@@ -1,0 +1,21 @@
+{
+  "corpus_id": "CORPUS-normal-flight",
+  "description": "A clean normal PX4 flight with no crash or anomalies.",
+  "category": "normal",
+  "evidence_filename": "px4_normal_flight.ulg",
+  "expected_parser": {
+    "should_succeed": true,
+    "expected_format": "ulog",
+    "min_parser_confidence": 0.5
+  },
+  "expected_analyzers": [
+    {
+      "plugin_id": "crash_detection",
+      "should_run": true,
+      "should_find": [],
+      "should_not_find": ["Crash detected:"]
+    }
+  ],
+  "notes": "Baseline case — must not trigger false crash detection.",
+  "active": true
+}

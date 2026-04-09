@@ -214,6 +214,10 @@ def create_app():
     from goose.web.cases_api import router as cases_router
     app.include_router(cases_router)
 
+    # Validation harness routes (Advanced Forensic Validation Sprint)
+    from goose.web.routes.validation import router as validation_router
+    app.include_router(validation_router)
+
     # ------------------------------------------------------------------
     # Routes
     # ------------------------------------------------------------------

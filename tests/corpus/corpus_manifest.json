@@ -1,0 +1,81 @@
+{
+  "manifest_version": "1.0",
+  "description": "Goose-Core regression corpus — seeded cases for analyzer quality tracking",
+  "cases": [
+    {
+      "corpus_id": "CORPUS-normal-flight",
+      "description": "A clean normal PX4 flight with no crash or anomalies.",
+      "category": "normal",
+      "evidence_filename": "px4_normal_flight.ulg",
+      "expected_parser": {
+        "should_succeed": true,
+        "expected_format": "ulog",
+        "min_parser_confidence": 0.5,
+        "expected_warnings": [],
+        "expected_missing_streams": [],
+        "expected_corruption": false
+      },
+      "expected_analyzers": [
+        {
+          "plugin_id": "crash_detection",
+          "should_run": true,
+          "should_find": [],
+          "should_not_find": ["Crash detected:"],
+          "min_confidence": null
+        }
+      ],
+      "notes": "Baseline case — must not trigger false crash detection (title prefix 'Crash detected:').",
+      "active": true
+    },
+    {
+      "corpus_id": "CORPUS-crash",
+      "description": "PX4 log of a motor failure crash.",
+      "category": "crash",
+      "evidence_filename": "px4_motor_failure.ulg",
+      "expected_parser": {
+        "should_succeed": true,
+        "expected_format": "ulog",
+        "min_parser_confidence": 0.5,
+        "expected_warnings": [],
+        "expected_missing_streams": [],
+        "expected_corruption": false
+      },
+      "expected_analyzers": [
+        {
+          "plugin_id": "crash_detection",
+          "should_run": true,
+          "should_find": [],
+          "should_not_find": [],
+          "min_confidence": null
+        }
+      ],
+      "notes": "Must parse without errors. Crash classification depends on signal quality.",
+      "active": true
+    },
+    {
+      "corpus_id": "CORPUS-vibration-crash",
+      "description": "PX4 log of a crash preceded by high vibration.",
+      "category": "vibration",
+      "evidence_filename": "px4_vibration_crash.ulg",
+      "expected_parser": {
+        "should_succeed": true,
+        "expected_format": "ulog",
+        "min_parser_confidence": 0.5,
+        "expected_warnings": [],
+        "expected_missing_streams": [],
+        "expected_corruption": false
+      },
+      "expected_analyzers": [
+        {
+          "plugin_id": "vibration",
+          "should_run": true,
+          "should_find": [],
+          "should_not_find": [],
+          "min_confidence": null
+        }
+      ],
+      "notes": "Must parse and run vibration analyzer.",
+      "active": true
+    }
+  ]
+}

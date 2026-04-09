@@ -2079,11 +2079,13 @@
         <span id="ws-status-badge" style="margin-left:auto;font-size:12px;padding:3px 10px;border-radius:20px;background:var(--card);border:1px solid var(--card-border);"></span>
         <span id="ws-run-selector" style="font-size:12px;display:flex;align-items:center;gap:6px;">
           <span style="color:var(--text-sec);">Run:</span>
-          <select id="ws-run-dropdown" onchange="onRunSelected(this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:3px 8px;font-family:var(--font);font-size:12px;min-width:120px;">
+          <select id="ws-run-dropdown" onchange="onRunSelected(this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:3px 8px;font-family:var(--font);font-size:12px;min-width:300px;">
             <option value="">No runs</option>
           </select>
+          <button onclick="replayCurrentRun()" title="Re-run analysis and compare" style="background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:3px 10px;font-family:var(--font);font-size:12px;cursor:pointer;">Replay</button>
         </span>
       </div>
+      <div id="replay-result-panel" style="display:none;margin-bottom:16px;"></div>
 
       <!-- Workspace tabs -->
       <div style="display:flex;gap:4px;border-bottom:1px solid var(--card-border);margin-bottom:24px;flex-wrap:wrap;">
@@ -2095,6 +2097,7 @@
         <button class="ws-tab" id="ws-tab-charts" onclick="switchWsTab('charts')">Charts</button>
         <button class="ws-tab" id="ws-tab-hypotheses" onclick="switchWsTab('hypotheses')">Hypotheses</button>
         <button class="ws-tab" id="ws-tab-exports" onclick="switchWsTab('exports')">Exports</button>
+        <button class="ws-tab" id="ws-tab-validation" onclick="switchWsTab('validation')">Validation</button>
         <button class="ws-tab" id="ws-tab-audit" onclick="switchWsTab('audit')">Audit Trail</button>
       </div>
 
@@ -2163,6 +2166,18 @@
         <div id="ws-exports-content">
           <div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">Export case bundles for sharing.</div>
         </div>
+      </div>
+
+      <!-- Validation tab -->
+      <div id="ws-validation-panel" style="display:none;">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:15px;font-weight:600;margin-bottom:10px;">Corpus Validation</div>
+          <div style="font-size:13px;color:var(--text-sec);margin-bottom:12px;">
+            Run Goose analysis against the seeded regression corpus and compare against expectations.
+          </div>
+          <button onclick="runValidationHarness()" style="padding:8px 20px;background:var(--green);color:#000;border:none;border-radius:6px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Run Corpus Validation</button>
+        </div>
+        <div id="validation-result-panel" style="margin-top:16px;"></div>
       </div>
 
       <!-- Audit trail tab -->
@@ -3896,7 +3911,7 @@
   }
 
   function switchWsTab(tab) {
-    const allTabs = ['evidence','diagnostics','findings','hypotheses','plugins','audit','timeline','charts','exports'];
+    const allTabs = ['evidence','diagnostics','findings','hypotheses','plugins','audit','timeline','charts','exports','validation'];
     allTabs.forEach(t => {
       const tabBtn = document.getElementById(`ws-tab-${t}`);
       const panel = document.getElementById(`ws-${t}-panel`);
@@ -3911,6 +3926,7 @@
     if (tab === 'timeline' && activeCaseId) loadTimeline(activeCaseId);
     if (tab === 'charts' && activeCaseId) renderChartsPanel(activeCaseId);
     if (tab === 'exports' && activeCaseId) loadExports(activeCaseId);
+    if (tab === 'validation') loadValidationTab();
   }
 
   async function loadHypotheses(caseId) {
@@ -4057,7 +4073,7 @@
 
     return `
       <div style="margin-bottom:16px;">
-        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Analysis Plugin Status${runId ? ' — ' + runId : ''} <span style="font-size:12px;color:var(--text-sec);font-weight:400;margin-left:8px;">Policy: ${(policyMode||'permissive').toUpperCase()}</span></div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Analysis Plugin Status${runId ? ' — ' + runId : ''} <span style="font-size:12px;color:var(--text-sec);font-weight:400;margin-left:8px;">Policy: ${(policyMode||'permissive').toUpperCase()}</span> <span id="ws-tuning-profile-badge" style="font-size:12px;color:var(--text-sec);font-weight:400;margin-left:8px;">Tuning Profile: default v1.0.0</span></div>
         ${hasRunInfo ? `<div style="font-size:13px;color:var(--text-sec);">${ranCount} ran | ${skippedCount} skipped | ${blockedCount} blocked</div>` : `<div style="font-size:13px;color:var(--text-sec);">${manifests.length} registered plugins. Run analysis to see execution status.</div>`}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;">
@@ -4831,8 +4847,37 @@
       const data = await r.json();
       if (!data.ok) throw new Error('Failed');
       renderExportsPanel(data.exports || [], caseId);
+      // Populate compare-run dropdowns from current case's runs
+      try {
+        const cr = await fetch(`/api/cases/${caseId}`);
+        const cdata = await cr.json();
+        if (cdata.ok && cdata.case && cdata.case.analysis_runs) {
+          populateCompareRunDropdowns(cdata.case.analysis_runs);
+        }
+      } catch (e) { /* best-effort */ }
     } catch(e) {
       el.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load exports: ${e.message}</div>`;
+    }
+  }
+
+  function populateCompareRunDropdowns(runs) {
+    const a = document.getElementById('compare-run-a');
+    const b = document.getElementById('compare-run-b');
+    if (!a || !b) return;
+    if (!runs || runs.length === 0) {
+      a.innerHTML = '<option value="">No runs</option>';
+      b.innerHTML = '<option value="">No runs</option>';
+      return;
+    }
+    const opts = runs.map(r => {
+      const label = `${r.run_id} (${r.findings_count || 0}f)`;
+      return `<option value="${r.run_id}">${label}</option>`;
+    }).join('');
+    a.innerHTML = opts;
+    b.innerHTML = opts;
+    if (runs.length >= 2) {
+      a.value = runs[0].run_id;
+      b.value = runs[runs.length - 1].run_id;
     }
   }
 
@@ -4854,6 +4899,17 @@
           <button onclick="loadReport('${caseId}','crash')" style="padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;">Crash/Mishap Report</button>
         </div>
         <div id="report-output" style="margin-top:12px;"></div>
+      </div>
+      <div style="margin-bottom:24px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Compare Runs</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;">
+          <span style="color:var(--text-sec);">A:</span>
+          <select id="compare-run-a" style="background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:13px;min-width:160px;"></select>
+          <span style="color:var(--text-sec);">B:</span>
+          <select id="compare-run-b" style="background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:13px;min-width:160px;"></select>
+          <button onclick="compareTwoRuns()" style="padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;">Compare</button>
+        </div>
+        <div id="compare-result-panel" style="margin-top:12px;display:none;"></div>
       </div>
       <div style="margin-bottom:24px;">
         <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Replay Verification</div>
@@ -4911,13 +4967,195 @@
     }
     sel.innerHTML = runs.map(r => {
       const ts = new Date(r.started_at).toLocaleString();
-      return `<option value="${r.run_id}">${r.run_id} (${ts}, ${r.findings_count} findings)</option>`;
+      const crit = r.critical_count || 0;
+      const warn = r.warning_count || 0;
+      const pluginsUsed = (r.plugin_ids_used && r.plugin_ids_used.length) || Object.keys(r.plugin_versions || {}).length || 0;
+      const trust = r.plugin_trust_states || {};
+      const skipped = Object.values(trust).filter(t => t === 'blocked').length;
+      const tp = r.tuning_profile_id || r.tuning_profile || 'default';
+      const replayBadge = r.is_replay ? ' [REPLAY]' : '';
+      const label = `${r.run_id}${replayBadge} — ${ts} — ${r.findings_count}f (${crit}c/${warn}w) — ${pluginsUsed}p${skipped?'/'+skipped+'skip':''} — ${tp}`;
+      return `<option value="${r.run_id}">${label}</option>`;
     }).join('');
     sel.value = runs[runs.length - 1].run_id;
   }
 
   function onRunSelected(runId) {
     workspaceState.runId = runId;
+  }
+
+  // --- Replay this run ---
+  async function replayCurrentRun() {
+    const caseId = activeCaseId;
+    const runId = workspaceState.runId;
+    if (!caseId || !runId) {
+      alert('Select a run first');
+      return;
+    }
+    const outEl = document.getElementById('replay-result-panel');
+    if (outEl) {
+      outEl.style.display = '';
+      outEl.innerHTML = '<div style="font-size:13px;color:var(--text-sec);padding:12px;">Running replay...</div>';
+    }
+    try {
+      const r = await fetch(`/api/cases/${caseId}/runs/${runId}/replay`, { method: 'POST' });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.detail || 'Replay failed');
+      renderReplayResult(data.replay);
+    } catch (e) {
+      if (outEl) outEl.innerHTML = `<div style="color:var(--red);font-size:13px;padding:12px;">Replay failed: ${e.message}</div>`;
+    }
+  }
+
+  function renderReplayResult(rec) {
+    const outEl = document.getElementById('replay-result-panel');
+    if (!outEl) return;
+    const statusColors = {
+      exact_match: 'var(--green)',
+      expected_drift: '#f59e0b',
+      unexpected_drift: 'var(--red)',
+      incompatible: '#888',
+    };
+    const color = statusColors[rec.status] || 'var(--text-sec)';
+    const diff = rec.difference_summary || {};
+    const pluginDiffs = (diff.plugin_execution_changes || []).join(', ') || 'none';
+    const drift = (diff.drift_categories || []).join(', ') || 'none';
+    outEl.innerHTML = `
+      <div class="card" style="padding:16px;border:1px solid ${color};">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:600;">Replay ${rec.replay_id}</div>
+          <span style="font-size:12px;padding:3px 10px;border-radius:20px;background:${color};color:#000;font-weight:600;">${rec.status.toUpperCase()}</span>
+        </div>
+        <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+          <div><span style="color:var(--text-sec);">Engine:</span> ${rec.original_engine_version || '?'} → ${rec.replay_engine_version || '?'}</div>
+          <div><span style="color:var(--text-sec);">Parser:</span> ${rec.original_parser_version || '?'} → ${rec.replay_parser_version || '?'}</div>
+          <div><span style="color:var(--text-sec);">Tuning:</span> ${rec.original_tuning_profile} → ${rec.replay_tuning_profile}</div>
+          <div><span style="color:var(--text-sec);">Source run:</span> ${rec.source_run_id}</div>
+        </div>
+        <div style="font-size:13px;margin-bottom:6px;"><b>Findings diff:</b> +${(diff.findings_added||[]).length} added, -${(diff.findings_removed||[]).length} removed, ${(diff.findings_changed||[]).length} changed</div>
+        <div style="font-size:13px;margin-bottom:6px;"><b>Hypotheses:</b> +${diff.hypotheses_added||0} / -${diff.hypotheses_removed||0}</div>
+        <div style="font-size:13px;margin-bottom:6px;"><b>Plugin changes:</b> ${pluginDiffs}</div>
+        <div style="font-size:13px;margin-bottom:6px;"><b>Drift categories:</b> ${drift}</div>
+        ${rec.notes ? `<div style="font-size:12px;color:var(--text-sec);margin-top:8px;">${rec.notes}</div>` : ''}
+      </div>`;
+  }
+
+  // --- Compare runs ---
+  async function compareTwoRuns() {
+    const caseId = activeCaseId;
+    if (!caseId) return;
+    const aEl = document.getElementById('compare-run-a');
+    const bEl = document.getElementById('compare-run-b');
+    if (!aEl || !bEl) return;
+    const runA = aEl.value;
+    const runB = bEl.value;
+    if (!runA || !runB) {
+      alert('Select two runs to compare');
+      return;
+    }
+    const outEl = document.getElementById('compare-result-panel');
+    outEl.style.display = '';
+    outEl.innerHTML = '<div style="font-size:13px;color:var(--text-sec);padding:12px;">Comparing...</div>';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/compare-runs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ run_a_id: runA, run_b_id: runB }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.detail || 'Compare failed');
+      renderComparisonResult(data.comparison);
+    } catch (e) {
+      outEl.innerHTML = `<div style="color:var(--red);font-size:13px;padding:12px;">Compare failed: ${e.message}</div>`;
+    }
+  }
+
+  function renderComparisonResult(cmp) {
+    const outEl = document.getElementById('compare-result-panel');
+    if (!outEl) return;
+    const fd = cmp.finding_differences || [];
+    const pd = cmp.plugin_differences || [];
+    const hd = cmp.hypothesis_differences || [];
+    outEl.innerHTML = `
+      <div class="card" style="padding:16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Run Comparison</div>
+        <div style="font-size:13px;margin-bottom:8px;">${cmp.summary || 'No differences.'}</div>
+        ${fd.length ? `
+          <div style="margin-top:10px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Finding changes (${fd.length})</div>
+            ${fd.map(f => `<div style="font-size:12px;padding:3px 0;">${f.change_type}: ${f.finding_id}</div>`).join('')}
+          </div>` : ''}
+        ${pd.length ? `
+          <div style="margin-top:10px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Plugin changes (${pd.length})</div>
+            ${pd.map(p => `<div style="font-size:12px;padding:3px 0;">${p.plugin_id}: ${p.change} (${p.original_version || '—'} → ${p.replay_version || '—'})</div>`).join('')}
+          </div>` : ''}
+        ${hd.length ? `
+          <div style="margin-top:10px;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Hypothesis changes (${hd.length})</div>
+            ${hd.map(h => `<div style="font-size:12px;padding:3px 0;">${h.change}: ${h.theme}</div>`).join('')}
+          </div>` : ''}
+        ${cmp.tuning_profile_changed ? '<div style="font-size:12px;color:#f59e0b;margin-top:8px;">Tuning profile changed between runs</div>' : ''}
+      </div>`;
+  }
+
+  // --- Validation harness ---
+  async function runValidationHarness() {
+    const outEl = document.getElementById('validation-result-panel');
+    if (!outEl) return;
+    outEl.innerHTML = '<div style="font-size:13px;color:var(--text-sec);padding:12px;">Running corpus validation...</div>';
+    try {
+      const r = await fetch('/api/validation/run', { method: 'POST' });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.detail || 'Validation failed');
+      renderValidationResult(data);
+    } catch (e) {
+      outEl.innerHTML = `<div style="color:var(--red);font-size:13px;padding:12px;">Validation failed: ${e.message}</div>`;
+    }
+  }
+
+  function renderValidationResult(data) {
+    const outEl = document.getElementById('validation-result-panel');
+    const s = data.summary || {};
+    const results = s.corpus_case_results || [];
+    outEl.innerHTML = `
+      <div class="card" style="padding:16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Validation ${s.validation_id || ''}</div>
+        <div style="font-size:13px;margin-bottom:10px;">
+          Total: ${s.total_cases || 0} ·
+          <span style="color:var(--green);">Passed: ${s.passed || 0}</span> ·
+          <span style="color:var(--red);">Failed: ${s.failed || 0}</span> ·
+          Engine: ${s.engine_version || '?'}
+        </div>
+        ${results.map(r => {
+          const color = r.passed ? 'var(--green)' : 'var(--red)';
+          const badge = r.passed ? 'PASS' : 'FAIL';
+          return `
+            <div style="padding:8px;border:1px solid var(--card-border);border-radius:6px;margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;font-size:13px;">
+                <span><b>${r.corpus_id}</b> <span style="color:var(--text-sec);">(${r.category})</span></span>
+                <span style="color:${color};font-weight:600;">${badge}</span>
+              </div>
+              ${(r.failures && r.failures.length) ? `<div style="font-size:12px;color:var(--red);margin-top:4px;">${r.failures.join('; ')}</div>` : ''}
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  async function loadValidationTab() {
+    const outEl = document.getElementById('validation-result-panel');
+    if (!outEl) return;
+    try {
+      const r = await fetch('/api/validation/results');
+      const data = await r.json();
+      if (data.ok && data.summary) {
+        renderValidationResult(data);
+      } else {
+        outEl.innerHTML = '<div style="font-size:13px;color:var(--text-sec);padding:12px;">No validation run yet. Click "Run Corpus Validation" to start.</div>';
+      }
+    } catch (e) {
+      outEl.innerHTML = '<div style="font-size:13px;color:var(--text-sec);padding:12px;">No validation run yet.</div>';
+    }
   }
 
   // --- Report generation ---

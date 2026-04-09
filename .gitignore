@@ -57,3 +57,6 @@ web-ui/
 docs/strategy.md
 docs/competitor_analysis.md
 docs/internal_*.md
+
+# Runtime case storage (local filesystem, never commit)
+cases/

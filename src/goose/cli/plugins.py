@@ -7,7 +7,6 @@ from rich.console import Console
 from rich.table import Table
 
 from goose.plugins.base import Plugin
-from goose.plugins.registry import discover_plugins
 
 
 @click.group()

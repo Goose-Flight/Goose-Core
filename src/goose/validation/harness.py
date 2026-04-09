@@ -2,6 +2,12 @@
 
 Advanced Forensic Validation Sprint — Runs analysis against corpus cases
 and compares results to expectations.
+
+Profile-aware path: for each corpus case, the harness loads the per-case
+``TuningProfile`` and passes it to ``plugin.forensic_analyze()`` so that
+plugin thresholds flow from the active tuning profile. The
+``ValidationSummary`` also records the tuning profile identity for
+regression tracking across profile changes.
 """
 
 from __future__ import annotations
@@ -12,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from goose.validation.corpus import CorpusCase, ExpectedAnalyzerBehavior, load_corpus_manifest
+from goose.validation.corpus import CorpusCase, load_corpus_manifest
 
 
 @dataclass
@@ -74,6 +80,7 @@ class CorpusCaseResult:
     warnings: list[str] = field(default_factory=list)
     expected: ExpectedOutcome = field(default_factory=ExpectedOutcome)
     observed: ObservedOutcome = field(default_factory=lambda: ObservedOutcome(corpus_id=""))
+    profile: str = "default"
     run_at: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -85,6 +92,7 @@ class CorpusCaseResult:
             "warnings": self.warnings,
             "expected": self.expected.to_dict(),
             "observed": self.observed.to_dict(),
+            "profile": self.profile,
             "run_at": self.run_at,
         }
 
@@ -98,8 +106,38 @@ class CorpusCaseResult:
         d["observed"] = ObservedOutcome.from_dict(d.get("observed", {"corpus_id": ""}))
         known = {
             "corpus_id", "category", "passed", "failures", "warnings",
-            "expected", "observed", "run_at",
+            "expected", "observed", "profile", "run_at",
         }
+        return cls(**{k: v for k, v in d.items() if k in known})
+
+
+@dataclass
+class RegressionAlert:
+    """A single regression signal emitted by the validation harness.
+
+    A regression is any corpus case that failed or crashed — the failure
+    text is preserved verbatim for easy triage. A stable ``alert_id``
+    derived from the corpus_id is included so downstream tools can group
+    alerts across runs.
+    """
+    alert_id: str
+    corpus_id: str
+    category: str
+    severity: str  # "failure" | "warning"
+    message: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "alert_id": self.alert_id,
+            "corpus_id": self.corpus_id,
+            "category": self.category,
+            "severity": self.severity,
+            "message": self.message,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> RegressionAlert:
+        known = {"alert_id", "corpus_id", "category", "severity", "message"}
         return cls(**{k: v for k, v in d.items() if k in known})
 
 
@@ -113,7 +151,9 @@ class ValidationSummary:
     failed: int
     warned: int
     corpus_case_results: list[CorpusCaseResult] = field(default_factory=list)
-    regression_alerts: list[str] = field(default_factory=list)
+    regression_alerts: list[RegressionAlert] = field(default_factory=list)
+    tuning_profile_id: str = "default"
+    tuning_profile_version: str = "1.0.0"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -125,7 +165,12 @@ class ValidationSummary:
             "failed": self.failed,
             "warned": self.warned,
             "corpus_case_results": [r.to_dict() for r in self.corpus_case_results],
-            "regression_alerts": self.regression_alerts,
+            "regression_alerts": [
+                a.to_dict() if isinstance(a, RegressionAlert) else a
+                for a in self.regression_alerts
+            ],
+            "tuning_profile_id": self.tuning_profile_id,
+            "tuning_profile_version": self.tuning_profile_version,
         }
 
     @classmethod
@@ -134,9 +179,26 @@ class ValidationSummary:
         d["corpus_case_results"] = [
             CorpusCaseResult.from_dict(r) for r in d.get("corpus_case_results", [])
         ]
+        raw_alerts = d.get("regression_alerts", [])
+        alerts: list[RegressionAlert] = []
+        for a in raw_alerts:
+            if isinstance(a, RegressionAlert):
+                alerts.append(a)
+            elif isinstance(a, dict):
+                alerts.append(RegressionAlert.from_dict(a))
+            elif isinstance(a, str):
+                alerts.append(RegressionAlert(
+                    alert_id=a[:32],
+                    corpus_id="unknown",
+                    category="unknown",
+                    severity="failure",
+                    message=a,
+                ))
+        d["regression_alerts"] = alerts
         known = {
             "validation_id", "run_at", "engine_version", "total_cases",
-            "passed", "failed", "warned", "corpus_case_results", "regression_alerts",
+            "passed", "failed", "warned", "corpus_case_results",
+            "regression_alerts", "tuning_profile_id", "tuning_profile_version",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -149,25 +211,38 @@ def run_validation(
     """Run Goose analysis against all active corpus cases.
 
     Compare findings/diagnostics against expectations.
-    Return structured ValidationSummary.
+    Return structured ValidationSummary, including tuning profile identity
+    and structured regression alerts for any failed cases.
     """
     from goose import __version__
+    from goose.forensics.tuning import TuningProfile
 
     corpus_cases = load_corpus_manifest(corpus_dir)
     active_cases = [c for c in corpus_cases if c.active]
 
+    # Default tuning profile is used for all plugin threshold overrides.
+    # The per-case `profile` field (e.g. "racer") selects a UI/analysis
+    # profile from goose.forensics.profiles but does not fork the tuning
+    # thresholds — that is intentional so the validation corpus remains
+    # a stable ground truth across UI profile variants.
+    tuning_profile = TuningProfile.default()
+
     validation_id = f"VAL-{uuid.uuid4().hex[:8].upper()}"
     run_at = datetime.now().isoformat()
     results: list[CorpusCaseResult] = []
-    regression_alerts: list[str] = []
+    regression_alerts: list[RegressionAlert] = []
 
     for cc in active_cases:
-        result = _validate_single_case(cc, corpus_dir, cases_dir)
+        result = _validate_single_case(cc, corpus_dir, cases_dir, tuning_profile)
         results.append(result)
         if not result.passed:
-            regression_alerts.append(
-                f"{cc.corpus_id} ({cc.category}): {'; '.join(result.failures)}"
-            )
+            regression_alerts.append(RegressionAlert(
+                alert_id=f"REG-{cc.corpus_id}",
+                corpus_id=cc.corpus_id,
+                category=cc.category,
+                severity="failure",
+                message="; ".join(result.failures) if result.failures else "case failed",
+            ))
 
     passed = sum(1 for r in results if r.passed)
     failed = sum(1 for r in results if not r.passed)
@@ -183,6 +258,8 @@ def run_validation(
         warned=warned,
         corpus_case_results=results,
         regression_alerts=regression_alerts,
+        tuning_profile_id=tuning_profile.profile_id,
+        tuning_profile_version=tuning_profile.version,
     )
 
 
@@ -190,6 +267,7 @@ def _validate_single_case(
     cc: CorpusCase,
     corpus_dir: Path,
     cases_dir: Path,
+    tuning_profile: Any = None,
 ) -> CorpusCaseResult:
     """Validate a single corpus case."""
     run_at = datetime.now().isoformat()
@@ -218,6 +296,7 @@ def _validate_single_case(
             failures=[f"Evidence file not found: {evidence_path}"],
             expected=expected,
             observed=ObservedOutcome(corpus_id=cc.corpus_id),
+            profile=cc.profile,
             run_at=run_at,
         )
 
@@ -231,12 +310,14 @@ def _validate_single_case(
             return CorpusCaseResult(
                 corpus_id=cc.corpus_id, category=cc.category, passed=False,
                 failures=[f"Parse failed unexpectedly: {exc}"],
-                expected=expected, observed=observed, run_at=run_at,
+                expected=expected, observed=observed,
+                profile=cc.profile, run_at=run_at,
             )
         else:
             return CorpusCaseResult(
                 corpus_id=cc.corpus_id, category=cc.category, passed=True,
-                expected=expected, observed=observed, run_at=run_at,
+                expected=expected, observed=observed,
+                profile=cc.profile, run_at=run_at,
             )
 
     if parse_result is None or not parse_result.success:
@@ -245,17 +326,20 @@ def _validate_single_case(
             return CorpusCaseResult(
                 corpus_id=cc.corpus_id, category=cc.category, passed=False,
                 failures=["Parse did not succeed but was expected to"],
-                expected=expected, observed=observed, run_at=run_at,
+                expected=expected, observed=observed,
+                profile=cc.profile, run_at=run_at,
             )
         else:
             return CorpusCaseResult(
                 corpus_id=cc.corpus_id, category=cc.category, passed=True,
-                expected=expected, observed=observed, run_at=run_at,
+                expected=expected, observed=observed,
+                profile=cc.profile, run_at=run_at,
             )
 
     flight = parse_result.flight
 
-    # Run plugins
+    # Run plugins with the active tuning profile so thresholds flow
+    # through plugin runtime (profile -> config dict -> analyze()).
     from goose.plugins import PLUGIN_REGISTRY
     from goose.plugins.trust import TrustPolicy, fingerprint_plugin
 
@@ -274,6 +358,7 @@ def _validate_single_case(
             ff_list, _ = plugin.forensic_analyze(
                 flight, "corpus-evidence", f"corpus-{cc.corpus_id}",
                 {}, parse_result.diagnostics,
+                tuning_profile=tuning_profile,
             )
             plugins_ran.append(plugin.manifest.plugin_id)
             for f in ff_list:
@@ -281,11 +366,10 @@ def _validate_single_case(
         except Exception:
             plugins_skipped.append(plugin.manifest.plugin_id)
 
-    # Generate hypotheses
+    # Generate hypotheses (count only)
     hypotheses_count = 0
     try:
-        from goose.forensics.lifting import generate_hypotheses
-        # We need the forensic findings objects, so re-gather them
+        from goose.forensics.lifting import generate_hypotheses  # noqa: F401
         hypotheses_count = 0  # simplified - count from plugins above
     except Exception:
         pass
@@ -316,6 +400,14 @@ def _validate_single_case(
             f"below expected minimum {cc.expected_parser.min_parser_confidence:.2f}"
         )
 
+    # Required analyzers must have run
+    for ea in cc.expected_analyzers:
+        if ea.should_run and ea.plugin_id not in plugins_ran:
+            failures.append(
+                f"Expected plugin '{ea.plugin_id}' did not run "
+                f"(skipped={ea.plugin_id in plugins_skipped})"
+            )
+
     # Expected findings (partial match)
     for exp_finding in all_expected:
         found = any(exp_finding.lower() in t.lower() for t in all_findings_titles)
@@ -338,5 +430,6 @@ def _validate_single_case(
         warnings=warnings,
         expected=expected,
         observed=observed,
+        profile=cc.profile,
         run_at=run_at,
     )

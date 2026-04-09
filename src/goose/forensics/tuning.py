@@ -111,12 +111,12 @@ class TuningProfile:
 
     @classmethod
     def default(cls) -> TuningProfile:
-        """Return the default tuning profile with all 11 plugin configs."""
+        """Return the default tuning profile with all builtin plugin configs."""
         return TuningProfile(
             profile_id="default",
             name="Default",
             version="1.0.0",
-            description="Default tuning profile with factory thresholds for all 11 builtin analyzers",
+            description="Default tuning profile with factory thresholds for all builtin analyzers",
             created_at=datetime.now().isoformat(),
             is_default=True,
             target_vehicle_class="all",
@@ -126,7 +126,7 @@ class TuningProfile:
 
 
 def _build_default_configs() -> list[AnalyzerConfigProfile]:
-    """Build AnalyzerConfigProfile for each of the 11 builtin plugins.
+    """Build AnalyzerConfigProfile for each of the builtin plugins.
 
     Thresholds are extracted from each plugin's source-level constants.
     """
@@ -283,6 +283,23 @@ def _build_default_configs() -> list[AnalyzerConfigProfile]:
                     "dropout_gap_sec": 1.0,
                     "min_data_rate_hz": 1.0,
                     "duration_tolerance_sec": 5.0,
+                },
+            ),
+        ),
+        AnalyzerConfigProfile(
+            plugin_id="payload_change_detection",
+            thresholds=ThresholdSet(
+                threshold_set_id="payload_change_detection_default",
+                name="Payload Change Detection Defaults",
+                description=(
+                    "Conservative Phase 1 thresholds for candidate event detection"
+                ),
+                values={
+                    "current_delta_threshold": 3.0,
+                    "sustained_duration_s": 1.5,
+                    "pre_post_window_s": 5.0,
+                    "command_tolerance": 0.15,
+                    "min_flight_duration_s": 10.0,
                 },
             ),
         ),

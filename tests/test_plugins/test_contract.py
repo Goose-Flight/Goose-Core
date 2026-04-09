@@ -154,15 +154,15 @@ class TestPluginDiagnostics:
 
 
 # ---------------------------------------------------------------------------
-# All 11 plugins have valid manifests
+# All 12 plugins have valid manifests
 # ---------------------------------------------------------------------------
 
 class TestAllPluginManifests:
     def test_all_plugins_have_manifests(self):
         from goose.plugins import PLUGIN_REGISTRY
 
-        assert len(PLUGIN_REGISTRY) == 11, (
-            f"Expected 11 plugins, got {len(PLUGIN_REGISTRY)}: "
+        assert len(PLUGIN_REGISTRY) == 12, (
+            f"Expected 12 plugins, got {len(PLUGIN_REGISTRY)}: "
             f"{list(PLUGIN_REGISTRY.keys())}"
         )
 
@@ -317,7 +317,7 @@ class TestRegistryFunctions:
     def test_get_plugin_manifests(self):
         from goose.plugins import get_plugin_manifests
         manifests = get_plugin_manifests()
-        assert len(manifests) == 11
+        assert len(manifests) == 12
         assert all(isinstance(m, PluginManifest) for m in manifests)
 
     def test_get_plugin(self):

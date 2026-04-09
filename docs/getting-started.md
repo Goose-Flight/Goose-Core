@@ -1,8 +1,9 @@
 # Getting Started
 
-Get up and running with Goose in under five minutes. Goose is a flight forensic
-platform for UAV/drone investigation -- it parses flight logs, runs diagnostic
-plugins, and organizes results in auditable forensic cases.
+Get up and running with Goose in under five minutes. Goose is a **local-first
+flight forensic and investigation platform for UAV logs** — it parses flight
+logs, runs diagnostic plugins, organizes results in auditable forensic cases,
+and supports a fast session-only triage flow for one-off questions.
 
 ## Requirements
 
@@ -31,8 +32,39 @@ The web GUI is the primary product surface. Launch it with:
 goose serve
 ```
 
-Open `http://localhost:8000` in your browser. From the GUI you can create cases,
-upload evidence files, run analysis, view findings, and inspect the audit trail.
+Open `http://localhost:8000` in your browser.
+
+### The welcome screen
+
+On first launch you are offered two entry paths and a profile selector:
+
+- **Quick Analysis** — drag a log in, get findings, hypotheses, and a summary.
+  Session-only; nothing is persisted. Ideal for a one-off "what happened?"
+  question. You can promote any Quick Analysis run to a full Investigation
+  Case with one click.
+- **Investigation Case** — case-oriented workflow with evidence ingest,
+  SHA-256/SHA-512 hashing, chain of custody, append-only audit log, and
+  saved analysis runs. Built for deeper work you want to keep or share.
+- **Open Recent Case** — jump straight back into a previously created case.
+
+### Profile selector
+
+At the top of the welcome screen you pick a **profile** that tailors defaults
+and wording for your role:
+
+- **Racer** — FPV racers and performance tuners
+- **Research / University** — research labs and academic flight test
+- **Shop / Repair** — drone repair shops and triage
+- **Factory / QA** — manufacturing acceptance testing
+- **Gov / Mil** — public safety and mission operators
+- **Advanced** — power users who want full control
+- **Default** — balanced defaults for general use
+
+Profiles only change which plugins are emphasized, which charts appear first,
+which case metadata fields are prominent, and which wording the reports use
+("Run" vs "Case" vs "Sortie" vs "Test"). The underlying forensic artifact is
+identical across profiles — same parser, same plugins, same canonical models.
+You can change profiles at any time.
 
 ## CLI crash analysis
 

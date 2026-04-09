@@ -158,7 +158,10 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
         description="Research and academic flight analysis",
         default_entry_path="investigation_case",
         default_plugins=["log_health", "gps_health", "ekf_health", "ekf_consistency", "vibration"],
-        secondary_plugins=["battery_sag", "attitude_tracking", "position_tracking"],
+        secondary_plugins=[
+            "battery_sag", "attitude_tracking", "position_tracking",
+            "payload_change_detection",
+        ],
         deprioritized_plugins=[],
         chart_presets=["altitude_m", "velocity_m_s", "gps_fix_type", "ekf_innovation"],
         findings_sort_priority=["critical", "warning", "info"],
@@ -260,7 +263,7 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
         ],
         secondary_plugins=[
             "vibration", "motor_saturation", "attitude_tracking",
-            "rc_signal", "position_tracking",
+            "rc_signal", "position_tracking", "payload_change_detection",
         ],
         deprioritized_plugins=[],
         chart_presets=["altitude_m", "velocity_m_s", "battery_voltage_v", "gps_fix_type"],

@@ -21,6 +21,7 @@ from goose.web.routes.timeline import router as timeline_router
 from goose.web.routes.charts import router as charts_router
 from goose.web.routes.exports import router as exports_router
 from goose.web.routes.runs import router as runs_router
+from goose.web.routes.attachments import router as attachments_router
 
 
 def register_routes(parent_router: APIRouter) -> None:
@@ -32,3 +33,4 @@ def register_routes(parent_router: APIRouter) -> None:
     parent_router.include_router(charts_router)
     parent_router.include_router(exports_router)
     parent_router.include_router(runs_router)
+    parent_router.include_router(attachments_router)

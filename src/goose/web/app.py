@@ -218,6 +218,14 @@ def create_app():
     from goose.web.routes.validation import router as validation_router
     app.include_router(validation_router)
 
+    # v11 Strategy Sprint — profile + feature-gate routes (app-level, not under /api/cases)
+    from goose.web.routes.profiles import router as profiles_router
+    app.include_router(profiles_router)
+
+    # v11 Strategy Sprint — Quick Analysis (session-only triage flow)
+    from goose.web.routes.quick_analysis import router as quick_analysis_router
+    app.include_router(quick_analysis_router)
+
     # ------------------------------------------------------------------
     # Routes
     # ------------------------------------------------------------------

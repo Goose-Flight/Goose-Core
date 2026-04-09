@@ -57,7 +57,8 @@ class TestTimeline:
         assert res.status_code == 200
         data = res.json()
         assert data["ok"] is True
-        assert data["timeline_version"] == "1.0"
+        # v11 Strategy Sprint — structured timeline schema (2.0)
+        assert data["timeline_version"].startswith("2.0")
         assert isinstance(data["events"], list)
 
     def test_timeline_empty_without_analysis(self, client: TestClient, case_id: str):
@@ -95,7 +96,8 @@ class TestTimeline:
         res = client.get(f"/api/cases/{case_id}/timeline")
         data = res.json()
         assert data["count"] >= 1
-        assert any(e["type"] == "finding" for e in data["events"])
+        # v11 Strategy Sprint — legacy reconstruction uses "event_type" not "type"
+        assert any(e["event_type"] == "finding" for e in data["events"])
 
 
 # ---------------------------------------------------------------------------

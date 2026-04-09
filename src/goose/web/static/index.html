@@ -1718,6 +1718,7 @@
   <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
 
   <nav>
+    <button class="nav-tab" id="nav-welcome" onclick="switchTab('welcome')">Welcome</button>
     <button class="nav-tab active" id="nav-cases" onclick="switchTab('cases')">Cases</button>
     <button class="nav-tab" id="nav-analyze" onclick="switchTab('analyze')">Quick Analysis</button>
     <button class="nav-tab" id="tab-crash" onclick="switchTab('crash')" style="display:none">Crash</button>
@@ -1728,6 +1729,93 @@
 
 <!-- ── Main ──────────────────────────────────────────────────── -->
 <main>
+
+  <!-- ── Welcome view (v11 Strategy Sprint) ──────────────────── -->
+  <div id="welcome-view" class="tab-view" style="display:none;padding:48px 0;">
+    <div style="max-width:960px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:40px;">
+        <h2 style="font-size:28px;color:var(--green);letter-spacing:0.06em;margin-bottom:10px;">GOOSE</h2>
+        <div style="font-size:16px;color:var(--text-sec);">Flight Forensic Platform</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+        <!-- Quick Analysis -->
+        <div class="welcome-card" onclick="welcomeStart('quick')"
+             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s;">
+          <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:8px;">Quick Analysis</div>
+          <div style="font-size:13px;color:var(--text-sec);line-height:1.5;">
+            Upload a log and get findings instantly. No case is created. Ideal for fast triage.
+          </div>
+        </div>
+
+        <!-- Investigation Case -->
+        <div class="welcome-card" onclick="welcomeStart('case')"
+             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s;">
+          <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:8px;">Investigation Case</div>
+          <div style="font-size:13px;color:var(--text-sec);line-height:1.5;">
+            Create a full forensic case with audit trail, attachments, and persistent analysis runs.
+          </div>
+        </div>
+
+        <!-- Recent Cases -->
+        <div class="welcome-card" onclick="welcomeStart('recent')"
+             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s;">
+          <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:8px;">Open Recent Case</div>
+          <div style="font-size:13px;color:var(--text-sec);line-height:1.5;">
+            Resume one of your last five investigation cases.
+          </div>
+          <div id="welcome-recent-list" style="margin-top:14px;font-size:12px;color:var(--text-muted);"></div>
+        </div>
+      </div>
+
+      <!-- Quick Analysis sub-panel (shown after clicking Quick Analysis) -->
+      <div id="welcome-quick-panel" style="display:none;margin-top:36px;padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);">
+        <div style="font-size:16px;font-weight:700;color:var(--green);margin-bottom:14px;">Quick Analysis</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <label style="font-size:13px;color:var(--text-sec);">
+            Profile
+            <select id="welcome-profile-select" style="display:block;margin-top:6px;width:100%;padding:8px 10px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;">
+              <option value="default">Default</option>
+              <option value="racer">Racer</option>
+              <option value="research">Research / University</option>
+              <option value="shop_repair">Drone Shop / Repair</option>
+              <option value="factory_qa">Factory / QA</option>
+              <option value="gov_mil">Gov / Mil</option>
+              <option value="advanced">Advanced / Custom</option>
+            </select>
+          </label>
+          <label style="font-size:13px;color:var(--text-sec);">
+            Flight log file
+            <input type="file" id="welcome-file-input" accept=".ulg,.bin,.log,.tlog,.csv"
+                   style="display:block;margin-top:6px;width:100%;padding:8px 10px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;"/>
+          </label>
+          <div style="display:flex;gap:10px;">
+            <button id="welcome-qa-btn" onclick="runQuickAnalysis()"
+                    style="padding:10px 18px;font-family:var(--font);font-size:13px;font-weight:600;border:1px solid var(--green);border-radius:6px;background:var(--green-glow);color:var(--green);cursor:pointer;">
+              Run Quick Analysis
+            </button>
+            <button onclick="hideQuickPanel()"
+                    style="padding:10px 18px;font-family:var(--font);font-size:13px;font-weight:600;border:1px solid var(--card-border);border-radius:6px;background:transparent;color:var(--text-sec);cursor:pointer;">
+              Cancel
+            </button>
+          </div>
+          <div id="welcome-qa-status" style="font-size:13px;color:var(--text-muted);"></div>
+        </div>
+
+        <!-- Results panel -->
+        <div id="welcome-qa-results" style="display:none;margin-top:20px;padding-top:18px;border-top:1px solid var(--card-border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:14px;font-weight:700;color:var(--green);">Results</div>
+            <button id="welcome-save-case-btn" onclick="saveQuickAsCase()"
+                    style="padding:8px 14px;font-family:var(--font);font-size:13px;font-weight:600;border:1px solid var(--green);border-radius:6px;background:var(--green-glow);color:var(--green);cursor:pointer;">
+              Save as Investigation Case
+            </button>
+          </div>
+          <div id="welcome-qa-summary" style="font-size:13px;color:var(--text);line-height:1.6;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Upload view ─────────────────────────────────────────── -->
   <div id="upload-view" class="tab-view">
@@ -2275,12 +2363,14 @@
     currentTab = tab;
 
     // Update nav highlights
+    document.getElementById('nav-welcome').classList.toggle('active', tab === 'welcome');
     document.getElementById('nav-cases').classList.toggle('active', tab === 'cases');
     document.getElementById('nav-analyze').classList.toggle('active', tab === 'analyze');
     document.getElementById('nav-plugins').classList.toggle('active', tab === 'plugins');
     document.getElementById('nav-history').classList.toggle('active', tab === 'history');
 
     // Hide all views
+    document.getElementById('welcome-view').style.display   = 'none';
     document.getElementById('cases-view').style.display     = 'none';
     document.getElementById('upload-view').style.display    = 'none';
     document.getElementById('loading-view').style.display   = 'none';
@@ -2288,7 +2378,11 @@
     document.getElementById('plugins-view').style.display   = 'none';
     document.getElementById('history-view').style.display   = 'none';
 
-    if (tab === 'cases') {
+    if (tab === 'welcome') {
+      document.getElementById('welcome-view').style.display = '';
+      document.getElementById('tab-crash').style.display = 'none';
+      loadWelcomeRecent();
+    } else if (tab === 'cases') {
       document.getElementById('cases-view').style.display = '';
       document.getElementById('tab-crash').style.display = 'none';
       loadCasesList();
@@ -5293,8 +5387,150 @@
     if (e.target === this) hideNewCaseModal();
   });
 
-  // Default to Cases tab on load
-  switchTab('cases');
+  /* ════════════════════════════════════════════════════════════
+     Welcome screen helpers (v11 Strategy Sprint)
+  ════════════════════════════════════════════════════════════ */
+  let _lastQuickAnalysis = null;
+
+  async function loadWelcomeRecent() {
+    const list = document.getElementById('welcome-recent-list');
+    if (!list) return;
+    list.innerHTML = 'Loading…';
+    try {
+      const res = await fetch('/api/cases/');
+      const data = await res.json();
+      const cases = (data.cases || []).slice(0, 5);
+      if (!cases.length) {
+        list.innerHTML = '<div>No recent cases.</div>';
+        return;
+      }
+      list.innerHTML = cases.map(c => {
+        const id = escHtml(c.case_id);
+        return `<div style="margin-top:4px;cursor:pointer;color:var(--text-sec);"
+                     onclick="event.stopPropagation();openCaseFromWelcome('${id}')">${id}</div>`;
+      }).join('');
+    } catch (err) {
+      list.innerHTML = '<div style="color:var(--red);">Failed to load.</div>';
+    }
+  }
+
+  function welcomeStart(kind) {
+    if (kind === 'quick') {
+      document.getElementById('welcome-quick-panel').style.display = '';
+    } else if (kind === 'case') {
+      switchTab('cases');
+      // Open new-case modal if it exists
+      if (typeof showNewCaseModal === 'function') {
+        setTimeout(showNewCaseModal, 50);
+      }
+    } else if (kind === 'recent') {
+      switchTab('cases');
+    }
+  }
+
+  function hideQuickPanel() {
+    document.getElementById('welcome-quick-panel').style.display = 'none';
+    document.getElementById('welcome-qa-results').style.display = 'none';
+    document.getElementById('welcome-qa-summary').innerHTML = '';
+    document.getElementById('welcome-qa-status').textContent = '';
+    _lastQuickAnalysis = null;
+  }
+
+  function openCaseFromWelcome(caseId) {
+    switchTab('cases');
+    if (typeof openCaseDetail === 'function') {
+      setTimeout(() => openCaseDetail(caseId), 50);
+    }
+  }
+
+  async function runQuickAnalysis() {
+    const input = document.getElementById('welcome-file-input');
+    const profile = document.getElementById('welcome-profile-select').value;
+    const status = document.getElementById('welcome-qa-status');
+    const btn = document.getElementById('welcome-qa-btn');
+    if (!input.files || !input.files[0]) {
+      status.textContent = 'Choose a file first.';
+      status.style.color = 'var(--red)';
+      return;
+    }
+    const file = input.files[0];
+    const form = new FormData();
+    form.append('file', file);
+    form.append('profile', profile);
+    btn.disabled = true;
+    status.style.color = 'var(--text-muted)';
+    status.textContent = 'Running quick analysis…';
+    try {
+      const res = await fetch('/api/quick-analysis', { method: 'POST', body: form });
+      if (!res.ok) {
+        const errTxt = await res.text();
+        throw new Error(errTxt);
+      }
+      const data = await res.json();
+      _lastQuickAnalysis = { file, profile, data };
+      renderQuickAnalysisSummary(data);
+      document.getElementById('welcome-qa-results').style.display = '';
+      status.style.color = 'var(--green)';
+      status.textContent = 'Quick analysis complete.';
+    } catch (err) {
+      status.style.color = 'var(--red)';
+      status.textContent = 'Quick analysis failed: ' + (err && err.message || err);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderQuickAnalysisSummary(data) {
+    const summary = data.summary || {};
+    const meta = data.metadata || {};
+    const bysev = summary.by_severity || {};
+    const wrap = document.getElementById('welcome-qa-summary');
+    const findingLines = (data.findings || []).slice(0, 5).map(f => {
+      return `<li>${escHtml(f.severity || 'info').toUpperCase()} — ${escHtml(f.title || 'untitled')}</li>`;
+    }).join('');
+    const hypLines = (data.hypotheses || []).slice(0, 3).map(h => {
+      return `<li>${escHtml(h.category || h.theme || '')} — ${escHtml(h.statement || '')}</li>`;
+    }).join('');
+    wrap.innerHTML = `
+      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;">
+        <div><strong style="color:var(--green);">Score</strong>: ${data.overall_score ?? '—'}/100</div>
+        <div><strong style="color:var(--green);">Duration</strong>: ${meta.duration_sec || 0}s</div>
+        <div><strong style="color:var(--green);">Profile</strong>: ${escHtml((data.profile && data.profile.name) || 'Default')}</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <strong style="color:var(--green);">Findings by severity</strong>:
+        critical=${bysev.critical||0} · warning=${bysev.warning||0} · info=${bysev.info||0} · pass=${bysev.pass||0}
+      </div>
+      ${findingLines ? `<div style="margin-bottom:10px;"><strong style="color:var(--green);">Top findings</strong><ul style="margin:6px 0 0 18px;">${findingLines}</ul></div>` : ''}
+      ${hypLines ? `<div><strong style="color:var(--green);">Top hypotheses</strong><ul style="margin:6px 0 0 18px;">${hypLines}</ul></div>` : ''}
+    `;
+  }
+
+  async function saveQuickAsCase() {
+    if (!_lastQuickAnalysis) return;
+    const { file, profile } = _lastQuickAnalysis;
+    const form = new FormData();
+    form.append('file', file);
+    form.append('profile', profile);
+    form.append('notes', 'Saved from Quick Analysis');
+    const status = document.getElementById('welcome-qa-status');
+    status.style.color = 'var(--text-muted)';
+    status.textContent = 'Saving as investigation case…';
+    try {
+      const res = await fetch('/api/quick-analysis/save-as-case', { method: 'POST', body: form });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      status.style.color = 'var(--green)';
+      status.textContent = `Case created: ${data.case_id}. Switching to case view…`;
+      setTimeout(() => { switchTab('cases'); }, 600);
+    } catch (err) {
+      status.style.color = 'var(--red)';
+      status.textContent = 'Save failed: ' + (err && err.message || err);
+    }
+  }
+
+  // Default to Welcome tab on load (v11 Strategy Sprint)
+  switchTab('welcome');
 </script>
 <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
 <script src="/static/cockpit.js"></script>

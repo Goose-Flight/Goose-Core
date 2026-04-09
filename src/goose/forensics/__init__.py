@@ -26,6 +26,8 @@ from goose.forensics.lifting import (
     lift_findings,
 )
 from goose.forensics.models import (
+    Attachment,
+    AttachmentType,
     AuditAction,
     AuditEntry,
     AnalysisRun,
@@ -35,6 +37,13 @@ from goose.forensics.models import (
     EvidenceItem,
     EvidenceManifest,
     Provenance,
+)
+from goose.forensics.profiles import (
+    PROFILE_CONFIGS,
+    ProfileConfig,
+    UserProfile,
+    WordingPack,
+    get_profile,
 )
 
 __all__ = [
@@ -65,4 +74,12 @@ __all__ = [
     "build_signal_quality",
     "generate_hypotheses",
     "lift_findings",
+    # v11 Strategy Sprint — attachments + profiles
+    "Attachment",
+    "AttachmentType",
+    "PROFILE_CONFIGS",
+    "ProfileConfig",
+    "UserProfile",
+    "WordingPack",
+    "get_profile",
 ]

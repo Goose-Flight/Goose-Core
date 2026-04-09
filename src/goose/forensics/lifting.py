@@ -144,50 +144,113 @@ def lift_findings(
 # Hypothesis generation
 # ---------------------------------------------------------------------------
 
-# Theme definitions: (theme_name, statement_template, matching_plugin_ids, severity_filter)
-_HYPOTHESIS_THEMES: list[tuple[str, str, set[str], set[str]]] = [
-    (
-        "crash",
-        "The vehicle experienced a crash or uncontrolled impact.",
-        {"crash_detection"},
-        {"critical", "warning"},
-    ),
-    (
-        "power",
-        "Power system degradation contributed to the flight anomaly.",
-        {"battery_sag"},
-        {"critical", "warning"},
-    ),
-    (
-        "navigation",
-        "Navigation or position estimation failure affected the flight.",
-        {"gps_health", "ekf_health", "ekf_status"},
-        {"critical", "warning"},
-    ),
-    (
-        "vibration",
-        "Excessive vibration degraded vehicle control or sensor quality.",
-        {"vibration"},
-        {"critical", "warning"},
-    ),
-    (
-        "propulsion",
-        "Motor or propulsion system anomaly occurred during flight.",
-        {"motor_saturation"},
-        {"critical", "warning"},
-    ),
-    (
-        "control",
-        "Attitude or flight control degradation was detected.",
-        {"attitude_tracking"},
-        {"critical", "warning"},
-    ),
+# Theme definitions.
+#
+# Fields (per entry):
+#   theme              — short theme key used internally and for sorting
+#   category           — human-readable category label (v11 spec)
+#   statement_template — plain-language root-cause statement
+#   plugin_ids         — plugin.name set that can support this hypothesis
+#   severity_filter    — severities counted as supporting evidence
+#   required_streams   — telemetry streams relied on (for missing-data penalty)
+#   recommendations    — default analyst recommendations for this theme
+_HYPOTHESIS_THEMES: list[dict[str, Any]] = [
+    {
+        "theme": "crash",
+        "category": "impact / damage class",
+        "statement": "The vehicle experienced a crash or uncontrolled impact.",
+        "plugin_ids": {"crash_detection"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": {"position", "attitude"},
+        "recommendations": [
+            "Inspect frame for structural damage",
+            "Review motor telemetry for pre-impact anomalies",
+            "Correlate impact time with pilot input and failsafe events",
+        ],
+    },
+    {
+        "theme": "power",
+        "category": "battery / power issue",
+        "statement": "Power system degradation contributed to the flight anomaly.",
+        "plugin_ids": {"battery_sag"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": {"battery"},
+        "recommendations": [
+            "Inspect battery pack for cell imbalance, puffing, or damage",
+            "Verify charger health and charge cycles on the pack",
+            "Cross-check voltage telemetry against motor load",
+        ],
+    },
+    {
+        "theme": "navigation",
+        "category": "navigation / GPS issue",
+        "statement": "Navigation or position estimation failure affected the flight.",
+        "plugin_ids": {"gps_health", "ekf_health", "ekf_status", "ekf_consistency"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": {"gps", "ekf"},
+        "recommendations": [
+            "Review GPS fix quality and sky visibility at the operating area",
+            "Check EKF innovations and reset events",
+            "Audit recent firmware or parameter changes affecting the estimator",
+        ],
+    },
+    {
+        "theme": "vibration",
+        "category": "vibration-induced instability",
+        "statement": "Excessive vibration degraded vehicle control or sensor quality.",
+        "plugin_ids": {"vibration"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": {"vibration"},
+        "recommendations": [
+            "Balance propellers and inspect motor bearings",
+            "Verify flight controller soft-mount integrity",
+            "Check for loose frame hardware or damaged props",
+        ],
+    },
+    {
+        "theme": "propulsion",
+        "category": "propulsion / motor issue",
+        "statement": "Motor or propulsion system anomaly occurred during flight.",
+        "plugin_ids": {"motor_saturation"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": {"motors"},
+        "recommendations": [
+            "Inspect each motor for bearing drag, heat damage, or winding issues",
+            "Verify ESC calibration and firmware consistency across channels",
+            "Check for mass imbalance or asymmetric thrust authority",
+        ],
+    },
+    {
+        "theme": "control",
+        "category": "control / attitude tracking issue",
+        "statement": "Attitude or flight control degradation was detected.",
+        "plugin_ids": {"attitude_tracking"},
+        "severity_filter": {"critical", "warning"},
+        "required_streams": {"attitude"},
+        "recommendations": [
+            "Review rate controller tuning and PID gains",
+            "Verify IMU orientation and calibration",
+            "Correlate tracking errors with RC input and mode changes",
+        ],
+    },
 ]
+
+
+def _diag_missing_streams(diag: ParseDiagnostics | None) -> set[str]:
+    """Return the set of required streams that were reported missing by the parser."""
+    if diag is None:
+        return set()
+    missing: set[str] = set()
+    for sc in getattr(diag, "stream_coverage", []) or []:
+        if not getattr(sc, "present", True):
+            missing.add(getattr(sc, "stream_name", ""))
+    return missing
 
 
 def generate_hypotheses(
     forensic_findings: list[ForensicFinding],
     run_id: str,
+    parse_diag: ParseDiagnostics | None = None,
 ) -> list[Hypothesis]:
     """Auto-generate hypothesis candidates from correlated findings.
 
@@ -207,8 +270,17 @@ def generate_hypotheses(
     - Parser confidence is not used here.
     """
     hypotheses: list[Hypothesis] = []
+    missing_streams = _diag_missing_streams(parse_diag)
 
-    for theme, statement, plugin_ids, sev_filter in _HYPOTHESIS_THEMES:
+    for theme_entry in _HYPOTHESIS_THEMES:
+        theme = theme_entry["theme"]
+        category = theme_entry["category"]
+        statement = theme_entry["statement"]
+        plugin_ids = theme_entry["plugin_ids"]
+        sev_filter = theme_entry["severity_filter"]
+        required_streams = theme_entry.get("required_streams", set())
+        recommendations = list(theme_entry.get("recommendations", []))
+
         theme_findings = [
             f for f in forensic_findings
             if f.plugin_id in plugin_ids
@@ -241,6 +313,20 @@ def generate_hypotheses(
                 "Confidence is moderate; corroboration from additional plugin analysis recommended."
             )
 
+        # --- v11 missing-data penalty --------------------------------------
+        # If any required stream is absent from the parse, the analytical
+        # basis for this hypothesis is weaker. Reduce confidence by 0.1 per
+        # required stream absence (floored at 0.0), and record an unresolved
+        # question noting what is missing.
+        theme_missing = required_streams & missing_streams
+        if theme_missing:
+            penalty = round(0.1 * len(theme_missing), 2)
+            confidence = round(max(0.0, confidence - penalty), 2)
+            unresolved.append(
+                "Required telemetry streams missing for this hypothesis: "
+                + ", ".join(sorted(theme_missing))
+            )
+
         hypotheses.append(Hypothesis(
             hypothesis_id=f"HYP-{uuid.uuid4().hex[:8].upper()}",
             statement=statement,
@@ -252,6 +338,9 @@ def generate_hypotheses(
             unresolved_questions=unresolved,
             run_id=run_id,
             theme=theme,
+            category=category,
+            recommendations=recommendations,
+            generated_by="system",
         ))
 
     # Sort: highest confidence first

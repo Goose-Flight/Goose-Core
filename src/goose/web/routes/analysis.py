@@ -200,7 +200,11 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     # --- Hypotheses and signal quality (still use lifting layer) -------------
     from goose.forensics.lifting import generate_hypotheses, build_signal_quality
-    hypotheses = generate_hypotheses(forensic_findings, run_id=run_id)
+    hypotheses = generate_hypotheses(
+        forensic_findings,
+        run_id=run_id,
+        parse_diag=parse_result.diagnostics,
+    )
     signal_quality = build_signal_quality(parse_result.diagnostics)
 
     # --- Persist analysis/ artifacts -----------------------------------------
@@ -228,6 +232,19 @@ async def analyze_case(case_id: str) -> JSONResponse:
     }
     (analysis_dir / "hypotheses.json").write_text(
         json.dumps(hypotheses_bundle, indent=2), encoding="utf-8"
+    )
+
+    # timeline.json (v11 Strategy Sprint — structured event timeline)
+    from goose.forensics.timeline import build_full_timeline
+    timeline_events = build_full_timeline(flight, forensic_findings, run_id)
+    timeline_bundle = {
+        "timeline_version": "2.0",
+        "run_id": run_id,
+        "generated_at": completed_at.isoformat(),
+        "events": [e.to_dict() for e in timeline_events],
+    }
+    (analysis_dir / "timeline.json").write_text(
+        json.dumps(timeline_bundle, indent=2), encoding="utf-8"
     )
 
     # signal_quality.json

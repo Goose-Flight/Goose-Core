@@ -324,6 +324,11 @@ class Hypothesis:
     generated_at: datetime = field(default_factory=lambda: datetime.now().replace(microsecond=0))
     run_id: str | None = None
     theme: str = ""  # e.g. "power", "crash", "navigation", "control"
+    # v11 Strategy Sprint additions
+    category: str = ""                          # e.g. "propulsion / motor issue"
+    related_timeline_events: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
+    generated_by: str = "system"                # "system" or "user"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -340,6 +345,10 @@ class Hypothesis:
             "generated_at": self.generated_at.isoformat(),
             "run_id": self.run_id,
             "theme": self.theme,
+            "category": self.category,
+            "related_timeline_events": list(self.related_timeline_events),
+            "recommendations": list(self.recommendations),
+            "generated_by": self.generated_by,
         }
 
     def to_json(self) -> str:

@@ -28,7 +28,19 @@ Goose is an open-source flight forensic platform for UAV/drone flight log invest
 
 **11 analysis plugins** -- crash_detection, battery_sag, gps_health, vibration, motor_saturation, attitude_tracking, ekf_consistency, rc_signal, position_tracking, failsafe_events, and log_health. Each plugin emits findings with severity levels and confidence scores.
 
-**Web GUI** -- Case list, case creation, evidence upload, findings view, audit trail view, parse diagnostics tab, telemetry charts (uPlot), and SVG flight path visualization. The GUI is the primary product surface.
+**User profiles** -- Data-driven profile configurations (Racer, Research, Shop/Repair, Factory/QA, Gov/Mil, Advanced, Default) bias defaults, plugin selection, chart presets, and report wording without forking the forensic engine. Every profile uses the same parser, plugins, and canonical models. See `GET /api/profiles`.
+
+**Quick Analysis** -- Session-only triage flow for users who need findings without creating a case. Upload a log, pick a profile, get findings + hypotheses + summary. No evidence is persisted. Promote to a full Investigation Case with one click when needed. See `POST /api/quick-analysis`.
+
+**Rich case metadata** -- Cases carry full operational context (mission/sortie ids, operator and unit, platform and firmware, customer/ticket info, damage and corrective actions) so investigation output is forensically complete for every profile.
+
+**Attachments** -- Non-telemetry attachments (photos, videos, GCS logs, notes, report appendices, checklists) are hashed and stored per-case with a manifest.
+
+**Structured timeline** -- Typed `TimelineEvent` stream built from parser output (flight phases, mode changes, failsafes) and plugin findings. Persisted per analysis run at `analysis/timeline.json`.
+
+**Feature gate scaffold** -- `goose.features.FeatureGate` provides capability checks for future tiering (Local Pro / Hosted Team / Enterprise Gov). The open-source build always runs at `OSS_CORE`; no billing logic lives in the core.
+
+**Web GUI** -- Welcome screen with three entry paths (Quick Analysis, Investigation Case, Open Recent Case), case list, case creation, evidence upload, findings view, audit trail view, parse diagnostics tab, telemetry charts (uPlot), and SVG flight path visualization. The GUI is the primary product surface.
 
 **CLI** -- Full command-line interface for analysis, case management, and server operation.
 

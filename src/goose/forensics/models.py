@@ -23,6 +23,20 @@ class CaseStatus(str, Enum):
     ARCHIVED = "archived"
 
 
+class AttachmentType(str, Enum):
+    """v11 Strategy Sprint — types of non-telemetry attachments a user can add to a case."""
+    PHOTO = "photo"
+    VIDEO = "video"
+    DOCUMENT = "document"
+    GCS_LOG = "gcs_log"
+    SECONDARY_LOG = "secondary_log"
+    NOTE = "note"
+    REPORT_APPENDIX = "report_appendix"
+    CHECKLIST = "checklist"
+    EXTERNAL_DATA = "external_data"
+    OTHER = "other"
+
+
 class AuditAction(str, Enum):
     CASE_CREATED = "case_created"
     EVIDENCE_INGESTED = "evidence_ingested"
@@ -216,6 +230,11 @@ class Case:
 
     The case is the top-level container for evidence, analysis runs, and exports.
     Persisted as case.json in the case directory.
+
+    v11 Strategy Sprint — Case metadata extension
+    All new fields are optional and default to None or empty strings so existing
+    case.json files continue to load unchanged. ``from_dict`` ignores unknown
+    keys for forward-compatibility with future fields.
     """
 
     case_id: str                                       # e.g. "CASE-2026-000001"
@@ -231,6 +250,50 @@ class Case:
     analysis_runs: list[AnalysisRun] = field(default_factory=list)
     exports: list[CaseExport] = field(default_factory=list)
 
+    # --- v11 Strategy Sprint: operational context ---
+    mission_id: str | None = None
+    sortie_id: str | None = None
+    operation_type: str | None = None       # "training", "commercial", "research", "race", "test", "operational"
+    event_type: str | None = None           # "crash", "anomaly", "normal", "test_flight"
+    event_classification: str | None = None # "mishap", "incident", "close_call", "performance_issue", "none"
+    event_severity: str | None = None       # "critical", "major", "minor", "none"
+    date_time_start: str | None = None      # ISO timestamp of the actual event (not case creation)
+    date_time_end: str | None = None
+    location_name: str | None = None
+    operating_area: str | None = None
+    environment_summary: str | None = None  # weather, wind, visibility notes
+
+    # --- v11 Strategy Sprint: platform / system ---
+    platform_name: str | None = None
+    platform_type: str | None = None        # "multirotor", "fixed_wing", "vtol", "helicopter"
+    serial_number: str | None = None
+    firmware_version: str | None = None
+    hardware_config: str | None = None
+    payload_config: str | None = None
+    battery_config: str | None = None
+    propulsion_notes: str | None = None
+    recent_changes: str | None = None       # "replaced motor 2, reflashed FC"
+
+    # --- v11 Strategy Sprint: human / org ---
+    operator_name: str | None = None
+    team_name: str | None = None
+    unit_name: str | None = None
+    organization: str | None = None
+    customer_name: str | None = None
+    ticket_id: str | None = None
+    technician_name: str | None = None
+    tester_name: str | None = None
+
+    # --- v11 Strategy Sprint: investigation / outcome ---
+    damage_summary: str | None = None
+    loss_summary: str | None = None
+    recommendations: str | None = None
+    corrective_actions: str | None = None
+    closure_notes: str | None = None
+
+    # --- v11 Strategy Sprint: profile ---
+    profile: str = "default"   # "racer" | "research" | "shop_repair" | "factory_qa" | "gov_mil" | "advanced" | "default"
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "case_id": self.case_id,
@@ -245,6 +308,45 @@ class Case:
             "evidence_items": [e.to_dict() for e in self.evidence_items],
             "analysis_runs": [r.to_dict() for r in self.analysis_runs],
             "exports": [x.to_dict() for x in self.exports],
+            # Operational context
+            "mission_id": self.mission_id,
+            "sortie_id": self.sortie_id,
+            "operation_type": self.operation_type,
+            "event_type": self.event_type,
+            "event_classification": self.event_classification,
+            "event_severity": self.event_severity,
+            "date_time_start": self.date_time_start,
+            "date_time_end": self.date_time_end,
+            "location_name": self.location_name,
+            "operating_area": self.operating_area,
+            "environment_summary": self.environment_summary,
+            # Platform
+            "platform_name": self.platform_name,
+            "platform_type": self.platform_type,
+            "serial_number": self.serial_number,
+            "firmware_version": self.firmware_version,
+            "hardware_config": self.hardware_config,
+            "payload_config": self.payload_config,
+            "battery_config": self.battery_config,
+            "propulsion_notes": self.propulsion_notes,
+            "recent_changes": self.recent_changes,
+            # Human / org
+            "operator_name": self.operator_name,
+            "team_name": self.team_name,
+            "unit_name": self.unit_name,
+            "organization": self.organization,
+            "customer_name": self.customer_name,
+            "ticket_id": self.ticket_id,
+            "technician_name": self.technician_name,
+            "tester_name": self.tester_name,
+            # Investigation / outcome
+            "damage_summary": self.damage_summary,
+            "loss_summary": self.loss_summary,
+            "recommendations": self.recommendations,
+            "corrective_actions": self.corrective_actions,
+            "closure_notes": self.closure_notes,
+            # Profile
+            "profile": self.profile,
         }
 
     @classmethod
@@ -255,6 +357,9 @@ class Case:
         d["evidence_items"] = [EvidenceItem.from_dict(e) for e in d.get("evidence_items", [])]
         d["analysis_runs"] = [AnalysisRun.from_dict(r) for r in d.get("analysis_runs", [])]
         d["exports"] = [CaseExport.from_dict(x) for x in d.get("exports", [])]
+        # Forward-compat: drop unknown keys (any future fields)
+        known = {f.name for f in __import__("dataclasses").fields(cls)}
+        d = {k: v for k, v in d.items() if k in known}
         return cls(**d)
 
     def to_json(self) -> str:
@@ -358,4 +463,70 @@ class AuditEntry:
         d = dict(d)
         d["timestamp"] = datetime.fromisoformat(d["timestamp"])
         d["action"] = AuditAction(d["action"])
+        return cls(**d)
+
+
+# ---------------------------------------------------------------------------
+# Attachment model (v11 Strategy Sprint)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Attachment:
+    """A non-telemetry attachment belonging to a case.
+
+    Photos, videos, GCS logs, checklists, notes, report appendices, etc.
+    Stored immutably under ``cases/{case_id}/attachments/`` with a manifest
+    listing all attachments for the case. Distinct from EvidenceItem (which
+    is the primary flight log evidence the forensic pipeline operates on).
+    """
+
+    attachment_id: str
+    case_id: str
+    filename: str
+    content_type: str
+    size_bytes: int
+    sha256: str
+    attachment_type: AttachmentType
+    stored_path: str
+    uploaded_at: str                 # ISO timestamp
+    uploaded_by: str = "user"
+    sha512: str = ""
+    immutable: bool = True
+    notes: str = ""
+    related_evidence_id: str | None = None
+    related_timeline_time: float | None = None
+    provenance_summary: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "attachment_id": self.attachment_id,
+            "case_id": self.case_id,
+            "filename": self.filename,
+            "content_type": self.content_type,
+            "size_bytes": self.size_bytes,
+            "sha256": self.sha256,
+            "attachment_type": self.attachment_type.value,
+            "stored_path": self.stored_path,
+            "uploaded_at": self.uploaded_at,
+            "uploaded_by": self.uploaded_by,
+            "sha512": self.sha512,
+            "immutable": self.immutable,
+            "notes": self.notes,
+            "related_evidence_id": self.related_evidence_id,
+            "related_timeline_time": self.related_timeline_time,
+            "provenance_summary": self.provenance_summary,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> Attachment:
+        d = dict(d)
+        at = d.get("attachment_type", "other")
+        if isinstance(at, str):
+            try:
+                d["attachment_type"] = AttachmentType(at)
+            except ValueError:
+                d["attachment_type"] = AttachmentType.OTHER
+        # Forward-compat: drop unknown keys
+        known = {f.name for f in __import__("dataclasses").fields(cls)}
+        d = {k: v for k, v in d.items() if k in known}
         return cls(**d)

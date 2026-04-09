@@ -24,9 +24,54 @@ router = APIRouter(tags=["cases"])
 # ---------------------------------------------------------------------------
 
 class CreateCaseRequest(BaseModel):
+    """Case creation body.
+
+    v11 Strategy Sprint — all new optional metadata fields are accepted here
+    and merged into the created ``Case`` before it is persisted. Extra/unknown
+    keys at the HTTP layer are ignored by pydantic.
+    """
     created_by: str = "gui"
     tags: list[str] = []
     notes: str = ""
+    # --- v11 Strategy Sprint: profile + extended metadata ---
+    profile: str = "default"
+    # Operational context
+    mission_id: str | None = None
+    sortie_id: str | None = None
+    operation_type: str | None = None
+    event_type: str | None = None
+    event_classification: str | None = None
+    event_severity: str | None = None
+    date_time_start: str | None = None
+    date_time_end: str | None = None
+    location_name: str | None = None
+    operating_area: str | None = None
+    environment_summary: str | None = None
+    # Platform
+    platform_name: str | None = None
+    platform_type: str | None = None
+    serial_number: str | None = None
+    firmware_version: str | None = None
+    hardware_config: str | None = None
+    payload_config: str | None = None
+    battery_config: str | None = None
+    propulsion_notes: str | None = None
+    recent_changes: str | None = None
+    # Human / org
+    operator_name: str | None = None
+    team_name: str | None = None
+    unit_name: str | None = None
+    organization: str | None = None
+    customer_name: str | None = None
+    ticket_id: str | None = None
+    technician_name: str | None = None
+    tester_name: str | None = None
+    # Investigation / outcome
+    damage_summary: str | None = None
+    loss_summary: str | None = None
+    recommendations: str | None = None
+    corrective_actions: str | None = None
+    closure_notes: str | None = None
 
 
 class UpdateStatusRequest(BaseModel):
@@ -67,6 +112,13 @@ def _serialize_case_summary(case: Any) -> dict[str, Any]:
         "evidence_count": len(case.evidence_items),
         "analysis_run_count": len(case.analysis_runs),
         "export_count": len(case.exports),
+        # v11 Strategy Sprint — surface profile + selected metadata in summary
+        "profile": getattr(case, "profile", "default"),
+        "mission_id": getattr(case, "mission_id", None),
+        "event_type": getattr(case, "event_type", None),
+        "event_classification": getattr(case, "event_classification", None),
+        "platform_name": getattr(case, "platform_name", None),
+        "operator_name": getattr(case, "operator_name", None),
     }
 
 
@@ -75,12 +127,41 @@ def _serialize_case_detail(case: Any) -> dict[str, Any]:
     summary["evidence_items"] = [_serialize_evidence(ev) for ev in case.evidence_items]
     summary["analysis_runs"] = [r.to_dict() for r in case.analysis_runs]
     summary["exports"] = [x.to_dict() for x in case.exports]
+    # v11 Strategy Sprint — full extended metadata on detail view
+    for f in (
+        "mission_id", "sortie_id", "operation_type", "event_type",
+        "event_classification", "event_severity", "date_time_start", "date_time_end",
+        "location_name", "operating_area", "environment_summary",
+        "platform_name", "platform_type", "serial_number", "firmware_version",
+        "hardware_config", "payload_config", "battery_config", "propulsion_notes",
+        "recent_changes",
+        "operator_name", "team_name", "unit_name", "organization",
+        "customer_name", "ticket_id", "technician_name", "tester_name",
+        "damage_summary", "loss_summary", "recommendations",
+        "corrective_actions", "closure_notes",
+    ):
+        summary[f] = getattr(case, f, None)
     return summary
 
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+_V11_METADATA_FIELDS = (
+    "profile",
+    "mission_id", "sortie_id", "operation_type", "event_type",
+    "event_classification", "event_severity", "date_time_start", "date_time_end",
+    "location_name", "operating_area", "environment_summary",
+    "platform_name", "platform_type", "serial_number", "firmware_version",
+    "hardware_config", "payload_config", "battery_config", "propulsion_notes",
+    "recent_changes",
+    "operator_name", "team_name", "unit_name", "organization",
+    "customer_name", "ticket_id", "technician_name", "tester_name",
+    "damage_summary", "loss_summary", "recommendations",
+    "corrective_actions", "closure_notes",
+)
+
 
 @router.post("/", status_code=201)
 async def create_case(body: CreateCaseRequest) -> JSONResponse:
@@ -93,6 +174,16 @@ async def create_case(body: CreateCaseRequest) -> JSONResponse:
             tags=body.tags,
             notes=body.notes,
         )
+        # v11 Strategy Sprint — merge extended metadata onto the new case
+        # and re-save so it's persisted to case.json.
+        touched = False
+        for field_name in _V11_METADATA_FIELDS:
+            value = getattr(body, field_name, None)
+            if value is not None and value != "":
+                setattr(case, field_name, value)
+                touched = True
+        if touched:
+            svc.save_case(case)
         return JSONResponse({"ok": True, "case": _serialize_case_detail(case)}, status_code=201)
     except Exception as exc:
         logger.exception("Failed to create case")

@@ -84,11 +84,21 @@ def lift_finding(
     _plugin = PLUGIN_REGISTRY.get(thin.plugin_name)
     stream = _plugin.manifest.primary_stream if _plugin is not None else ""
 
+    # Resolve the best available time range from the thin finding.
+    # Priority: timestamp_start/end (canonical Finding fields) →
+    # start_time/end_time (alternate names some plugins may use) → None.
+    time_start: float | None = getattr(thin, "timestamp_start", None)
+    if time_start is None:
+        time_start = getattr(thin, "start_time", None)
+    time_end: float | None = getattr(thin, "timestamp_end", None)
+    if time_end is None:
+        time_end = getattr(thin, "end_time", None)
+
     ev_ref = EvidenceReference(
         evidence_id=evidence_item.evidence_id,
         stream_name=stream,
-        time_range_start=thin.timestamp_start,
-        time_range_end=thin.timestamp_end,
+        time_range_start=time_start,
+        time_range_end=time_end,
         support_summary=thin.description[:200] if thin.description else "",
     )
 
@@ -105,6 +115,9 @@ def lift_finding(
 
     severity = FindingSeverity(thin.severity) if thin.severity in FindingSeverity._value2member_map_ else FindingSeverity.INFO
 
+    # Also extract phase from alternate attribute names for forward-compat
+    phase = getattr(thin, "phase", None)
+
     return ForensicFinding(
         finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
         plugin_id=thin.plugin_name,
@@ -116,9 +129,9 @@ def lift_finding(
         confidence=round(int(thin.score) / 100.0, 2),
         # confidence_scope defaults to "finding_analysis" — intentionally distinct
         # from ParseDiagnostics.confidence_scope ("parser_parse_quality")
-        phase=thin.phase,
-        start_time=thin.timestamp_start,
-        end_time=thin.timestamp_end,
+        phase=phase,
+        start_time=time_start,
+        end_time=time_end,
         evidence_references=[ev_ref],
         supporting_metrics=supporting,
         contradicting_metrics={},
@@ -400,7 +413,8 @@ def generate_hypotheses(
             continue  # No meaningful evidence for this theme
 
         total = len(supporting_ids) + len(contradicting_ids)
-        confidence = round(len(supporting_ids) / total, 2) if total > 0 else 0.0
+        raw_confidence = round(len(supporting_ids) / total, 2) if total > 0 else 0.0
+        confidence = raw_confidence
 
         unresolved: list[str] = []
         if not contradicting_ids:
@@ -418,6 +432,7 @@ def generate_hypotheses(
         # required stream absence (floored at 0.0), and record an unresolved
         # question noting what is missing.
         theme_missing = required_streams & missing_streams
+        penalty = 0.0
         if theme_missing:
             penalty = round(0.1 * len(theme_missing), 2)
             confidence = round(max(0.0, confidence - penalty), 2)
@@ -425,6 +440,30 @@ def generate_hypotheses(
                 "Required telemetry streams missing for this hypothesis: "
                 + ", ".join(sorted(theme_missing))
             )
+
+        # --- C2b: stream-specific unresolved questions per plugin ----------
+        for pid in plugin_ids:
+            plugin_obj = PLUGIN_REGISTRY.get(pid)
+            if plugin_obj is None:
+                continue
+            plugin_required = getattr(
+                getattr(plugin_obj, "manifest", None), "required_streams", []
+            ) or []
+            for stream in plugin_required:
+                if stream in missing_streams and stream not in theme_missing:
+                    unresolved.append(
+                        f"Stream '{stream}' required by plugin '{pid}' is absent — "
+                        "findings from this plugin may be incomplete."
+                    )
+
+        # --- C2a: score_components transparency ---------------------------
+        score_components: dict[str, Any] = {
+            "supporting_findings_count": len(supporting_ids),
+            "contradicting_findings_count": len(contradicting_ids),
+            "missing_stream_penalty": -penalty,
+            "raw_confidence": raw_confidence,
+            "final_confidence": confidence,
+        }
 
         if confidence > max_confidence_seen:
             max_confidence_seen = confidence
@@ -444,6 +483,7 @@ def generate_hypotheses(
             category=category,
             recommendations=recommendations,
             generated_by="system",
+            supporting_metrics={"score_components": score_components},
         ))
 
     # E3: Payload mass change — emit standalone hypothesis when payload findings
@@ -500,19 +540,45 @@ def generate_hypotheses(
     # E2 unknown_mixed: emit when no other hypothesis has confidence >= 0.3
     if max_confidence_seen < 0.3:
         unknown_confidence = max(0.1, round(0.3 - max_confidence_seen, 2)) if max_confidence_seen > 0 else 0.2
+
+        # C2c: populate with available evidence stream names for investigator context
+        available_streams = sorted({
+            ref.stream_name
+            for f in forensic_findings
+            for ref in f.evidence_references
+            if getattr(ref, "stream_name", None)
+        })
+        stream_list = ", ".join(available_streams) if available_streams else "none identified"
+
+        # C2c: contradicting_findings = PASS findings from all theme plugins (evidence
+        # that each specific cause was NOT found)
+        all_pass_findings = [
+            f for f in forensic_findings
+            if f.severity == FindingSeverity.PASS
+        ]
+        unknown_contradicting_structured = [
+            {"finding_id": f.finding_id, "title": f.title, "severity": f.severity.value}
+            for f in all_pass_findings
+        ]
+
         hypotheses.append(Hypothesis(
             hypothesis_id=f"HYP-{uuid.uuid4().hex[:8].upper()}",
             statement="Root cause is unclear or involves multiple interacting factors.",
             supporting_finding_ids=[f.finding_id for f in forensic_findings],
-            contradicting_finding_ids=[],
-            contradicting_findings=[],
+            contradicting_finding_ids=[f.finding_id for f in all_pass_findings],
+            contradicting_findings=unknown_contradicting_structured,
             confidence=unknown_confidence,
             status=HypothesisStatus.CANDIDATE,
             unresolved_questions=[
                 "No single theme reached sufficient confidence — a multi-factor or "
                 "undetermined root cause should be considered.",
                 "Additional manual investigation or data collection is recommended.",
+                f"No clear dominant cause identified — consider reviewing: {stream_list}",
             ],
+            analyst_notes=(
+                "This hypothesis fires when no other theme achieves sufficient confidence. "
+                "It is not a cause — it is a forensic signal that more data or investigation is needed."
+            ),
             run_id=run_id,
             theme="unknown_mixed",
             category="unknown / mixed-factor event",

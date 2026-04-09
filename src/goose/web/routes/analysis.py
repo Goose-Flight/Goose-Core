@@ -327,7 +327,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     # timeline.json (v11 Strategy Sprint — structured event timeline)
     from goose.forensics.timeline import build_full_timeline
-    timeline_events = build_full_timeline(flight, forensic_findings, run_id)
+    timeline_events = build_full_timeline(flight, forensic_findings, run_id, hypotheses=hypotheses)
     timeline_bundle = {
         "timeline_version": "2.0",
         "run_id": run_id,

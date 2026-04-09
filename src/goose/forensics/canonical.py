@@ -310,6 +310,8 @@ class Hypothesis:
     related_timeline_events: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
     generated_by: str = "system"                # "system" or "user"
+    # Sprint 2 — scoring transparency
+    supporting_metrics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -331,6 +333,7 @@ class Hypothesis:
             "related_timeline_events": list(self.related_timeline_events),
             "recommendations": list(self.recommendations),
             "generated_by": self.generated_by,
+            "supporting_metrics": dict(self.supporting_metrics),
         }
 
     def to_json(self) -> str:

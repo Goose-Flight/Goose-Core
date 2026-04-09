@@ -109,14 +109,35 @@ def _new_event_id() -> str:
 def build_timeline_from_findings(
     forensic_findings: list[ForensicFinding],
     run_id: str,
+    hypotheses: list | None = None,
 ) -> list[TimelineEvent]:
-    """Convert ForensicFindings with timestamps into TimelineEvents."""
+    """Convert ForensicFindings with timestamps into TimelineEvents.
+
+    If ``hypotheses`` is provided, each finding-derived event will be linked
+    to any hypothesis whose ``supporting_finding_ids`` contains the finding's ID.
+    """
+    # Build a lookup: finding_id -> list of hypothesis_ids that reference it
+    fid_to_hyp_ids: dict[str, list[str]] = {}
+    if hypotheses:
+        for hyp in hypotheses:
+            hyp_id = getattr(hyp, "hypothesis_id", None) or (
+                hyp.get("hypothesis_id") if isinstance(hyp, dict) else None
+            )
+            if not hyp_id:
+                continue
+            supporting = getattr(hyp, "supporting_finding_ids", None) or (
+                hyp.get("supporting_finding_ids", []) if isinstance(hyp, dict) else []
+            )
+            for fid in (supporting or []):
+                fid_to_hyp_ids.setdefault(fid, []).append(hyp_id)
+
     events: list[TimelineEvent] = []
     for f in forensic_findings:
         t = f.start_time if f.start_time is not None else f.end_time
         if t is None:
             continue
         sev = f.severity.value if hasattr(f.severity, "value") else str(f.severity)
+        related_hyp_ids = fid_to_hyp_ids.get(f.finding_id, [])
         events.append(TimelineEvent(
             event_id=_new_event_id(),
             event_type=TimelineEventType.FINDING,
@@ -128,6 +149,7 @@ def build_timeline_from_findings(
             severity=sev,
             confidence=float(f.confidence) if f.confidence is not None else None,
             related_finding_ids=[f.finding_id],
+            related_hypothesis_ids=related_hyp_ids,
             notes=f.description[:200] if f.description else "",
         ))
     return events
@@ -202,6 +224,25 @@ def build_timeline_from_flight(flight: Flight, run_id: str) -> list[TimelineEven
     gps = getattr(flight, "gps", None)
     if gps is not None and not gps.empty:
         events.extend(_extract_gps_degradation_events(gps))
+
+    # --- RC signal loss windows -------------------------------------------
+    rc_input = getattr(flight, "rc_input", None)
+    if rc_input is not None and not rc_input.empty:
+        events.extend(_extract_rc_loss_events(rc_input))
+
+    # --- EKF innovation spikes -------------------------------------------
+    ekf = getattr(flight, "ekf", None)
+    if ekf is not None and not ekf.empty:
+        events.extend(_extract_ekf_innovation_spikes(ekf))
+
+    # --- Motor saturation windows ----------------------------------------
+    motors = getattr(flight, "motors", None)
+    if motors is not None and not motors.empty:
+        events.extend(_extract_motor_saturation_events(motors))
+
+    # --- Crash / impact window -------------------------------------------
+    if getattr(flight, "crashed", False):
+        events.extend(_extract_crash_impact_event(flight))
 
     # --- Flight start / end bookends --------------------------------------
     duration = 0.0
@@ -364,6 +405,189 @@ def _extract_gps_degradation_events(gps: Any) -> list[TimelineEvent]:
     return events
 
 
+_RC_SIGNAL_ZERO_THRESHOLD = 50   # channel value below this considered a dropout
+_EKF_INNOVATION_THRESHOLD = 0.5  # innovation magnitude above this is a spike
+_MOTOR_SATURATION_THRESHOLD = 1900  # PWM value; motors above this are near-max
+
+
+def _extract_rc_loss_events(rc: Any) -> list[TimelineEvent]:
+    """Detect RC signal loss windows from rc_input DataFrame.
+
+    Emits SYSTEM_EVENT "RC Signal Loss Window" with category ANOMALY and
+    severity "warning" when any RC channel value drops to or near zero
+    for a sustained window (minimum 1 second).  Degrades gracefully if
+    no channel columns are found.
+    """
+    import pandas as pd
+    events: list[TimelineEvent] = []
+    if not isinstance(rc, pd.DataFrame) or rc.empty:
+        return events
+    if "timestamp" not in rc.columns:
+        return events
+
+    # Find columns that look like RC channels (not timestamp, not index)
+    channel_cols = [
+        c for c in rc.columns
+        if c != "timestamp" and (
+            c.startswith("chan") or c.startswith("rc") or c.startswith("channel")
+            or c in ("roll", "pitch", "throttle", "yaw", "aux1", "aux2")
+        )
+    ]
+    if not channel_cols:
+        # Fallback: any numeric column that is not timestamp
+        channel_cols = [c for c in rc.columns if c != "timestamp"]
+
+    if not channel_cols:
+        return events
+
+    ts = rc["timestamp"]
+
+    # An RC dropout is when ALL channels are near zero simultaneously
+    all_zero = (rc[channel_cols].abs() < _RC_SIGNAL_ZERO_THRESHOLD).all(axis=1)
+    windows = _find_windows(ts, all_zero, min_duration_sec=1.0)
+    for t_start, t_end in windows:
+        events.append(TimelineEvent(
+            event_id=_new_event_id(),
+            event_type=TimelineEventType.SYSTEM_EVENT,
+            event_category=TimelineEventCategory.ANOMALY,
+            label="RC Signal Loss Window",
+            start_time=t_start,
+            end_time=t_end,
+            source="parser",
+            severity="warning",
+            notes=f"RC signal dropout detected for {t_end - t_start:.1f}s",
+        ))
+    return events
+
+
+def _extract_ekf_innovation_spikes(ekf: Any) -> list[TimelineEvent]:
+    """Detect EKF innovation spikes from ekf DataFrame.
+
+    Emits SYSTEM_EVENT "EKF Innovation Spike" with category ANOMALY when
+    any innovation column exceeds a threshold.  Merges nearby spikes into
+    windows (minimum 0.5 seconds).
+    """
+    import pandas as pd
+    events: list[TimelineEvent] = []
+    if not isinstance(ekf, pd.DataFrame) or ekf.empty:
+        return events
+    if "timestamp" not in ekf.columns:
+        return events
+
+    # Look for innovation columns
+    innov_cols = [
+        c for c in ekf.columns
+        if "innov" in c.lower() or "innovation" in c.lower()
+    ]
+    if not innov_cols:
+        return events
+
+    ts = ekf["timestamp"]
+
+    for col in innov_cols:
+        try:
+            vals = ekf[col].abs()
+            spike_mask = vals > _EKF_INNOVATION_THRESHOLD
+            windows = _find_windows(ts, spike_mask, min_duration_sec=0.5)
+            for t_start, t_end in windows:
+                events.append(TimelineEvent(
+                    event_id=_new_event_id(),
+                    event_type=TimelineEventType.SYSTEM_EVENT,
+                    event_category=TimelineEventCategory.ANOMALY,
+                    label="EKF Innovation Spike",
+                    start_time=t_start,
+                    end_time=t_end,
+                    source="parser",
+                    severity="warning",
+                    notes=f"EKF innovation spike on '{col}' (>{_EKF_INNOVATION_THRESHOLD}) for {t_end - t_start:.1f}s",
+                ))
+        except Exception:
+            continue
+    return events
+
+
+def _extract_motor_saturation_events(motors: Any) -> list[TimelineEvent]:
+    """Detect motor saturation windows from motors DataFrame.
+
+    Emits SYSTEM_EVENT "Motor Saturation Window" with category ANOMALY when
+    any motor output stays near maximum (>= _MOTOR_SATURATION_THRESHOLD) for
+    a sustained window (minimum 2 seconds).
+    """
+    import pandas as pd
+    events: list[TimelineEvent] = []
+    if not isinstance(motors, pd.DataFrame) or motors.empty:
+        return events
+    if "timestamp" not in motors.columns:
+        return events
+
+    motor_cols = [c for c in motors.columns if c != "timestamp"]
+    if not motor_cols:
+        return events
+
+    ts = motors["timestamp"]
+
+    # Any motor at saturation
+    any_saturated = (motors[motor_cols] >= _MOTOR_SATURATION_THRESHOLD).any(axis=1)
+    windows = _find_windows(ts, any_saturated, min_duration_sec=2.0)
+    for t_start, t_end in windows:
+        events.append(TimelineEvent(
+            event_id=_new_event_id(),
+            event_type=TimelineEventType.SYSTEM_EVENT,
+            event_category=TimelineEventCategory.ANOMALY,
+            label="Motor Saturation Window",
+            start_time=t_start,
+            end_time=t_end,
+            source="parser",
+            severity="warning",
+            notes=f"Motor(s) at saturation (>={_MOTOR_SATURATION_THRESHOLD}) for {t_end - t_start:.1f}s",
+        ))
+    return events
+
+
+def _extract_crash_impact_event(flight: Any) -> list[TimelineEvent]:
+    """Emit an IMPACT event near the end of log data when a crash is detected.
+
+    Uses the last frames of attitude or velocity data to estimate the crash
+    timestamp.  Falls back to the flight duration from metadata if no time
+    series is available.
+    """
+    events: list[TimelineEvent] = []
+    import pandas as pd
+
+    crash_ts: float | None = None
+
+    # Prefer attitude timestamp (most reliably logged until impact)
+    attitude = getattr(flight, "attitude", None)
+    if isinstance(attitude, pd.DataFrame) and not attitude.empty and "timestamp" in attitude.columns:
+        crash_ts = float(attitude["timestamp"].iloc[-1])
+    else:
+        velocity = getattr(flight, "velocity", None)
+        if isinstance(velocity, pd.DataFrame) and not velocity.empty and "timestamp" in velocity.columns:
+            crash_ts = float(velocity["timestamp"].iloc[-1])
+
+    if crash_ts is None:
+        meta = getattr(flight, "metadata", None)
+        if meta is not None:
+            dur = getattr(meta, "duration_sec", None)
+            if dur is not None:
+                crash_ts = float(dur)
+
+    if crash_ts is None:
+        return events
+
+    events.append(TimelineEvent(
+        event_id=_new_event_id(),
+        event_type=TimelineEventType.IMPACT,
+        event_category=TimelineEventCategory.ANOMALY,
+        label="Crash / Impact",
+        start_time=crash_ts,
+        source="parser",
+        severity="critical",
+        notes="Crash detected: rapid altitude loss near end of log.",
+    ))
+    return events
+
+
 def _find_windows(
     timestamps: Any,
     mask: Any,
@@ -401,15 +625,106 @@ def _find_windows(
     return windows
 
 
+def cluster_timeline_events(
+    events: list[TimelineEvent],
+    window_sec: float = 2.0,
+) -> list[TimelineEvent]:
+    """Group events occurring within ``window_sec`` of each other.
+
+    When 3 or more events fall within a ``window_sec`` window, they are
+    collapsed into a single composite SYSTEM_EVENT.  The composite event:
+    - Uses the highest severity of the grouped events.
+    - Label: "Multiple events ({count}) — {first label}..."
+    - Retains all related_finding_ids and related_hypothesis_ids.
+    - category ANOMALY if any grouped event is ANOMALY, else SYSTEM.
+    - Groups with < 3 events are left as-is.
+    """
+    if not events:
+        return events
+
+    _SEV_RANK = {"critical": 0, "warning": 1, "info": 2, "none": 3, None: 3}
+
+    sorted_events = sorted(events, key=lambda e: e.start_time)
+    result: list[TimelineEvent] = []
+    used: set[int] = set()
+
+    for i, ev in enumerate(sorted_events):
+        if i in used:
+            continue
+        # Collect all events that start within window_sec of ev
+        group = [i]
+        for j in range(i + 1, len(sorted_events)):
+            if j in used:
+                continue
+            if sorted_events[j].start_time - ev.start_time <= window_sec:
+                group.append(j)
+            else:
+                break  # events are sorted; no point continuing
+
+        if len(group) < 3:
+            result.append(ev)
+            used.add(i)
+        else:
+            # Composite event
+            grouped = [sorted_events[k] for k in group]
+            for k in group:
+                used.add(k)
+
+            # Highest severity
+            best_sev = sorted(
+                [g.severity for g in grouped],
+                key=lambda s: _SEV_RANK.get(s, 3),
+            )[0]
+
+            # Category: ANOMALY if any is ANOMALY
+            cat = TimelineEventCategory.ANOMALY if any(
+                g.event_category == TimelineEventCategory.ANOMALY for g in grouped
+            ) else TimelineEventCategory.SYSTEM
+
+            # Merge ids
+            all_finding_ids: list[str] = []
+            all_hyp_ids: list[str] = []
+            seen_fids: set[str] = set()
+            seen_hids: set[str] = set()
+            for g in grouped:
+                for fid in g.related_finding_ids:
+                    if fid not in seen_fids:
+                        all_finding_ids.append(fid)
+                        seen_fids.add(fid)
+                for hid in g.related_hypothesis_ids:
+                    if hid not in seen_hids:
+                        all_hyp_ids.append(hid)
+                        seen_hids.add(hid)
+
+            label = f"Multiple events ({len(grouped)}) — {grouped[0].label}..."
+            result.append(TimelineEvent(
+                event_id=_new_event_id(),
+                event_type=TimelineEventType.SYSTEM_EVENT,
+                event_category=cat,
+                label=label,
+                start_time=grouped[0].start_time,
+                end_time=grouped[-1].start_time,
+                source="system",
+                severity=best_sev,
+                related_finding_ids=all_finding_ids,
+                related_hypothesis_ids=all_hyp_ids,
+                notes=f"Cluster of {len(grouped)} events within {window_sec}s window.",
+            ))
+
+    result.sort(key=lambda e: e.start_time)
+    return result
+
+
 def build_full_timeline(
-    flight: Flight | None,
-    forensic_findings: list[ForensicFinding],
+    flight: "Flight | None",
+    forensic_findings: "list[ForensicFinding]",
     run_id: str,
+    hypotheses: list | None = None,
 ) -> list[TimelineEvent]:
     """Combine parser-derived and finding-derived events, sorted by start_time."""
     events: list[TimelineEvent] = []
     if flight is not None:
         events.extend(build_timeline_from_flight(flight, run_id))
-    events.extend(build_timeline_from_findings(forensic_findings, run_id))
+    events.extend(build_timeline_from_findings(forensic_findings, run_id, hypotheses=hypotheses))
     events.sort(key=lambda e: e.start_time)
     return events

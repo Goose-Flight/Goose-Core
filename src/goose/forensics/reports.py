@@ -215,6 +215,10 @@ class AnomalyReport:
     confidence_notes: str = ""
     limitations: str = ""
     recommendations: list[str] = field(default_factory=list)
+    # C3b enrichment fields
+    anomaly_windows: list[dict[str, Any]] = field(default_factory=list)
+    dominant_theme: str | None = None
+    data_limitations: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -236,6 +240,9 @@ class AnomalyReport:
             "confidence_notes": self.confidence_notes,
             "limitations": self.limitations,
             "recommendations": self.recommendations,
+            "anomaly_windows": self.anomaly_windows,
+            "dominant_theme": self.dominant_theme,
+            "data_limitations": self.data_limitations,
         }
 
     @classmethod
@@ -344,6 +351,9 @@ class ForensicCaseReport:
     export_replay_context: dict[str, Any] = field(default_factory=dict)
     report_type: str = "forensic_case_report"
     report_version: str = "1.0"
+    # C3a enrichment fields
+    evidence_quality: dict[str, Any] = field(default_factory=dict)
+    investigation_completeness: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -364,6 +374,8 @@ class ForensicCaseReport:
             "trust_tuning_context": self.trust_tuning_context,
             "limitations": self.limitations,
             "export_replay_context": self.export_replay_context,
+            "evidence_quality": self.evidence_quality,
+            "investigation_completeness": self.investigation_completeness,
         }
 
     @classmethod
@@ -824,6 +836,77 @@ def generate_forensic_case_report(
         "export_timestamps": [e.get("exported_at") for e in (case.get("exports") or []) if isinstance(e, dict)],
     }
 
+    # --- C3a: timeline_summary enrichment -----------------------------------
+    # Count events by type/category and compute first/last timestamps
+    timeline_event_counts: dict[str, int] = {}
+    first_event_ts: float | None = None
+    last_event_ts: float | None = None
+    for ev in timeline:
+        key = f"{ev.get('event_type', 'unknown')}/{ev.get('event_category', 'unknown')}"
+        timeline_event_counts[key] = timeline_event_counts.get(key, 0) + 1
+        ts = ev.get("start_time")
+        if ts is not None:
+            ts_f = float(ts)
+            if first_event_ts is None or ts_f < first_event_ts:
+                first_event_ts = ts_f
+            if last_event_ts is None or ts_f > last_event_ts:
+                last_event_ts = ts_f
+
+    timeline_summary_dict = {
+        "total_events": len(timeline),
+        "event_counts_by_type": timeline_event_counts,
+        "first_event_timestamp": first_event_ts,
+        "last_event_timestamp": last_event_ts,
+        "events": timeline[:50],  # cap for report size
+    }
+
+    # --- C3a: hypothesis_summary enrichment ---------------------------------
+    hypothesis_summary_list = [
+        {
+            "id": h.get("hypothesis_id"),
+            "category": h.get("category"),
+            "confidence": h.get("confidence"),
+            "status": h.get("status"),
+            "contradicting_findings_count": len(h.get("contradicting_findings") or []),
+            "unresolved_questions_count": len(h.get("unresolved_questions") or []),
+        }
+        for h in hypotheses
+    ]
+
+    # --- C3a: evidence_quality aggregation ----------------------------------
+    stream_coverage = parse_diag.get("stream_coverage") or parse_diag.get("streams") or []
+    completeness_vals = []
+    degraded_streams: list[str] = []
+    for sc in stream_coverage:
+        if isinstance(sc, dict):
+            comp = sc.get("completeness", 1.0)
+            if isinstance(comp, (int, float)):
+                completeness_vals.append(float(comp))
+                if float(comp) < 0.8:
+                    degraded_streams.append(sc.get("stream_name", "unknown"))
+    mean_completeness = round(sum(completeness_vals) / len(completeness_vals), 3) if completeness_vals else None
+    evidence_quality = {
+        "mean_completeness": mean_completeness,
+        "degraded_streams": degraded_streams,
+        "stream_count": len(stream_coverage),
+    }
+
+    # --- C3a: investigation_completeness score ------------------------------
+    score = 0
+    if findings:
+        score += 25
+    if hypotheses:
+        score += 25
+    if timeline:
+        score += 20
+    if evidence:
+        score += 15
+    # metadata completeness: check key case fields
+    meta_fields = ["mission_id", "platform_name", "operator_name", "status"]
+    filled = sum(1 for k in meta_fields if case.get(k))
+    score += int(15 * filled / len(meta_fields))
+    investigation_completeness = min(100, score)
+
     return ForensicCaseReport(
         generated_at=_now_iso(),
         case_id=case_id,
@@ -834,12 +917,14 @@ def generate_forensic_case_report(
         evidence_inventory=evidence,
         parser_diagnostics_summary=parser_diag_summary,
         findings_inventory=findings,
-        hypotheses_inventory=hypotheses,
-        timeline_summary=timeline[:50],  # cap for report size
+        hypotheses_inventory=hypothesis_summary_list,
+        timeline_summary=timeline_summary_dict,
         plugin_execution_summary=plugin_exec,
         trust_tuning_context=trust_tuning,
         limitations=_limitations_from_diagnostics(parse_diag),
         export_replay_context=export_replay,
+        evidence_quality=evidence_quality,
+        investigation_completeness=investigation_completeness,
     )
 
 
@@ -1082,6 +1167,47 @@ def generate_anomaly_report(
     all_hypotheses = _load_hypotheses(case_dir)
     hypotheses = [h for h in all_hypotheses if float(h.get("confidence", 0) or 0) >= 0.5]
 
+    # --- C3b: anomaly_windows — time windows where 2+ ANOMALY events cluster ---
+    timeline = _load_timeline(case_dir)
+    anomaly_events = [
+        ev for ev in timeline
+        if ev.get("event_category") == "anomaly"
+    ]
+    anomaly_windows: list[dict[str, Any]] = []
+    if len(anomaly_events) >= 2:
+        sorted_anoms = sorted(anomaly_events, key=lambda e: float(e.get("start_time", 0) or 0))
+        window_sec = 5.0
+        i = 0
+        while i < len(sorted_anoms):
+            group = [sorted_anoms[i]]
+            j = i + 1
+            while j < len(sorted_anoms):
+                t_i = float(sorted_anoms[i].get("start_time", 0) or 0)
+                t_j = float(sorted_anoms[j].get("start_time", 0) or 0)
+                if t_j - t_i <= window_sec:
+                    group.append(sorted_anoms[j])
+                    j += 1
+                else:
+                    break
+            if len(group) >= 2:
+                anomaly_windows.append({
+                    "start": float(group[0].get("start_time", 0) or 0),
+                    "end": float(group[-1].get("start_time", 0) or 0),
+                    "event_count": len(group),
+                    "labels": [ev.get("label", "") for ev in group],
+                })
+            i = j if j > i + 1 else i + 1
+
+    # --- C3b: dominant_theme — hypothesis category with highest confidence ---
+    dominant_theme: str | None = None
+    if all_hypotheses:
+        top_h = max(all_hypotheses, key=lambda h: float(h.get("confidence", 0) or 0))
+        dominant_theme = top_h.get("category") or top_h.get("theme")
+
+    # --- C3b: data_limitations — missing streams ----------------------------
+    parse_diag = _load_parse_diagnostics(case_dir)
+    data_limitations = _limitations_from_diagnostics(parse_diag)
+
     return AnomalyReport(
         case_id=case_id,
         run_id=run_id,
@@ -1092,6 +1218,9 @@ def generate_anomaly_report(
         wording=wording.to_dict(),
         # anomaly_classification uses the profile's event_label as a heading prefix
         anomaly_classification=wording.event_label,
+        anomaly_windows=anomaly_windows,
+        dominant_theme=dominant_theme,
+        data_limitations=data_limitations,
     )
 
 

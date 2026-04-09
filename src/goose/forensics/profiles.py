@@ -48,6 +48,7 @@ class WordingPack:
     platform_label: str          # "Quad" vs "UAV" vs "UAS" vs "Aircraft"
     analysis_label: str          # "Check" vs "Analysis" vs "Investigation" vs "Inspection"
     summary_heading: str         # heading used in reports
+    report_sections: dict[str, str] = field(default_factory=dict)  # section key -> display title
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -58,12 +59,13 @@ class WordingPack:
             "platform_label": self.platform_label,
             "analysis_label": self.analysis_label,
             "summary_heading": self.summary_heading,
+            "report_sections": dict(self.report_sections),
         }
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> WordingPack:
         known = {"profile_id", "workflow_label", "event_label", "operator_label",
-                 "platform_label", "analysis_label", "summary_heading"}
+                 "platform_label", "analysis_label", "summary_heading", "report_sections"}
         return cls(**{k: v for k, v in d.items() if k in known})
 
 
@@ -149,6 +151,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             platform_label="Quad",
             analysis_label="Check",
             summary_heading="Race Run Analysis",
+            report_sections={
+                "summary": "Run Summary",
+                "findings": "Performance Issues",
+                "recommendations": "Tune Recommendations",
+            },
         ),
         report_defaults=["MissionSummaryReport", "AnomalyReport"],
     ),
@@ -183,6 +190,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             platform_label="UAV",
             analysis_label="Analysis",
             summary_heading="Flight Test Analysis",
+            report_sections={
+                "summary": "Test Summary",
+                "findings": "Observations",
+                "recommendations": "Recommendations",
+            },
         ),
         report_defaults=["MissionSummaryReport", "AnomalyReport", "ForensicCaseReport"],
     ),
@@ -217,6 +229,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             platform_label="Aircraft",
             analysis_label="Inspection",
             summary_heading="Repair Diagnostic Report",
+            report_sections={
+                "summary": "Fault Assessment",
+                "findings": "Likely Cause",
+                "recommendations": "Inspection Checklist",
+            },
         ),
         report_defaults=["AnomalyReport", "CrashMishapReport"],
     ),
@@ -249,6 +266,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             platform_label="Unit",
             analysis_label="Inspection",
             summary_heading="QA Test Report",
+            report_sections={
+                "summary": "Test Summary",
+                "findings": "Out-of-Tolerance Findings",
+                "recommendations": "Corrective Actions",
+            },
         ),
         report_defaults=["MissionSummaryReport", "AnomalyReport"],
     ),
@@ -288,6 +310,13 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             platform_label="UAS",
             analysis_label="Investigation",
             summary_heading="Mishap Investigation Report",
+            report_sections={
+                "summary": "Incident Summary",
+                "findings": "Causal Factors",
+                "evidence": "Contributing Evidence",
+                "unresolved": "Unresolved Questions",
+                "recommendations": "Recommendations",
+            },
         ),
         report_defaults=["ForensicCaseReport", "CrashMishapReport", "EvidenceManifestReport"],
     ),
@@ -312,6 +341,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             platform_label="Vehicle",
             analysis_label="Analysis",
             summary_heading="Investigation Report",
+            report_sections={
+                "summary": "Summary",
+                "findings": "Findings",
+                "recommendations": "Recommendations",
+            },
         ),
         report_defaults=["MissionSummaryReport", "AnomalyReport", "ForensicCaseReport"],
     ),
@@ -343,6 +377,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             platform_label="Vehicle",
             analysis_label="Analysis",
             summary_heading="Investigation Report",
+            report_sections={
+                "summary": "Summary",
+                "findings": "Findings",
+                "recommendations": "Recommendations",
+            },
         ),
         report_defaults=["MissionSummaryReport", "AnomalyReport"],
     ),

@@ -20,9 +20,19 @@ from goose.forensics.models import AuditAction, AuditEntry, CaseExport
 from goose.forensics.reports import (
     AnomalyReport,
     CrashMishapReport,
+    EvidenceManifestReport,
+    ForensicCaseReport,
     MissionSummaryReport,
+    QAValidationReport,
+    QuickAnalysisSummary,
     ReplayMatchState,
     ReplayVerificationReport,
+    ServiceRepairSummary,
+    generate_evidence_manifest_report,
+    generate_forensic_case_report,
+    generate_qa_validation_report,
+    generate_quick_analysis_summary,
+    generate_service_repair_summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -611,4 +621,121 @@ async def crash_report(case_id: str) -> JSONResponse:
         evidence_references=evidence_refs,
     )
 
+    return JSONResponse({"ok": True, "report": report.to_dict()})
+
+
+# ---------------------------------------------------------------------------
+# v11 Strategy Sprint — extended report routes
+# ---------------------------------------------------------------------------
+
+def _resolve_case_and_run(case_id: str) -> tuple[Any, Any, str]:
+    """Resolve case_id to (svc, case, run_id) or raise HTTPException 404."""
+    from goose.web.cases_api import get_service
+    try:
+        svc = get_service()
+        case = svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    run_id = case.analysis_runs[-1].run_id if case.analysis_runs else ""
+    return svc, case, run_id
+
+
+@router.get("/{case_id}/exports/reports/forensic-case")
+async def forensic_case_report(case_id: str) -> JSONResponse:
+    """Return a full ForensicCaseReport built from case artifacts."""
+    svc, _case, run_id = _resolve_case_and_run(case_id)
+    report = generate_forensic_case_report(
+        svc.case_dir(case_id), run_id=run_id, engine_version=__version__,
+    )
+    return JSONResponse({"ok": True, "report": report.to_dict()})
+
+
+@router.get("/{case_id}/exports/reports/evidence-manifest")
+async def evidence_manifest_report(case_id: str) -> JSONResponse:
+    """Return an EvidenceManifestReport built from case manifests."""
+    svc, _case, _run_id = _resolve_case_and_run(case_id)
+    report = generate_evidence_manifest_report(svc.case_dir(case_id))
+    return JSONResponse({"ok": True, "report": report.to_dict()})
+
+
+@router.get("/{case_id}/exports/reports/service-repair")
+async def service_repair_report(case_id: str) -> JSONResponse:
+    """Return a ServiceRepairSummary (intended for shop_repair profile)."""
+    svc, _case, run_id = _resolve_case_and_run(case_id)
+    report = generate_service_repair_summary(svc.case_dir(case_id), run_id=run_id)
+    return JSONResponse({"ok": True, "report": report.to_dict()})
+
+
+@router.get("/{case_id}/exports/reports/qa-validation")
+async def qa_validation_report_route(case_id: str) -> JSONResponse:
+    """Return a QAValidationReport (intended for factory_qa profile)."""
+    svc, _case, run_id = _resolve_case_and_run(case_id)
+    report = generate_qa_validation_report(svc.case_dir(case_id), run_id=run_id)
+    return JSONResponse({"ok": True, "report": report.to_dict()})
+
+
+@router.get("/{case_id}/exports/reports/quick-summary")
+async def quick_analysis_summary_route(case_id: str) -> JSONResponse:
+    """Return a QuickAnalysisSummary built from case analysis data.
+
+    The quick summary is the same shape returned by the quick-analysis entry
+    path; here it is rebuilt from the current case's persisted artifacts so
+    the two entry paths converge on one report format.
+    """
+    svc, case, _run_id = _resolve_case_and_run(case_id)
+    case_dir = svc.case_dir(case_id)
+
+    # Load findings + hypotheses from analysis/
+    findings: list[dict[str, Any]] = []
+    hypotheses: list[dict[str, Any]] = []
+    findings_path = case_dir / "analysis" / "findings.json"
+    if findings_path.exists():
+        try:
+            data = json.loads(findings_path.read_text(encoding="utf-8"))
+            findings = data.get("findings", []) if isinstance(data, dict) else (data or [])
+        except Exception:
+            pass
+    hyp_path = case_dir / "analysis" / "hypotheses.json"
+    if hyp_path.exists():
+        try:
+            data = json.loads(hyp_path.read_text(encoding="utf-8"))
+            hypotheses = data.get("hypotheses", []) if isinstance(data, dict) else (data or [])
+        except Exception:
+            pass
+
+    # Parser info from parse_diagnostics + provenance
+    parser_confidence = None
+    flight_duration = None
+    diag_path = case_dir / "parsed" / "parse_diagnostics.json"
+    if diag_path.exists():
+        try:
+            diag = json.loads(diag_path.read_text(encoding="utf-8"))
+            parser_confidence = diag.get("parser_confidence")
+        except Exception:
+            pass
+    prov_path = case_dir / "parsed" / "provenance.json"
+    if prov_path.exists():
+        try:
+            prov = json.loads(prov_path.read_text(encoding="utf-8"))
+            flight_duration = prov.get("flight_duration_sec")
+        except Exception:
+            pass
+
+    # Filename from first evidence item, if any
+    filename = ""
+    file_size = 0
+    if case.evidence_items:
+        filename = case.evidence_items[0].filename
+        file_size = case.evidence_items[0].size_bytes
+
+    report = generate_quick_analysis_summary(
+        filename=filename,
+        file_size_bytes=file_size,
+        findings=findings,
+        hypotheses=hypotheses,
+        parser_confidence=parser_confidence,
+        flight_duration_s=flight_duration,
+        profile=getattr(case, "profile", "default") or "default",
+        engine_version=__version__,
+    )
     return JSONResponse({"ok": True, "report": report.to_dict()})

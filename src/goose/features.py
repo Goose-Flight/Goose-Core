@@ -61,6 +61,51 @@ CAPABILITY_REQUIREMENTS: dict[CapabilityGroup, EntitlementLevel] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Feature tier matrix — doc 05 encoded as machine-readable data
+# ---------------------------------------------------------------------------
+#
+# Maps named features to the minimum entitlement level at which they become
+# available. This is the single source of truth for the tier matrix; the GUI,
+# reports, and docs all consume this mapping rather than duplicating it.
+#
+# Unknown features default to enabled (``is_feature_enabled`` returns True)
+# so legacy call sites continue to work while the matrix grows.
+FEATURE_TIER_MATRIX: dict[str, "EntitlementLevel"] = {
+    # Core analysis — all tiers
+    "quick_analysis": EntitlementLevel.OSS_CORE,
+    "investigation_case": EntitlementLevel.OSS_CORE,
+    "evidence_ingest": EntitlementLevel.OSS_CORE,
+    "parser_diagnostics": EntitlementLevel.OSS_CORE,
+    "findings_hypotheses": EntitlementLevel.OSS_CORE,
+    "basic_export": EntitlementLevel.OSS_CORE,
+    "base_plugins": EntitlementLevel.OSS_CORE,
+    "community_plugins": EntitlementLevel.OSS_CORE,
+    "trust_visibility": EntitlementLevel.OSS_CORE,
+    "profiles_roles": EntitlementLevel.OSS_CORE,
+    # Local Pro features
+    "advanced_reports": EntitlementLevel.LOCAL_PRO,
+    "premium_plugin_packs": EntitlementLevel.LOCAL_PRO,
+    "batch_analysis": EntitlementLevel.LOCAL_PRO,
+    "saved_templates_presets": EntitlementLevel.LOCAL_PRO,
+    "full_replay_export": EntitlementLevel.LOCAL_PRO,
+    "advanced_charting": EntitlementLevel.LOCAL_PRO,
+    "tuning_profile_management": EntitlementLevel.LOCAL_PRO,
+    # Hosted Team features
+    "accounts_orgs": EntitlementLevel.HOSTED_TEAM,
+    "shared_cases": EntitlementLevel.HOSTED_TEAM,
+    "hosted_storage": EntitlementLevel.HOSTED_TEAM,
+    "collaboration": EntitlementLevel.HOSTED_TEAM,
+    "fleet_trend_views": EntitlementLevel.HOSTED_TEAM,
+    # Enterprise / Gov features
+    "plugin_allowlist_enforcement": EntitlementLevel.ENTERPRISE_GOV,
+    "retention_controls": EntitlementLevel.ENTERPRISE_GOV,
+    "enterprise_audit": EntitlementLevel.ENTERPRISE_GOV,
+    "deployment_controls": EntitlementLevel.ENTERPRISE_GOV,
+    "controlled_tuning_sets": EntitlementLevel.ENTERPRISE_GOV,
+}
+
+
 class FeatureGate:
     """Simple capability check.
 
@@ -81,6 +126,12 @@ class FeatureGate:
     @classmethod
     def is_enabled(cls, capability: CapabilityGroup) -> bool:
         required = CAPABILITY_REQUIREMENTS[capability]
+        levels = list(EntitlementLevel)
+        return levels.index(cls._current_level) >= levels.index(required)
+
+    @classmethod
+    def is_enabled_for_level(cls, required: EntitlementLevel) -> bool:
+        """Return True if the current level satisfies ``required``."""
         levels = list(EntitlementLevel)
         return levels.index(cls._current_level) >= levels.index(required)
 
@@ -107,7 +158,27 @@ class FeatureGate:
                 cap.value: req.value
                 for cap, req in CAPABILITY_REQUIREMENTS.items()
             },
+            "features": {
+                feature: cls.is_enabled_for_level(level)
+                for feature, level in FEATURE_TIER_MATRIX.items()
+            },
+            "feature_requirements": {
+                feature: level.value
+                for feature, level in FEATURE_TIER_MATRIX.items()
+            },
         }
+
+
+def is_feature_enabled(feature_name: str) -> bool:
+    """Return True if ``feature_name`` is enabled at the current entitlement level.
+
+    Unknown features default to enabled so call sites referencing features
+    that haven't been added to the matrix yet continue to work.
+    """
+    required = FEATURE_TIER_MATRIX.get(feature_name)
+    if required is None:
+        return True
+    return FeatureGate.is_enabled_for_level(required)
 
 
 def get_feature_status() -> dict[str, Any]:

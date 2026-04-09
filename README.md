@@ -132,8 +132,13 @@ cases/
       parse_diagnostics.json   # Full parse quality report
       provenance.json          # Parser lineage record
     analysis/
-      findings.json            # Plugin findings
+      findings.json            # Latest run findings (pointer)
+      findings_{run_id}.json   # Run-specific archive (for diff/replay)
+      hypotheses.json          # Latest run hypotheses (pointer)
+      hypotheses_{run_id}.json # Run-specific archive
       timeline.json            # Typed timeline events
+      signal_quality.json      # Per-stream signal quality report
+      plugin_diagnostics.json  # Per-plugin execution records
     audit/
       audit_log.jsonl          # Append-only audit trail
     exports/
@@ -193,7 +198,14 @@ The API supports the Quick Analysis flow, the full case-oriented workflow, and a
 | `/api/cases/{id}/evidence` | POST | Ingest evidence into a case |
 | `/api/cases/{id}/analyze` | POST | Run analysis on case evidence |
 | `/api/profiles` | GET | List available user profiles |
-| `/api/analyze` | POST | Legacy single-file analysis (compatibility shim) |
+| `/api/analyze` | POST | Removed — returns 410 Gone with redirect instructions |
+| `/api/cases/{id}/exports/bundle` | POST | Create a replayable export bundle |
+| `/api/cases/{id}/exports/verify-replay` | POST | Compare bundle versions with current engine |
+| `/api/cases/{id}/diff` | POST | Structured diff between two analysis runs |
+| `/api/cases/{id}/exports/reports/mission-summary` | GET | Mission summary report |
+| `/api/cases/{id}/exports/reports/forensic-case` | GET | Full forensic case report |
+| `/api/cases/{id}/exports/reports/crash` | GET | Crash/mishap report |
+| `/api/runs/recent` | GET | Recent analysis runs across all cases |
 | `/api/health` | GET | Health check |
 | `/api/plugins` | GET | List installed plugins |
 

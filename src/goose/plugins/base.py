@@ -44,6 +44,24 @@ class Plugin(ABC):
     ) -> tuple[list[ForensicFinding], PluginDiagnostics]:
         """Run analysis and return ForensicFinding objects directly.
 
+        Thin-finding bridge
+        -------------------
+        All 12 built-in plugins implement analyze() returning thin
+        goose.core.finding.Finding objects. This method is the bridge that
+        lifts them to ForensicFinding without requiring plugins to be rewritten.
+
+        The bridge will be retired progressively as plugins are ported to emit
+        ForensicFinding directly. Until then this method is the single, canonical
+        place where thin→forensic conversion happens for the plugin engine.
+
+        Key bridge behaviours:
+        - EvidenceReference.stream_name comes from self.manifest.primary_stream.
+        - EvidenceReference.time_range_start/end come from thin.timestamp_start/end
+          (None if the plugin didn't compute a window).
+        - confidence = thin.score / 100.0 (proxy; plugins that declare own
+          confidence directly in their ForensicFinding bypass this).
+        - JSON-unsafe evidence dict values are stringified, not dropped.
+
         Sprint 5 contract-compliant method. Checks required streams,
         runs the existing analyze() logic, and lifts results to
         ForensicFinding in-place.

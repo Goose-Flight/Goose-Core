@@ -248,7 +248,7 @@ _HYPOTHESIS_THEMES: list[dict[str, Any]] = [
         "theme": "communications_link",
         "category": "communications / link issue",
         "statement": "Communications or link degradation contributed to the event.",
-        "plugin_ids": {"rc_signal", "failsafe_events"},
+        "plugin_ids": {"rc_signal", "failsafe_events", "operator_action_sequence"},
         "severity_filter": {"critical", "warning"},
         "required_streams": set(),
         "recommendations": [
@@ -261,7 +261,7 @@ _HYPOTHESIS_THEMES: list[dict[str, Any]] = [
         "theme": "operator_action",
         "category": "operator-action contribution",
         "statement": "Operator action or control input sequence contributed to the event.",
-        "plugin_ids": {"failsafe_events", "rc_signal"},
+        "plugin_ids": {"failsafe_events", "rc_signal", "operator_action_sequence"},
         "severity_filter": {"critical", "warning"},
         "required_streams": set(),
         "recommendations": [
@@ -309,6 +309,25 @@ def _diag_missing_streams(diag: ParseDiagnostics | None) -> set[str]:
             missing.add(getattr(sc, "stream_name", ""))
     return missing
 
+
+# ---------------------------------------------------------------------------
+# Design note: generate_hypotheses() is intentionally rule-based and
+# conservative. It correlates plugin findings by theme using the static
+# _HYPOTHESIS_THEMES registry — no machine learning, no probabilistic
+# inference, no LLM calls. This is a deliberate forensic design choice:
+#
+#   1. Rules are auditable. An investigator can trace exactly which findings
+#      triggered a hypothesis and why confidence was computed as it was.
+#   2. Rules are deterministic. Replay always produces the same hypothesis set
+#      for the same findings (no stochastic or external-API dependencies).
+#   3. Hypotheses are CANDIDATE only. Promoting to SUPPORTED or REFUTED
+#      requires human analyst judgment or future correlation logic — the
+#      system never auto-closes a hypothesis.
+#
+# LLM-assisted hypothesis enrichment (narrative generation, unresolved question
+# phrasing, root-cause explanation) is deferred to a future sprint and will be
+# additive — it will not replace this rule-based layer.
+# ---------------------------------------------------------------------------
 
 def generate_hypotheses(
     forensic_findings: list[ForensicFinding],

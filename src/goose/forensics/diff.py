@@ -304,6 +304,15 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
 def _load_run_findings(analysis_dir: Path, run_id: str) -> list[dict[str, Any]]:
     """Load findings for a specific run.
 
+    Run-scoped artifact convention (Convergence Sprint 1+):
+    - Every analysis run writes ``findings_{run_id}.json`` (never overwritten).
+    - It also writes ``findings.json`` as a latest-run pointer for UI convenience.
+    - This function always prefers the run-specific archive.
+    - The fallback to ``findings.json`` is intentionally strict: it only fires
+      when the bundle's run_id matches the requested run_id. This prevents
+      accidentally loading a different run's findings for an older case that
+      only has the latest-pointer file.
+
     Prefers the run-specific archive ``findings_{run_id}.json`` written since
     Convergence Sprint 1.  Falls back to ``findings.json`` only when the
     run_id matches (covers pre-sprint cases that only have the latest pointer).

@@ -45,9 +45,9 @@
 | Symptom | Likely Cause | Solution |
 | --- | --- | --- |
 | `.ulg` file won't parse | Corrupted ULog | Verify file integrity: `hexdump -C file.ulg \| head` should show "ULG" magic bytes |
-| `.bin` or `.log` won't parse | Format not yet supported | ArduPilot DataFlash parser is not yet implemented. Only PX4 ULog (.ulg) is currently supported. |
-| `.tlog` won't parse | Format not yet supported | MAVLink TLog parser is not yet implemented. Only PX4 ULog (.ulg) is currently supported. |
-| CSV file won't parse | Format not yet supported | CSV parser is not yet implemented. Only PX4 ULog (.ulg) is currently supported. |
+| `.bin` or `.log` won't parse | Malformed or unsupported variant | ArduPilot DataFlash parser is implemented (basic message extraction). If the file still fails, it may be corrupted or use an unsupported DataFlash variant. |
+| `.tlog` won't parse | Requires Goose Pro | MAVLink TLog is a Core stub only. The real TLog parser ships in Goose Pro. |
+| CSV file won't parse | Column mapping failed | The CSV parser uses heuristic column detection. Ensure the file has recognizable column headers. See [Supported Formats](../docs/supported-formats.md). |
 
 **Verify a log file:**
 ```bash

@@ -1,17 +1,16 @@
 # Supported Formats
 
-Goose currently supports **PX4 ULog only**. Stub parsers exist for other
-formats but are not yet implemented and will return honest unsupported-format
-errors.
+Goose supports **PX4 ULog, ArduPilot DataFlash, and generic CSV** natively.
+A stub parser exists for MAVLink TLog in Core; the real TLog parser ships in Goose Pro.
 
 ## Format summary
 
 | Format | Extensions | Autopilot | Status |
 | --- | --- | --- | --- |
 | PX4 ULog | `.ulg` | PX4 | **Fully supported** |
-| ArduPilot DataFlash | `.bin`, `.log` | ArduPilot | Not yet implemented (stub only) |
-| MAVLink telemetry | `.tlog` | Any MAVLink | Not yet implemented (stub only) |
-| Generic CSV | `.csv` | Any | Not yet implemented (stub only) |
+| ArduPilot DataFlash | `.bin`, `.log` | ArduPilot | **Supported** (basic message extraction) |
+| MAVLink telemetry | `.tlog` | Any MAVLink | Core stub only — real parser in Goose Pro |
+| Generic CSV | `.csv` | Any | **Supported** (stream heuristics) |
 
 ---
 
@@ -79,52 +78,59 @@ Goose maps PX4 navigation state integers to human-readable mode names:
 
 ## ArduPilot DataFlash (.bin, .log)
 
-**Status: Not yet implemented**
+**Status: Supported (basic message extraction)**
 
 DataFlash is the binary log format used by ArduPilot (Copter, Plane, Rover).
 `.bin` files are the raw binary format; `.log` files are the text-decoded
 equivalent.
 
-A stub parser exists in the codebase but is marked `implemented=False`. It will
-return an unsupported-format error if called. Real parser support is planned for
-a future sprint.
+Goose ships a real DataFlash parser (`implemented=True`) that performs basic
+ArduPilot log parsing and message extraction. It returns a full `ParseResult`
+with diagnostics. Coverage is at the foundational level — not all ArduPilot
+topics are extracted. See the parser source for the current stream coverage.
 
 ---
 
 ## MAVLink Telemetry (.tlog)
 
-**Status: Not yet implemented**
+**Status: Core stub only — real parser in Goose Pro**
 
 MAVLink `.tlog` files record timestamped MAVLink messages as received by a
 ground station (QGroundControl, Mission Planner, MAVProxy). They contain
 telemetry from any MAVLink-compatible autopilot.
 
-A stub parser exists but is marked `implemented=False`. The `pymavlink` library
-is already included as a dependency. Real parser support is planned for a future
-sprint.
+A stub parser exists in Core (`implemented=False`) that correctly identifies
+the format and returns a structured unsupported-format diagnostic. A real TLog
+parser — with MAVLink binary framing, HEARTBEAT/ATTITUDE/GPS/BATTERY_STATUS
+extraction — is available as part of Goose Pro.
 
 ---
 
 ## Generic CSV (.csv)
 
-**Status: Not yet implemented**
+**Status: Supported (stream heuristics)**
 
-CSV support will allow Goose to analyze exported telemetry from any source,
-provided the columns follow a documented naming convention.
+CSV support allows Goose to analyze exported telemetry from any source. The
+parser uses heuristic column mapping to identify common telemetry fields
+(timestamp, position, battery, attitude) regardless of the exact header names.
 
-A stub parser exists but is marked `implemented=False`. Real parser support is
-planned for a future sprint.
+Goose ships a real CSV parser (`implemented=True`) that performs stream
+heuristic detection and returns a full `ParseResult` with diagnostics. Coverage
+depends on the columns present in the file. Standard naming conventions
+(e.g., QGroundControl CSV export) will yield the best stream coverage.
 
 ---
 
 ## Format detection
 
 Goose provides a detection module (`parse_file()`, `detect_parser()`,
-`supported_formats()`) that selects the appropriate parser. Currently only the
-ULog parser is functional:
+`supported_formats()`) that selects the appropriate parser based on file
+extension and content probing. Three parsers are functional in Core:
 
-- `.ulg` -- ULog parser (returns full `ParseResult` with diagnostics)
-- All other extensions -- stub parsers return unsupported-format errors
+- `.ulg` — ULog parser (full PX4 topic extraction, full `ParseResult`)
+- `.bin`, `.log` — DataFlash parser (basic ArduPilot message extraction)
+- `.csv` — CSV parser (heuristic column mapping)
+- `.tlog` — Core stub returns a structured unsupported-format diagnostic; real parser in Goose Pro
 
 The parser framework uses the `ParseResult` contract, which returns
 `(Flight | None, ParseDiagnostics, Provenance)` for every parse attempt.

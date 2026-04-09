@@ -57,10 +57,14 @@ Rule: Core must never import Pro. The boundary is enforced by code structure, no
 | DataFlash (ArduPilot `.bin`/`.log`) | PRO CANDIDATE | ArduPilot is a distinct ecosystem; separate parser pack is natural |
 | TLog (MAVLink `.tlog`) | PRO CANDIDATE | Telemetry logs carry operator/GCS context; niche audience |
 
-DataFlash and TLog parsers currently exist as stubs in Core.  Their stub presence
-allows format detection to identify the format and return a structured
-"not supported" message.  Actual parse implementation can be moved to a Pro parser
-pack without breaking Core's format-detection layer.
+The DataFlash parser is implemented in Core (`implemented=True`) with basic
+ArduPilot message extraction.  The TLog parser is a stub in Core (`implemented=False`)
+— the real implementation ships in Goose Pro.  The CSV parser is implemented in Core
+(`implemented=True`) with heuristic stream detection.
+
+The DataFlash parser may be migrated to a Pro parser pack in a future sprint once
+`goose-pro` is established and the parser extension seam is confirmed stable in
+production.  Until then it remains in Core.
 
 ---
 

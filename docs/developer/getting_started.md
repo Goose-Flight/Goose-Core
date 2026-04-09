@@ -59,8 +59,8 @@ pytest tests/test_plugins/ # run just plugin tests
 ```
 src/goose/
   core/           # Flight model, Finding model, narrative, scoring
-  parsers/        # Parser framework (ulog, stubs for dataflash/tlog/csv)
-  plugins/        # 12 built-in analyzers + contract + registry
+  parsers/        # Parser framework (ulog, dataflash, csv; tlog stub)
+  plugins/        # 17 built-in analyzers + contract + registry
   forensics/      # Canonical models, case service, lifting, timeline, replay, diff
   web/            # FastAPI app, routes, static files (index.html)
   features.py     # Feature gate scaffold

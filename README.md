@@ -107,11 +107,11 @@ On first launch the welcome screen asks you to pick **Quick Analysis** or **Inve
 | Format | Status |
 |--------|--------|
 | PX4 ULog (`.ulg`) | **Supported** |
-| ArduPilot DataFlash (`.bin`, `.log`) | Not yet implemented (stub only) |
-| MAVLink telemetry (`.tlog`) | Not yet implemented (stub only) |
-| Generic CSV (`.csv`) | Not yet implemented (stub only) |
+| ArduPilot DataFlash (`.bin`, `.log`) | **Supported** (basic message extraction) |
+| MAVLink telemetry (`.tlog`) | Core stub only — real parser in Goose Pro |
+| Generic CSV (`.csv`) | **Supported** (stream heuristics) |
 
-Goose currently parses **PX4 ULog files only**. Stub parsers exist for DataFlash, TLog, and CSV, but they are marked `implemented=False` and return honest unsupported-format errors. See [docs/supported-formats.md](docs/supported-formats.md) for details on what the ULog parser extracts.
+Goose parses **PX4 ULog, ArduPilot DataFlash, and generic CSV** natively. A stub parser exists for MAVLink TLog in Core; the real TLog parser ships in Goose Pro. See [docs/supported-formats.md](docs/supported-formats.md) for format-specific extraction details.
 
 ---
 
@@ -244,7 +244,7 @@ Plugins are discoverable via Python entry points and declare a formal `PluginMan
 ## Architecture
 
 ```
-Log File (.ulg)
+Log File (.ulg / .bin / .log / .csv)
      |
      v
   [ Parser Framework ]

@@ -22,10 +22,10 @@
 **A:** Most analyses complete in 2-10 seconds depending on log file size and your hardware. Larger logs or verbose output may take longer.
 
 ### Q: What log formats does Goose support?
-**A:** Currently, **PX4 ULog (.ulg) only**. Stub parsers exist for ArduPilot DataFlash, MAVLink TLog, and CSV, but they are not yet implemented and will return unsupported-format errors. See [Supported Formats](supported-formats.md) for details.
+**A:** Goose supports **PX4 ULog (.ulg)**, **ArduPilot DataFlash (.bin, .log)**, and **generic CSV (.csv)**. A stub parser exists for MAVLink TLog (.tlog) in Core; the real TLog parser ships in Goose Pro. See [Supported Formats](supported-formats.md) for details.
 
 ### Q: Can Goose analyze non-drone flight logs?
-**A:** Goose is currently designed for drones using PX4 autopilots (ULog format). ArduPilot DataFlash support is planned but not yet implemented. Other formats are not supported.
+**A:** Goose is designed for UAV telemetry logs. PX4 ULog, ArduPilot DataFlash, and CSV are all supported in Core. MAVLink TLog requires Goose Pro.
 
 ### Q: What does the "Overall Score" mean?
 **A:** It's a weighted average across all plugins (0-100). Higher is better. A score below 50 indicates serious issues; below 70 indicates warnings. See [Crash Analysis Guide](crash-analysis-guide.md) for detailed interpretation.
@@ -45,7 +45,7 @@ See [Advanced Usage](advanced-usage.md) for batch analysis patterns.
 ## Plugins & Customization
 
 ### Q: What plugins are included?
-**A:** 11 built-in plugins: crash_detection, vibration, battery_sag, gps_health, motor_saturation, ekf_consistency, rc_signal, attitude_tracking, position_tracking, failsafe_events, and log_health. Run `goose plugins list` to see all installed plugins.
+**A:** 17 built-in plugins: crash_detection, vibration, battery_sag, gps_health, motor_saturation, ekf_consistency, rc_signal, attitude_tracking, position_tracking, failsafe_events, log_health, payload_change_detection, mission_phase_anomaly, operator_action_sequence, environment_conditions, damage_impact_classification, and link_telemetry_health. Run `goose plugins list` to see all installed plugins.
 
 ### Q: Can I write my own plugin?
 **A:** Yes! Goose has a plugin architecture. See [Writing Plugins](writing-plugins.md) for the complete guide, including templates and examples.
@@ -103,7 +103,7 @@ goose crash flight.ulg -f json -o report.json
 **A:** Run `goose doctor --fix` to automatically install missing dependencies.
 
 ### Q: Goose says "unsupported log format"
-**A:** Goose currently only supports PX4 ULog (.ulg) files. If your file is a .ulg and still fails, it may be corrupted. Check [Supported Formats](supported-formats.md).
+**A:** Goose supports PX4 ULog (.ulg), ArduPilot DataFlash (.bin, .log), and generic CSV (.csv). MAVLink TLog (.tlog) requires Goose Pro. If your file is a supported format and still fails, it may be corrupted or malformed. Check [Supported Formats](supported-formats.md).
 
 ### Q: Why is my analysis score different each time I run it?
 **A:** This shouldn't happen for the same log file. If it does, you may have changed the configuration or installed a different plugin version. Run `goose doctor` to verify your setup.
@@ -123,10 +123,10 @@ goose crash flight.ulg -f json -o report.json
 **A:** Goose works with PX4 v1.10 and newer. Newer versions are always better supported due to improved logging.
 
 ### Q: Does Goose work with ArduPilot?
-**A:** Not yet. ArduPilot DataFlash parser support is planned but not yet implemented. Currently only PX4 ULog (.ulg) files are supported.
+**A:** Yes. The ArduPilot DataFlash parser is implemented in Core and provides basic message extraction from `.bin` and `.log` files.
 
 ### Q: Can I analyze logs from [my specific hardware]?
-**A:** If your hardware runs PX4 and produces ULog files, yes. ArduPilot and other autopilot formats are not yet supported. Open a GitHub issue if you need a specific format.
+**A:** If your hardware runs PX4 (ULog), ArduPilot (DataFlash), or exports CSV telemetry, yes. MAVLink TLog requires Goose Pro. Open a GitHub issue if you need a specific format.
 
 ---
 

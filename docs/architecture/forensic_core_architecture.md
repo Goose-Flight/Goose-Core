@@ -29,7 +29,7 @@ Log File (.ulg)
      |
      v
   [ Plugin Engine ]  (src/goose/plugins/)
-     |-- PLUGIN_REGISTRY (12 built-in analyzers)
+     |-- PLUGIN_REGISTRY (17 built-in analyzers)
      |-- Plugin.forensic_analyze(flight, evidence_id, run_id, config, diagnostics, tuning_profile)
      |-- Returns (list[ForensicFinding], PluginDiagnostics)
      |

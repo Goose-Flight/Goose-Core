@@ -2077,6 +2077,12 @@
           <div id="ws-case-meta" style="font-size:12px;color:var(--text-sec);margin-top:2px;"></div>
         </div>
         <span id="ws-status-badge" style="margin-left:auto;font-size:12px;padding:3px 10px;border-radius:20px;background:var(--card);border:1px solid var(--card-border);"></span>
+        <span id="ws-run-selector" style="font-size:12px;display:flex;align-items:center;gap:6px;">
+          <span style="color:var(--text-sec);">Run:</span>
+          <select id="ws-run-dropdown" onchange="onRunSelected(this.value)" style="background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:3px 8px;font-family:var(--font);font-size:12px;min-width:120px;">
+            <option value="">No runs</option>
+          </select>
+        </span>
       </div>
 
       <!-- Workspace tabs -->
@@ -3872,6 +3878,9 @@
         (c.notes ? ` · ${c.notes}` : '');
       document.getElementById('ws-status-badge').textContent = c.status;
 
+      // Populate run selector
+      populateRunSelector(c.analysis_runs || []);
+
       renderEvidenceList(c.evidence_items || []);
       switchWsTab('evidence');
     } catch (err) {
@@ -4000,13 +4009,13 @@
         el.innerHTML = '<div style="color:var(--text-sec);font-size:13px;padding:32px 0;text-align:center;">No plugins registered.</div>';
         return;
       }
-      el.innerHTML = renderPluginsPanel(data.manifests, data.plugin_run_info || []);
+      el.innerHTML = renderPluginsPanel(data.manifests, data.plugin_run_info || [], data.policy_mode || 'permissive');
     } catch(e) {
       el.innerHTML = `<div style="color:var(--red);font-size:13px;">Failed to load plugins: ${e.message}</div>`;
     }
   }
 
-  function renderPluginsPanel(manifests, runInfo) {
+  function renderPluginsPanel(manifests, runInfo, policyMode) {
     const runMap = {};
     runInfo.forEach(ri => { runMap[ri.plugin_id] = ri; });
 
@@ -4048,7 +4057,7 @@
 
     return `
       <div style="margin-bottom:16px;">
-        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Analysis Plugin Status${runId ? ' — ' + runId : ''}</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Analysis Plugin Status${runId ? ' — ' + runId : ''} <span style="font-size:12px;color:var(--text-sec);font-weight:400;margin-left:8px;">Policy: ${(policyMode||'permissive').toUpperCase()}</span></div>
         ${hasRunInfo ? `<div style="font-size:13px;color:var(--text-sec);">${ranCount} ran | ${skippedCount} skipped | ${blockedCount} blocked</div>` : `<div style="font-size:13px;color:var(--text-sec);">${manifests.length} registered plugins. Run analysis to see execution status.</div>`}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px;">
@@ -4089,7 +4098,11 @@
             ${findingsCount !== null ? `<div style="font-size:12px;margin-top:6px;color:var(--text-sec);">Findings: <strong style="color:var(--text);">${findingsCount}</strong>${durationMs !== null ? ` · ${durationMs.toFixed(0)}ms` : ''}</div>` : ''}
             ${skipReason ? `<div style="font-size:12px;margin-top:4px;color:var(--amber);">Skip reason: ${skipReason}</div>` : ''}
             ${blockReason ? `<div style="font-size:12px;margin-top:4px;color:var(--red);">Block reason: ${blockReason}</div>` : ''}
-            <div style="font-size:12px;color:var(--text-dim,#555);margin-top:6px;">${m.plugin_id} · contract v${m.minimum_contract_version}</div>
+            <div style="font-size:12px;color:var(--text-dim,#555);margin-top:6px;">
+              ${m.plugin_id} · contract v${m.minimum_contract_version}
+              ${m.trust_verified !== undefined ? (m.trust_verified ? ' · <span style="color:var(--green);">&#10003; Verified</span>' : ' · <span style="color:var(--amber);">&#9888; Unverified</span>') : ''}
+              ${m.computed_fingerprint ? ` · <span style="color:var(--text-sec);">${m.computed_fingerprint.substring(0,16)}</span>` : ''}
+            </div>
           </div>`;
       }).join('')}
       </div>`;
@@ -4828,8 +4841,30 @@
     el.innerHTML = `
       <div style="margin-bottom:16px;">
         <div style="font-size:15px;font-weight:600;margin-bottom:10px;">Case Exports</div>
-        <button onclick="createExportBundle('${caseId}')" style="padding:8px 20px;background:var(--green);color:#000;border:none;border-radius:6px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Export Case Bundle</button>
-        <span id="export-status" style="font-size:13px;color:var(--text-sec);margin-left:12px;"></span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <button onclick="createExportBundle('${caseId}')" style="padding:8px 20px;background:var(--green);color:#000;border:none;border-radius:6px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;">Export Case Bundle</button>
+          <span id="export-status" style="font-size:13px;color:var(--text-sec);line-height:36px;"></span>
+        </div>
+      </div>
+      <div style="margin-bottom:24px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Reports</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="loadReport('${caseId}','mission-summary')" style="padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;">Mission Summary</button>
+          <button onclick="loadReport('${caseId}','anomaly')" style="padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;">Anomaly Report</button>
+          <button onclick="loadReport('${caseId}','crash')" style="padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;">Crash/Mishap Report</button>
+        </div>
+        <div id="report-output" style="margin-top:12px;"></div>
+      </div>
+      <div style="margin-bottom:24px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Replay Verification</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select id="replay-bundle-select" style="background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:13px;min-width:200px;">
+            ${exports.filter(e => e.filename.startsWith('bundle_')).map(e => `<option value="${e.filename}">${e.filename}</option>`).join('')}
+            ${exports.filter(e => e.filename.startsWith('bundle_')).length === 0 ? '<option value="">No bundles available</option>' : ''}
+          </select>
+          <button onclick="verifyReplay('${caseId}')" style="padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;">Verify Replay</button>
+        </div>
+        <div id="replay-output" style="margin-top:12px;"></div>
       </div>
       ${exports.length > 0 ? `
         <div style="margin-top:16px;">
@@ -4864,6 +4899,128 @@
       statusEl.style.color = 'var(--red)';
       statusEl.textContent = `Failed: ${e.message}`;
     }
+  }
+
+  // --- Run selector ---
+  function populateRunSelector(runs) {
+    const sel = document.getElementById('ws-run-dropdown');
+    if (!sel) return;
+    if (!runs || runs.length === 0) {
+      sel.innerHTML = '<option value="">No runs</option>';
+      return;
+    }
+    sel.innerHTML = runs.map(r => {
+      const ts = new Date(r.started_at).toLocaleString();
+      return `<option value="${r.run_id}">${r.run_id} (${ts}, ${r.findings_count} findings)</option>`;
+    }).join('');
+    sel.value = runs[runs.length - 1].run_id;
+  }
+
+  function onRunSelected(runId) {
+    workspaceState.runId = runId;
+  }
+
+  // --- Report generation ---
+  async function loadReport(caseId, reportType) {
+    const el = document.getElementById('report-output');
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-sec);">Generating report...</div>';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/exports/reports/${reportType}`);
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.detail || 'Failed');
+      renderReport(data.report, reportType);
+    } catch(e) {
+      el.innerHTML = `<div style="color:var(--red);font-size:13px;">Report failed: ${e.message}</div>`;
+    }
+  }
+
+  function renderReport(report, reportType) {
+    const el = document.getElementById('report-output');
+    if (reportType === 'mission-summary') {
+      el.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Mission Summary</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+            <div><span style="color:var(--text-sec);">Duration:</span> ${report.flight_duration_s != null ? report.flight_duration_s.toFixed(1) + 's' : 'N/A'}</div>
+            <div><span style="color:var(--text-sec);">Total Findings:</span> ${report.total_findings}</div>
+            <div><span style="color:var(--red);">Critical:</span> ${report.critical_findings}</div>
+            <div><span style="color:var(--amber);">Warnings:</span> ${report.warning_findings}</div>
+            <div><span style="color:var(--text-sec);">Parser Confidence:</span> ${report.parser_confidence != null ? (report.parser_confidence * 100).toFixed(0) + '%' : 'N/A'}</div>
+            <div><span style="color:var(--text-sec);">Top Hypothesis:</span> ${report.top_hypothesis || 'None'}</div>
+          </div>
+          ${Object.keys(report.signal_quality_summary || {}).length > 0 ? `
+            <div style="margin-top:12px;font-size:13px;">
+              <div style="color:var(--text-sec);margin-bottom:4px;">Signal Quality:</div>
+              ${Object.entries(report.signal_quality_summary).map(([k,v]) => `<span style="margin-right:12px;">${k}: ${v != null ? (v*100).toFixed(0)+'%' : '?'}</span>`).join('')}
+            </div>` : ''}
+        </div>`;
+    } else if (reportType === 'anomaly') {
+      el.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Anomaly Report</div>
+          <div style="font-size:13px;margin-bottom:8px;">Findings (WARNING+): ${report.findings.length}</div>
+          ${report.findings.map(f => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--card-border);"><span style="color:${f.severity==='critical'?'var(--red)':'var(--amber)'};font-weight:600;">${f.severity}</span> ${f.title || ''}</div>`).join('')}
+          <div style="font-size:13px;margin-top:12px;margin-bottom:8px;">Hypotheses (conf >= 0.5): ${report.hypotheses.length}</div>
+          ${report.hypotheses.map(h => `<div style="font-size:12px;padding:4px 0;">${h.statement || h.title || ''} (${((h.confidence||0)*100).toFixed(0)}%)</div>`).join('')}
+        </div>`;
+    } else if (reportType === 'crash') {
+      el.innerHTML = `
+        <div class="card" style="padding:16px;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Crash/Mishap Report</div>
+          <div style="font-size:13px;margin-bottom:8px;">
+            Crash Detected: <span style="color:${report.crash_detected?'var(--red)':'var(--green)'};">${report.crash_detected ? 'YES' : 'NO'}</span>
+          </div>
+          ${report.crash_findings.length > 0 ? `
+            <div style="font-size:13px;margin-bottom:4px;">Crash Findings (${report.crash_findings.length}):</div>
+            ${report.crash_findings.map(f => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--card-border);">${f.title || ''} — ${f.description || ''}</div>`).join('')}
+          ` : '<div style="font-size:13px;color:var(--text-sec);">No crash findings.</div>'}
+        </div>`;
+    }
+  }
+
+  // --- Replay verification ---
+  async function verifyReplay(caseId) {
+    const sel = document.getElementById('replay-bundle-select');
+    const el = document.getElementById('replay-output');
+    const filename = sel ? sel.value : '';
+    if (!filename) {
+      el.innerHTML = '<div style="font-size:13px;color:var(--amber);">No bundle selected.</div>';
+      return;
+    }
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-sec);">Verifying...</div>';
+    try {
+      const r = await fetch(`/api/cases/${caseId}/exports/verify-replay`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({bundle_filename: filename}),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.detail || 'Failed');
+      renderReplayResult(data.report);
+    } catch(e) {
+      el.innerHTML = `<div style="color:var(--red);font-size:13px;">Verification failed: ${e.message}</div>`;
+    }
+  }
+
+  function renderReplayResult(report) {
+    const el = document.getElementById('replay-output');
+    const stateColors = {exact:'var(--green)',version_drift:'var(--amber)',partial:'#EF9F27',incompatible:'var(--red)'};
+    const color = stateColors[report.match_state] || 'var(--text-sec)';
+    el.innerHTML = `
+      <div class="card" style="padding:16px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <span style="font-size:14px;font-weight:600;">Replay Verification</span>
+          <span style="font-size:12px;padding:3px 10px;border-radius:20px;background:${color}20;color:${color};border:1px solid ${color}40;font-weight:600;">${report.match_state.toUpperCase()}</span>
+        </div>
+        <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div><span style="color:var(--text-sec);">Original Engine:</span> ${report.original_engine_version}</div>
+          <div><span style="color:var(--text-sec);">Current Engine:</span> ${report.current_engine_version}</div>
+        </div>
+        ${report.version_drifts.length > 0 ? `
+          <div style="margin-top:8px;font-size:12px;color:var(--amber);">
+            Version drifts: ${report.version_drifts.join(', ')}
+          </div>` : ''}
+      </div>`;
   }
 
   async function loadAuditLog(caseId) {

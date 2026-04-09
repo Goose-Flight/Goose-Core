@@ -150,7 +150,7 @@ class TestExportBundle:
         data = res.json()
         assert data["ok"] is True
         assert "filename" in data
-        assert data["filename"].startswith("case_bundle_")
+        assert data["filename"].startswith("bundle_")
         assert data["size_bytes"] > 0
 
         # Verify file exists on disk
@@ -164,8 +164,10 @@ class TestExportBundle:
         assert len(files) == 1
         bundle = json.loads(files[0].read_text(encoding="utf-8"))
         assert bundle["bundle_version"] == "1.0"
-        assert "case" in bundle
+        assert "case_metadata" in bundle
         assert "evidence_manifest" in bundle
+        assert "bundle_id" in bundle
+        assert "replay_metadata" in bundle
 
     def test_bundle_404_nonexistent_case(self, client: TestClient):
         res = client.post("/api/cases/CASE-9999-999999/exports/bundle")
@@ -176,7 +178,7 @@ class TestExportBundle:
         res = client.get(f"/api/cases/{case_id}/exports")
         data = res.json()
         assert data["count"] == 1
-        assert data["exports"][0]["filename"].startswith("case_bundle_")
+        assert data["exports"][0]["filename"].startswith("bundle_")
 
 
 # ---------------------------------------------------------------------------

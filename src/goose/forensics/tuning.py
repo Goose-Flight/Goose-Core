@@ -303,6 +303,35 @@ def _build_default_configs() -> list[AnalyzerConfigProfile]:
                 },
             ),
         ),
+        AnalyzerConfigProfile(
+            plugin_id="mission_phase_anomaly",
+            thresholds=ThresholdSet(
+                threshold_set_id="mission_phase_anomaly_default",
+                name="Mission Phase Anomaly Defaults",
+                description="Thresholds for phase-localized anomaly detection",
+                values={
+                    "altitude_loss_rate": 3.0,
+                    "battery_drop_rate": 0.5,
+                    "phase_vibration_ratio": 2.0,
+                    "short_phase_sec": 5.0,
+                },
+            ),
+        ),
+        AnalyzerConfigProfile(
+            plugin_id="operator_action_sequence",
+            thresholds=ThresholdSet(
+                threshold_set_id="operator_action_sequence_default",
+                name="Operator Action Sequence Defaults",
+                description="Thresholds for detecting anomalous operator action patterns",
+                values={
+                    "rapid_switch_window_sec": 10.0,
+                    "rapid_switch_count": 3,
+                    "stick_change_threshold": 0.5,
+                    "min_altitude_disarm_m": 2.0,
+                    "failsafe_altitude_m": 3.0,
+                },
+            ),
+        ),
     ]
 
 

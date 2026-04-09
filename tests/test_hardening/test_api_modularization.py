@@ -125,7 +125,7 @@ class TestAnalysisRoutes:
         assert res.status_code == 200
         data = res.json()
         assert data["ok"] is True
-        assert data["count"] == 12
+        assert data["count"] == 14
         # New trust fields
         assert "policy_mode" in data
         m = data["manifests"][0]

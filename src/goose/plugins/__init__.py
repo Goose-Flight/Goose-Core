@@ -25,6 +25,8 @@ from goose.plugins.position_tracking import PositionTrackingPlugin
 from goose.plugins.failsafe_events import FailsafeEventsPlugin
 from goose.plugins.log_health import LogHealthPlugin
 from goose.plugins.payload_change_detection import PayloadChangeDetectionPlugin
+from goose.plugins.mission_phase_anomaly import MissionPhaseAnomalyPlugin
+from goose.plugins.operator_action_sequence import OperatorActionSequencePlugin
 
 _PLUGIN_CLASSES: list[type] = [
     CrashDetectionPlugin,
@@ -39,6 +41,8 @@ _PLUGIN_CLASSES: list[type] = [
     FailsafeEventsPlugin,
     LogHealthPlugin,
     PayloadChangeDetectionPlugin,
+    MissionPhaseAnomalyPlugin,
+    OperatorActionSequencePlugin,
 ]
 
 # Singleton registry: plugin_id -> plugin instance

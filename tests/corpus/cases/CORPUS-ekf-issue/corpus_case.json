@@ -1,0 +1,22 @@
+{
+  "corpus_id": "CORPUS-ekf-issue",
+  "description": "EKF consistency smoke test — verifies ekf_consistency plugin runs end-to-end on a normal PX4 log.",
+  "category": "ekf",
+  "evidence_filename": "px4_normal_flight.ulg",
+  "profile": "default",
+  "expected_parser": {
+    "should_succeed": true,
+    "expected_format": "ulog",
+    "min_parser_confidence": 0.5
+  },
+  "expected_analyzers": [
+    {
+      "plugin_id": "ekf_consistency",
+      "should_run": true,
+      "should_find": [],
+      "should_not_find": []
+    }
+  ],
+  "notes": "Smoke test: exercises ekf_consistency plugin through the tuning profile threshold path.",
+  "active": true
+}

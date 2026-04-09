@@ -149,11 +149,46 @@ async def analyze_case(case_id: str) -> JSONResponse:
     ))
 
     # --- Run plugins (Sprint 5: forensic contract) ----------------------------
+    from goose.forensics.profiles import get_profile
+    from goose.forensics.tuning import TuningProfile
     from goose.plugins import PLUGIN_REGISTRY
     from goose.plugins.contract import PluginDiagnostics as PDiag
     from goose.plugins.trust import TrustPolicy, fingerprint_plugin
 
-    plugins = list(PLUGIN_REGISTRY.values())
+    # Load the default tuning profile once; its thresholds flow into every
+    # forensic_analyze() call so plugins no longer rely solely on hardcoded
+    # constants. Callers may override individual values via `config` dict.
+    tuning_profile = TuningProfile.default()
+
+    # v11 Strategy Sprint — profile-aware plugin ordering.
+    # Profiles never change forensic truth — they only bias which plugins run
+    # first and which are deprioritized. Unknown plugin_ids in profile lists
+    # are ignored silently so profile data can safely reference future plugins.
+    active_profile_id = getattr(case, "profile", "default") or "default"
+    profile_cfg = get_profile(active_profile_id)
+
+    registry_ids = list(PLUGIN_REGISTRY.keys())
+    primary_ids = [pid for pid in profile_cfg.default_plugins if pid in PLUGIN_REGISTRY]
+    secondary_ids = [
+        pid for pid in profile_cfg.secondary_plugins
+        if pid in PLUGIN_REGISTRY and pid not in primary_ids
+    ]
+    deprioritized_ids = [
+        pid for pid in profile_cfg.deprioritized_plugins
+        if pid in PLUGIN_REGISTRY and pid not in primary_ids and pid not in secondary_ids
+    ]
+    placed = set(primary_ids) | set(secondary_ids) | set(deprioritized_ids)
+    remaining_ids = [pid for pid in registry_ids if pid not in placed]
+
+    if not profile_cfg.default_plugins:
+        # Advanced / unopinionated profile — run all plugins in registry order.
+        ordered_plugin_ids = registry_ids
+    else:
+        ordered_plugin_ids = (
+            primary_ids + secondary_ids + remaining_ids + deprioritized_ids
+        )
+
+    plugins = [PLUGIN_REGISTRY[pid] for pid in ordered_plugin_ids]
     all_findings: list[Any] = []
     forensic_findings: list[Any] = []
     plugin_errors: list[dict[str, str]] = []
@@ -185,11 +220,18 @@ async def analyze_case(case_id: str) -> JSONResponse:
         try:
             ff_list, p_diag = plugin.forensic_analyze(
                 flight, ev.evidence_id, run_id, {}, parse_result.diagnostics,
+                tuning_profile=tuning_profile,
             )
             forensic_findings.extend(ff_list)
             all_plugin_diagnostics.append(p_diag)
-            # Also run thin findings for backward compat (narrative, overall score)
-            thin = plugin.analyze(flight, {})
+            # Also run thin findings for backward compat (narrative, overall score).
+            # Resolve the merged config the same way forensic_analyze does so that
+            # thin findings see tuning profile thresholds too.
+            thin_cfg: dict[str, Any] = {}
+            plugin_cfg = tuning_profile.get_config_for_plugin(plugin.manifest.plugin_id)
+            if plugin_cfg is not None and plugin_cfg.thresholds is not None:
+                thin_cfg = dict(plugin_cfg.thresholds.values)
+            thin = plugin.analyze(flight, thin_cfg)
             all_findings.extend(thin)
         except Exception as exc:
             logger.warning("Plugin %s failed: %s", plugin.name, exc)
@@ -206,6 +248,53 @@ async def analyze_case(case_id: str) -> JSONResponse:
         parse_diag=parse_result.diagnostics,
     )
     signal_quality = build_signal_quality(parse_result.diagnostics)
+
+    # --- v11 Strategy Sprint: profile-aware ordering -------------------------
+    # Critical findings always come first regardless of profile. Within the
+    # critical block and each subsequent severity block, ordering follows the
+    # profile's findings_sort_priority. Findings from deprioritized plugins
+    # sink to the bottom of their severity bucket.
+    def _sev_value(f: Any) -> str:
+        sv = getattr(f, "severity", "info")
+        return sv.value if hasattr(sv, "value") else str(sv)
+
+    sev_priority_list = list(profile_cfg.findings_sort_priority) or [
+        "critical", "warning", "info", "pass",
+    ]
+    # Ensure critical always comes first
+    if "critical" in sev_priority_list:
+        sev_priority_list = ["critical"] + [s for s in sev_priority_list if s != "critical"]
+    else:
+        sev_priority_list = ["critical", *sev_priority_list]
+    sev_rank = {s: i for i, s in enumerate(sev_priority_list)}
+
+    deprio_set = set(deprioritized_ids)
+
+    def _finding_sort_key(f: Any) -> tuple[int, int, str]:
+        sev = _sev_value(f)
+        rank = sev_rank.get(sev, len(sev_rank) + 1)
+        plugin_id = getattr(f, "plugin_id", "") or ""
+        deprio_rank = 1 if plugin_id in deprio_set else 0
+        return (rank, deprio_rank, plugin_id)
+
+    forensic_findings.sort(key=_finding_sort_key)
+
+    # Hypothesis ordering by profile theme/category priority.
+    hyp_priority = [p.lower() for p in profile_cfg.hypothesis_priority]
+
+    def _hyp_sort_key(h: Any) -> tuple[int, float]:
+        cat = (getattr(h, "category", "") or "").lower()
+        theme = (getattr(h, "theme", "") or "").lower()
+        rank = len(hyp_priority) + 1
+        for i, p in enumerate(hyp_priority):
+            if p and (p == cat or p == theme or p in cat or p in theme):
+                rank = i
+                break
+        # Higher confidence ties break earlier (negate for ascending sort)
+        conf = -float(getattr(h, "confidence", 0.0) or 0.0)
+        return (rank, conf)
+
+    hypotheses = sorted(hypotheses, key=_hyp_sort_key)
 
     # --- Persist analysis/ artifacts -----------------------------------------
     analysis_dir = case_dir / "analysis"
@@ -271,14 +360,21 @@ async def analyze_case(case_id: str) -> JSONResponse:
         "parser_selected": parse_result.diagnostics.parser_selected,
         "parser_confidence": parse_result.diagnostics.parser_confidence,
         "parser_confidence_scope": parse_result.diagnostics.confidence_scope,
+        # v11 Strategy Sprint — record which profile was active for this run.
+        "profile_id": profile_cfg.profile_id,
+        "profile_primary_plugins": list(primary_ids),
+        "profile_secondary_plugins": list(secondary_ids),
+        "profile_deprioritized_plugins": list(deprioritized_ids),
+        "plugin_execution_order": [p.manifest.plugin_id for p in plugins],
     }
     (analysis_dir / "plugin_diagnostics.json").write_text(
         json.dumps(plugin_diag, indent=2), encoding="utf-8"
     )
 
     # --- Write tuning profile used for this run ------------------------------
-    from goose.forensics.tuning import TuningProfile
-    tuning_profile = TuningProfile.default()
+    # tuning_profile was resolved above and passed to each plugin's
+    # forensic_analyze() call — persist it alongside the run artifacts so
+    # downstream replay/validation can reconstruct the exact thresholds.
     (analysis_dir / "tuning_profile.json").write_text(
         json.dumps(tuning_profile.to_dict(), indent=2), encoding="utf-8",
     )
@@ -322,6 +418,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
         warning_count=warning_count,
         hypotheses_count=len(hypotheses),
         is_replay=False,
+        profile_id=profile_cfg.profile_id,
     )
     case = svc.get_case(case_id)  # refresh
     case.analysis_runs.append(run)
@@ -379,6 +476,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
         "case_id": case_id,
         "run_id": run.run_id,
         "evidence_id": ev.evidence_id,
+        "profile": profile_cfg.to_dict(),
         "overall_score": overall_score,
         "narrative": narrative,
         "narrative_human": narrative_human,

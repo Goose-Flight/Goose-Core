@@ -52,8 +52,22 @@ class PositionTrackingPlugin(Plugin):
         output_finding_types=["horizontal_error", "vertical_error", "hover_drift"],
     )
 
+    DEFAULT_WARN_MEAN_ERROR_M = WARN_MEAN_ERROR_M
+    DEFAULT_CRITICAL_MEAN_ERROR_M = CRITICAL_MEAN_ERROR_M
+    DEFAULT_WARN_VERT_ERROR_M = WARN_VERT_ERROR_M
+    DEFAULT_CRITICAL_VERT_ERROR_M = CRITICAL_VERT_ERROR_M
+    DEFAULT_HOVER_DRIFT_M = HOVER_DRIFT_M
+    DEFAULT_LOW_VELOCITY_THRESHOLD_MS = LOW_VELOCITY_THRESHOLD
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         findings: list[Finding] = []
+        cfg = config or {}
+        warn_err = float(cfg.get("warn_mean_error_m", WARN_MEAN_ERROR_M))
+        crit_err = float(cfg.get("critical_mean_error_m", CRITICAL_MEAN_ERROR_M))
+        warn_vert = float(cfg.get("warn_vert_error_m", WARN_VERT_ERROR_M))
+        crit_vert = float(cfg.get("critical_vert_error_m", CRITICAL_VERT_ERROR_M))
+        hover_drift = float(cfg.get("hover_drift_m", HOVER_DRIFT_M))
+        low_vel = float(cfg.get("low_velocity_threshold_ms", LOW_VELOCITY_THRESHOLD))
 
         if not flight.has_position_setpoints:
             findings.append(Finding(
@@ -113,9 +127,9 @@ class PositionTrackingPlugin(Plugin):
             ))
             return findings
 
-        findings.extend(self._check_horizontal_error(merged))
-        findings.extend(self._check_vertical_error(merged))
-        findings.extend(self._check_hover_drift(merged, flight))
+        findings.extend(self._check_horizontal_error(merged, warn_err, crit_err))
+        findings.extend(self._check_vertical_error(merged, warn_vert, crit_vert))
+        findings.extend(self._check_hover_drift(merged, flight, hover_drift, low_vel, crit_err))
 
         return findings
 
@@ -123,7 +137,12 @@ class PositionTrackingPlugin(Plugin):
     # Horizontal position error
     # ------------------------------------------------------------------
 
-    def _check_horizontal_error(self, merged: pd.DataFrame) -> list[Finding]:
+    def _check_horizontal_error(
+        self,
+        merged: pd.DataFrame,
+        WARN_MEAN_ERROR_M: float = WARN_MEAN_ERROR_M,
+        CRITICAL_MEAN_ERROR_M: float = CRITICAL_MEAN_ERROR_M,
+    ) -> list[Finding]:
         """Compute horizontal distance between actual and setpoint position."""
         # Need lat/lon in both actual and setpoint
         has_actual = "lat" in merged.columns and "lon" in merged.columns
@@ -191,7 +210,12 @@ class PositionTrackingPlugin(Plugin):
     # Vertical position error
     # ------------------------------------------------------------------
 
-    def _check_vertical_error(self, merged: pd.DataFrame) -> list[Finding]:
+    def _check_vertical_error(
+        self,
+        merged: pd.DataFrame,
+        WARN_VERT_ERROR_M: float = WARN_VERT_ERROR_M,
+        CRITICAL_VERT_ERROR_M: float = CRITICAL_VERT_ERROR_M,
+    ) -> list[Finding]:
         """Check altitude error vs commanded altitude."""
         alt_col = None
         alt_sp_col = None
@@ -256,7 +280,14 @@ class PositionTrackingPlugin(Plugin):
     # Hover drift
     # ------------------------------------------------------------------
 
-    def _check_hover_drift(self, merged: pd.DataFrame, flight: Flight) -> list[Finding]:
+    def _check_hover_drift(
+        self,
+        merged: pd.DataFrame,
+        flight: Flight,
+        HOVER_DRIFT_M: float = HOVER_DRIFT_M,
+        LOW_VELOCITY_THRESHOLD: float = LOW_VELOCITY_THRESHOLD,
+        CRITICAL_MEAN_ERROR_M: float = CRITICAL_MEAN_ERROR_M,
+    ) -> list[Finding]:
         """Detect position drift while vehicle is hovering (low velocity)."""
         # Need velocity data to detect hover
         if flight.velocity is None or flight.velocity.empty:

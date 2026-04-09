@@ -72,6 +72,7 @@ class CorpusCase:
     expected_analyzers: list[ExpectedAnalyzerBehavior] = field(default_factory=list)
     notes: str = ""
     active: bool = True
+    profile: str = "default"  # analysis profile id (default/racer/etc.)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -83,6 +84,7 @@ class CorpusCase:
             "expected_analyzers": [a.to_dict() for a in self.expected_analyzers],
             "notes": self.notes,
             "active": self.active,
+            "profile": self.profile,
         }
 
     @classmethod
@@ -94,7 +96,7 @@ class CorpusCase:
         ]
         known = {
             "corpus_id", "description", "category", "evidence_filename",
-            "expected_parser", "expected_analyzers", "notes", "active",
+            "expected_parser", "expected_analyzers", "notes", "active", "profile",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 

@@ -29,13 +29,19 @@ def _rms(series: pd.Series) -> float:
     return float(np.sqrt((series**2).mean()))
 
 
-def _classify_vibration(rms_val: float, is_forward_flight: bool = False) -> str:
+def _classify_vibration(
+    rms_val: float,
+    is_forward_flight: bool = False,
+    good_threshold: float = VIBRATION_GOOD,
+    warning_threshold: float = VIBRATION_WARNING,
+    forward_factor: float = FORWARD_FLIGHT_FACTOR,
+) -> str:
     """Classify vibration level as good/warning/bad."""
-    threshold_good = VIBRATION_GOOD
-    threshold_warn = VIBRATION_WARNING
+    threshold_good = good_threshold
+    threshold_warn = warning_threshold
     if is_forward_flight:
-        threshold_good *= FORWARD_FLIGHT_FACTOR
-        threshold_warn *= FORWARD_FLIGHT_FACTOR
+        threshold_good *= forward_factor
+        threshold_warn *= forward_factor
     if rms_val < threshold_good:
         return "good"
     elif rms_val < threshold_warn:
@@ -64,9 +70,19 @@ class VibrationPlugin(Plugin):
         output_finding_types=["vibration_level", "sensor_clipping", "vibration_degradation"],
     )
 
+    DEFAULT_VIBRATION_GOOD_MS2 = VIBRATION_GOOD
+    DEFAULT_VIBRATION_WARNING_MS2 = VIBRATION_WARNING
+    DEFAULT_FORWARD_FLIGHT_FACTOR = FORWARD_FLIGHT_FACTOR
+    DEFAULT_CLIPPING_THRESHOLD_MS2 = CLIPPING_THRESHOLD_MS2
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run vibration analysis. Returns findings for each axis and anomalies."""
         findings: list[Finding] = []
+        cfg = config or {}
+        good_thr = float(cfg.get("vibration_good_ms2", VIBRATION_GOOD))
+        warn_thr = float(cfg.get("vibration_warning_ms2", VIBRATION_WARNING))
+        fwd_factor = float(cfg.get("forward_flight_factor", FORWARD_FLIGHT_FACTOR))
+        clip_thr = float(cfg.get("clipping_threshold_ms2", CLIPPING_THRESHOLD_MS2))
 
         if flight.vibration.empty:
             findings.append(Finding(
@@ -118,7 +134,13 @@ class VibrationPlugin(Plugin):
 
             rms_val = _rms(series)
             peak_val = float(series.abs().max())
-            classification = _classify_vibration(rms_val, is_forward_flight=is_forward)
+            classification = _classify_vibration(
+                rms_val,
+                is_forward_flight=is_forward,
+                good_threshold=good_thr,
+                warning_threshold=warn_thr,
+                forward_factor=fwd_factor,
+            )
 
             axis_results[axis] = {
                 "rms_ms2": round(rms_val, 2),
@@ -166,7 +188,7 @@ class VibrationPlugin(Plugin):
         ))
 
         # Clipping detection
-        clipping_finding = self._check_clipping(flight, available)
+        clipping_finding = self._check_clipping(flight, available, clip_thr)
         if clipping_finding:
             findings.append(clipping_finding)
 
@@ -178,7 +200,10 @@ class VibrationPlugin(Plugin):
         return findings
 
     def _check_clipping(
-        self, flight: Flight, available: dict[str, str]
+        self,
+        flight: Flight,
+        available: dict[str, str],
+        clipping_threshold_ms2: float = CLIPPING_THRESHOLD_MS2,
     ) -> Finding | None:
         """Detect sensor saturation (clipping) on any axis."""
         clip_axes: list[str] = []
@@ -186,7 +211,7 @@ class VibrationPlugin(Plugin):
 
         for axis, col in available.items():
             series = flight.vibration[col]
-            clipped = (series.abs() > CLIPPING_THRESHOLD_MS2).sum()
+            clipped = (series.abs() > clipping_threshold_ms2).sum()
             if clipped > 0:
                 clip_axes.append(axis)
                 clip_counts[axis] = int(clipped)

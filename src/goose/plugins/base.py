@@ -12,6 +12,7 @@ from goose.core.flight import Flight
 
 if TYPE_CHECKING:
     from goose.forensics.canonical import ForensicFinding
+    from goose.forensics.tuning import TuningProfile
     from goose.parsers.diagnostics import ParseDiagnostics
     from goose.plugins.contract import PluginDiagnostics, PluginManifest
 
@@ -39,12 +40,18 @@ class Plugin(ABC):
         run_id: str,
         config: dict[str, Any],
         parse_diagnostics: ParseDiagnostics,
+        tuning_profile: TuningProfile | None = None,
     ) -> tuple[list[ForensicFinding], PluginDiagnostics]:
         """Run analysis and return ForensicFinding objects directly.
 
         Sprint 5 contract-compliant method. Checks required streams,
         runs the existing analyze() logic, and lifts results to
         ForensicFinding in-place.
+
+        If ``tuning_profile`` is supplied, the plugin's AnalyzerConfigProfile
+        threshold values are merged into ``config`` before invoking
+        ``analyze()``. Explicit entries in ``config`` take precedence over
+        tuning-profile values so callers can override individual thresholds.
         """
         from goose.plugins.contract import PluginDiagnostics as PDiag
         from goose.forensics.canonical import (
@@ -55,6 +62,15 @@ class Plugin(ABC):
         )
 
         t0 = time.perf_counter()
+
+        # Merge tuning profile thresholds into config if supplied
+        effective_config: dict[str, Any] = dict(config) if config else {}
+        if tuning_profile is not None:
+            plugin_cfg = tuning_profile.get_config_for_plugin(self.manifest.plugin_id)
+            if plugin_cfg is not None and plugin_cfg.thresholds is not None:
+                merged: dict[str, Any] = dict(plugin_cfg.thresholds.values)
+                merged.update(effective_config)  # explicit config wins
+                effective_config = merged
 
         # Check required streams
         missing = []
@@ -79,8 +95,8 @@ class Plugin(ABC):
             )
             return [], diag
 
-        # Run the existing analyze method
-        thin_findings = self.analyze(flight, config)
+        # Run the existing analyze method with the merged config
+        thin_findings = self.analyze(flight, effective_config)
 
         # Convert thin findings to ForensicFinding
         forensic_findings: list[ForensicFinding] = []

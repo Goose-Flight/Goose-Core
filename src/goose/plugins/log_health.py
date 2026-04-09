@@ -45,13 +45,21 @@ class LogHealthPlugin(Plugin):
         output_finding_types=["missing_stream", "data_dropout", "low_data_rate", "duration_mismatch"],
     )
 
+    DEFAULT_DROPOUT_GAP_SEC = DROPOUT_GAP_SEC
+    DEFAULT_MIN_DATA_RATE_HZ = MIN_DATA_RATE_HZ
+    DEFAULT_DURATION_TOLERANCE_SEC = DURATION_TOLERANCE_SEC
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         findings: list[Finding] = []
+        cfg = config or {}
+        dropout_sec = float(cfg.get("dropout_gap_sec", DROPOUT_GAP_SEC))
+        min_rate = float(cfg.get("min_data_rate_hz", MIN_DATA_RATE_HZ))
+        duration_tol = float(cfg.get("duration_tolerance_sec", DURATION_TOLERANCE_SEC))
 
         findings.extend(self._check_missing_streams(flight))
-        findings.extend(self._check_dropouts(flight))
-        findings.extend(self._check_data_rates(flight))
-        findings.extend(self._check_duration(flight))
+        findings.extend(self._check_dropouts(flight, dropout_sec))
+        findings.extend(self._check_data_rates(flight, min_rate))
+        findings.extend(self._check_duration(flight, duration_tol))
 
         return findings
 
@@ -99,7 +107,9 @@ class LogHealthPlugin(Plugin):
     # Data dropouts
     # ------------------------------------------------------------------
 
-    def _check_dropouts(self, flight: Flight) -> list[Finding]:
+    def _check_dropouts(
+        self, flight: Flight, DROPOUT_GAP_SEC: float = DROPOUT_GAP_SEC
+    ) -> list[Finding]:
         """Detect timestamp gaps larger than DROPOUT_GAP_SEC in each stream."""
         findings: list[Finding] = []
 
@@ -166,7 +176,9 @@ class LogHealthPlugin(Plugin):
     # Data rates
     # ------------------------------------------------------------------
 
-    def _check_data_rates(self, flight: Flight) -> list[Finding]:
+    def _check_data_rates(
+        self, flight: Flight, MIN_DATA_RATE_HZ: float = MIN_DATA_RATE_HZ
+    ) -> list[Finding]:
         """Check that key streams have acceptable sample rates."""
         findings: list[Finding] = []
 
@@ -213,7 +225,9 @@ class LogHealthPlugin(Plugin):
     # Duration check
     # ------------------------------------------------------------------
 
-    def _check_duration(self, flight: Flight) -> list[Finding]:
+    def _check_duration(
+        self, flight: Flight, DURATION_TOLERANCE_SEC: float = DURATION_TOLERANCE_SEC
+    ) -> list[Finding]:
         """Verify that data duration matches the metadata duration_sec field."""
         findings: list[Finding] = []
         meta_duration = flight.metadata.duration_sec

@@ -42,9 +42,17 @@ class MotorSaturationPlugin(Plugin):
         output_finding_types=["motor_saturation", "motor_imbalance", "sustained_saturation"],
     )
 
+    DEFAULT_SATURATION_THRESHOLD = SATURATION_THRESHOLD
+    DEFAULT_IMBALANCE_THRESHOLD = IMBALANCE_THRESHOLD
+    DEFAULT_SUSTAINED_SATURATION_SEC = SUSTAINED_SATURATION_SEC
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run motor saturation checks. Returns findings for each check category."""
         findings: list[Finding] = []
+        cfg = config or {}
+        sat_thr = float(cfg.get("saturation_threshold", SATURATION_THRESHOLD))
+        imb_thr = float(cfg.get("imbalance_threshold", IMBALANCE_THRESHOLD))
+        sustained_sec = float(cfg.get("sustained_saturation_sec", SUSTAINED_SATURATION_SEC))
 
         if flight.motors is None or flight.motors.empty:
             findings.append(Finding(
@@ -86,9 +94,9 @@ class MotorSaturationPlugin(Plugin):
             ))
             return findings
 
-        findings.extend(self._check_saturation(motors, motor_cols))
-        findings.extend(self._check_imbalance(motors, motor_cols))
-        findings.extend(self._check_sustained_saturation(motors, motor_cols))
+        findings.extend(self._check_saturation(motors, motor_cols, sat_thr))
+        findings.extend(self._check_imbalance(motors, motor_cols, imb_thr))
+        findings.extend(self._check_sustained_saturation(motors, motor_cols, sat_thr, sustained_sec))
 
         return findings
 
@@ -107,7 +115,10 @@ class MotorSaturationPlugin(Plugin):
     # ------------------------------------------------------------------
 
     def _check_saturation(
-        self, motors: pd.DataFrame, motor_cols: list[str]
+        self,
+        motors: pd.DataFrame,
+        motor_cols: list[str],
+        SATURATION_THRESHOLD: float = SATURATION_THRESHOLD,
     ) -> list[Finding]:
         """Check whether any motor output exceeds the saturation threshold."""
         per_motor: dict[str, dict[str, Any]] = {}
@@ -189,7 +200,10 @@ class MotorSaturationPlugin(Plugin):
     # ------------------------------------------------------------------
 
     def _check_imbalance(
-        self, motors: pd.DataFrame, motor_cols: list[str]
+        self,
+        motors: pd.DataFrame,
+        motor_cols: list[str],
+        IMBALANCE_THRESHOLD: float = IMBALANCE_THRESHOLD,
     ) -> list[Finding]:
         """Check whether the spread between motor outputs exceeds the imbalance threshold."""
         if len(motor_cols) < 2:
@@ -271,7 +285,11 @@ class MotorSaturationPlugin(Plugin):
     # ------------------------------------------------------------------
 
     def _check_sustained_saturation(
-        self, motors: pd.DataFrame, motor_cols: list[str]
+        self,
+        motors: pd.DataFrame,
+        motor_cols: list[str],
+        SATURATION_THRESHOLD: float = SATURATION_THRESHOLD,
+        SUSTAINED_SATURATION_SEC: float = SUSTAINED_SATURATION_SEC,
     ) -> list[Finding]:
         """Detect windows where any motor stays above the saturation threshold for >=SUSTAINED_SATURATION_SEC."""
         sustained_events: list[dict[str, Any]] = []

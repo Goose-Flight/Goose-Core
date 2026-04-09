@@ -2191,6 +2191,8 @@
 
       <!-- Evidence tab -->
       <div id="ws-evidence-panel">
+        <!-- v11 Strategy Sprint: profile-aware case metadata -->
+        <div id="ws-case-metadata" style="margin-bottom:16px;"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <div style="font-size:13px;color:var(--text-sec);">Files ingested as immutable evidence into this case.</div>
           <div style="display:flex;gap:8px;">
@@ -2280,8 +2282,24 @@
 
   <!-- New Case Modal -->
   <div id="new-case-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;">
-    <div style="background:var(--surface);border:1px solid var(--card-border);border-radius:var(--radius);padding:32px;width:420px;max-width:90vw;">
+    <div style="background:var(--surface);border:1px solid var(--card-border);border-radius:var(--radius);padding:32px;width:460px;max-width:90vw;">
       <h3 style="font-size:15px;font-weight:600;margin-bottom:20px;">New Investigation Case</h3>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px;color:var(--text-sec);display:block;margin-bottom:6px;">Profile</label>
+        <select id="new-case-profile" onchange="updateNewCaseProfileDescription()"
+          style="width:100%;background:var(--bg);border:1px solid var(--card-border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font);font-size:13px;">
+          <option value="default">Default</option>
+          <option value="racer">Racer</option>
+          <option value="research">Research / University</option>
+          <option value="shop_repair">Drone Shop / Repair</option>
+          <option value="factory_qa">Factory / QA</option>
+          <option value="gov_mil">Gov / Mil</option>
+          <option value="advanced">Advanced / Custom</option>
+        </select>
+        <div id="new-case-profile-desc" style="font-size:12px;color:var(--text-muted);margin-top:6px;min-height:16px;">
+          Standard investigation workflow
+        </div>
+      </div>
       <div style="margin-bottom:14px;">
         <label style="font-size:12px;color:var(--text-sec);display:block;margin-bottom:6px;">Notes (optional)</label>
         <textarea id="new-case-notes" placeholder="Describe this investigation…" rows="3"
@@ -2354,6 +2372,9 @@
     chartStreams: [],
     findingsFilter: 'all',
     timelineData: null,
+    // v11 Strategy Sprint — active profile config for the open case.
+    // Controls wording, field visibility, plugin ordering, and chart presets.
+    profileConfig: null,
   };
 
   /* ════════════════════════════════════════════════════════════
@@ -3924,11 +3945,31 @@
     }).join('');
   }
 
+  // v11 Strategy Sprint — static profile descriptions (mirror ProfileConfig.description).
+  const PROFILE_DESCRIPTIONS = {
+    default: 'Standard investigation workflow',
+    racer: 'FPV racer and performance tuning',
+    research: 'Research and academic flight analysis',
+    shop_repair: 'Repair shop triage and fault isolation',
+    factory_qa: 'Manufacturing QA and acceptance testing',
+    gov_mil: 'Government, military, and public safety investigation',
+    advanced: 'Minimal assumptions, full control',
+  };
+
+  function updateNewCaseProfileDescription() {
+    const sel = document.getElementById('new-case-profile');
+    const desc = document.getElementById('new-case-profile-desc');
+    if (sel && desc) desc.textContent = PROFILE_DESCRIPTIONS[sel.value] || '';
+  }
+
   function showNewCaseModal() {
     const modal = document.getElementById('new-case-modal');
     modal.style.display = 'flex';
     document.getElementById('new-case-notes').value = '';
     document.getElementById('new-case-tags').value = '';
+    const profSel = document.getElementById('new-case-profile');
+    if (profSel) { profSel.value = 'default'; }
+    updateNewCaseProfileDescription();
   }
 
   function hideNewCaseModal() {
@@ -3939,13 +3980,15 @@
     const notes = document.getElementById('new-case-notes').value.trim();
     const rawTags = document.getElementById('new-case-tags').value.trim();
     const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const profileSel = document.getElementById('new-case-profile');
+    const profile = profileSel ? profileSel.value : 'default';
 
     hideNewCaseModal();
     try {
       const res = await fetch('/api/cases', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ created_by: 'gui', notes, tags }),
+        body: JSON.stringify({ created_by: 'gui', notes, tags, profile }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -3972,6 +4015,10 @@
       if (!data.ok) return;
       const c = data.case;
 
+      // v11 Strategy Sprint — capture the profile config so every tab can
+      // read wording / visible fields / chart presets without another fetch.
+      workspaceState.profileConfig = data.profile_config || null;
+
       // Extract run_id from latest analysis run if available
       if (c.analysis_runs && c.analysis_runs.length > 0) {
         workspaceState.runId = c.analysis_runs[c.analysis_runs.length - 1].run_id;
@@ -3981,7 +4028,15 @@
       document.getElementById('cases-dashboard').style.display = 'none';
       document.getElementById('case-workspace').style.display = '';
 
-      document.getElementById('ws-case-id').textContent = c.case_id;
+      // Apply profile wording to the workspace header.
+      const profCfg = workspaceState.profileConfig || {};
+      const wording = profCfg.wording || {};
+      const workflowLabel = wording.workflow_label || 'Case';
+      const profileName = profCfg.name || 'Default';
+      const titleEl = document.getElementById('ws-case-id');
+      titleEl.innerHTML =
+        `${escHtml(workflowLabel)} ${escHtml(c.case_id)}` +
+        ` <span id="ws-profile-badge" style="display:inline-block;margin-left:10px;font-size:12px;font-weight:600;padding:2px 10px;border-radius:10px;background:var(--green-glow);color:var(--green);border:1px solid var(--green);vertical-align:middle;">Profile: ${escHtml(profileName)}</span>`;
       document.getElementById('ws-case-meta').textContent =
         `Created ${new Date(c.created_at).toLocaleString()} by ${c.created_by}` +
         (c.notes ? ` · ${c.notes}` : '');
@@ -3989,6 +4044,11 @@
 
       // Populate run selector
       populateRunSelector(c.analysis_runs || []);
+
+      // Re-label workspace tabs with profile wording.
+      applyProfileWordingToTabs();
+      // Profile-aware case metadata panel (top of Evidence tab).
+      renderCaseMetadataPanel(c);
 
       renderEvidenceList(c.evidence_items || []);
       switchWsTab('evidence');
@@ -3999,9 +4059,121 @@
 
   function closeCaseWorkspace() {
     activeCaseId = null;
+    workspaceState.profileConfig = null;
     document.getElementById('case-workspace').style.display = 'none';
     document.getElementById('cases-dashboard').style.display = '';
     loadCasesList();
+  }
+
+  /* v11 Strategy Sprint: profile-aware helpers
+     ─────────────────────────────────────────
+     The profile is a presentation bias only. It never changes forensic
+     truth. These helpers read workspaceState.profileConfig and rewrite
+     selected UI labels / field ordering. */
+
+  function activeWording() {
+    const p = workspaceState.profileConfig;
+    if (p && p.wording) return p.wording;
+    return {
+      profile_id: 'default',
+      workflow_label: 'Case', event_label: 'Event',
+      operator_label: 'Operator', platform_label: 'Vehicle',
+      analysis_label: 'Analysis', summary_heading: 'Investigation Report',
+    };
+  }
+
+  function applyProfileWordingToTabs() {
+    // Profile wording is applied to panel headings (renderFindingsWorkspace
+    // etc.) rather than the top-level tab labels, so the tab layout stays
+    // stable across profiles. Reserved for future tab-level relabelling.
+  }
+
+  // Friendly labels for v11 extended case metadata fields.
+  const CASE_FIELD_LABELS = {
+    mission_id: 'Mission ID',
+    sortie_id: 'Sortie ID',
+    operation_type: 'Operation Type',
+    event_type: 'Event Type',
+    event_classification: 'Event Classification',
+    event_severity: 'Event Severity',
+    date_time_start: 'Start Time',
+    date_time_end: 'End Time',
+    location_name: 'Location',
+    operating_area: 'Operating Area',
+    environment_summary: 'Environment',
+    platform_name: 'Platform',
+    platform_type: 'Platform Type',
+    serial_number: 'Serial Number',
+    firmware_version: 'Firmware',
+    hardware_config: 'Hardware Config',
+    payload_config: 'Payload',
+    battery_config: 'Battery Config',
+    propulsion_notes: 'Propulsion Notes',
+    recent_changes: 'Recent Changes',
+    operator_name: 'Operator',
+    team_name: 'Team',
+    unit_name: 'Unit',
+    organization: 'Organization',
+    customer_name: 'Customer',
+    ticket_id: 'Ticket ID',
+    technician_name: 'Technician',
+    tester_name: 'Tester',
+    damage_summary: 'Damage Summary',
+    loss_summary: 'Loss Summary',
+    recommendations: 'Recommendations',
+    corrective_actions: 'Corrective Actions',
+    closure_notes: 'Closure Notes',
+  };
+
+  function renderCaseMetadataPanel(caseObj) {
+    const target = document.getElementById('ws-case-metadata');
+    if (!target) return;
+    const profCfg = workspaceState.profileConfig || {};
+    const visible = Array.isArray(profCfg.visible_case_fields) ? profCfg.visible_case_fields : [];
+    const deprio = new Set(Array.isArray(profCfg.deprioritized_case_fields) ? profCfg.deprioritized_case_fields : []);
+    const allFields = Object.keys(CASE_FIELD_LABELS);
+
+    // Order: visible (in declared order) first, then remaining (excluding deprio), then deprio at the end (collapsed).
+    const visibleOrdered = visible.filter(f => allFields.includes(f));
+    const visibleSet = new Set(visibleOrdered);
+    const restOrdered = allFields.filter(f => !visibleSet.has(f) && !deprio.has(f));
+    const deprioOrdered = allFields.filter(f => deprio.has(f));
+
+    function renderRow(field) {
+      const val = caseObj[field];
+      if (val === undefined || val === null || val === '') return '';
+      return `<div style="font-size:12px;color:var(--text-sec);">${escHtml(CASE_FIELD_LABELS[field] || field)}: <span style="color:var(--text);">${escHtml(String(val))}</span></div>`;
+    }
+
+    const visibleRows = visibleOrdered.map(renderRow).filter(Boolean).join('');
+    const restRows = restOrdered.map(renderRow).filter(Boolean).join('');
+    const deprioRows = deprioOrdered.map(renderRow).filter(Boolean).join('');
+
+    // If nothing is populated, show a hint and skip the panel.
+    if (!visibleRows && !restRows && !deprioRows) {
+      target.innerHTML = '';
+      return;
+    }
+
+    const hasDeprio = deprioRows.length > 0;
+    const deprioId = 'ws-case-meta-deprio';
+
+    target.innerHTML = `
+      <div class="card" style="padding:14px;">
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-sec);margin-bottom:8px;">
+          Case Metadata <span style="color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px;">profile: ${escHtml((profCfg.name || 'Default'))}</span>
+        </div>
+        ${visibleRows ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px;margin-bottom:${restRows || hasDeprio ? '10px' : '0'};">${visibleRows}</div>` : ''}
+        ${restRows ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px;">${restRows}</div>` : ''}
+        ${hasDeprio ? `
+          <div style="margin-top:10px;">
+            <button onclick="(function(){var e=document.getElementById('${deprioId}');e.style.display=e.style.display==='none'?'':'none';})()" style="font-size:12px;background:none;border:none;color:var(--text-sec);cursor:pointer;padding:0;text-decoration:underline;font-family:var(--font);">Show profile-secondary fields</button>
+            <div id="${deprioId}" style="display:none;margin-top:6px;">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px;">${deprioRows}</div>
+            </div>
+          </div>
+        ` : ''}
+      </div>`;
   }
 
   function switchWsTab(tab) {
@@ -4129,6 +4301,36 @@
     const runMap = {};
     runInfo.forEach(ri => { runMap[ri.plugin_id] = ri; });
 
+    // v11 Strategy Sprint — order plugins by active profile bias.
+    const profCfg = workspaceState.profileConfig || {};
+    const primaryIds = new Set(profCfg.default_plugins || []);
+    const secondaryIds = new Set(profCfg.secondary_plugins || []);
+    const deprioritizedIds = new Set(profCfg.deprioritized_plugins || []);
+
+    function pluginRole(pid) {
+      if (primaryIds.has(pid)) return 'primary';
+      if (secondaryIds.has(pid)) return 'secondary';
+      if (deprioritizedIds.has(pid)) return 'deprioritized';
+      return 'other';
+    }
+    const roleRank = { primary: 0, secondary: 1, other: 2, deprioritized: 3 };
+    manifests = manifests.slice().sort((a, b) => {
+      const ra = roleRank[pluginRole(a.plugin_id)];
+      const rb = roleRank[pluginRole(b.plugin_id)];
+      if (ra !== rb) return ra - rb;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    const roleLabelHtml = (role) => {
+      if (role === 'primary')
+        return `<span style="font-size:12px;padding:2px 8px;border-radius:10px;background:var(--green-glow);color:var(--green);border:1px solid var(--green);margin-left:6px;">Primary</span>`;
+      if (role === 'secondary')
+        return `<span style="font-size:12px;padding:2px 8px;border-radius:10px;background:rgba(91,155,213,0.12);color:#5B9BD5;border:1px solid #5B9BD5;margin-left:6px;">Secondary</span>`;
+      if (role === 'deprioritized')
+        return `<span style="font-size:12px;padding:2px 8px;border-radius:10px;background:rgba(136,136,136,0.1);color:var(--text-sec);border:1px solid var(--text-sec);margin-left:6px;">Deprioritized</span>`;
+      return '';
+    };
+
     const catColor = c => ({
       health:'#6ECC72', crash:'#E24B4A', flight_dynamics:'#EF9F27',
       navigation:'#5B9BD5', propulsion:'#C77DBA', rf_comms:'#E8A838',
@@ -4187,12 +4389,14 @@
           return `<span style="font-size:12px;color:${present ? 'var(--green)' : 'var(--red)'};">${present ? '&#10003;' : '&#10007;'} ${s}</span>`;
         }).join(' &nbsp; ');
 
+        const _role = pluginRole(m.plugin_id);
         return `
-          <div class="card" style="padding:16px;${isBlocked ? 'opacity:0.5;text-decoration:line-through;' : ''}">
+          <div class="card" style="padding:16px;${isBlocked ? 'opacity:0.5;text-decoration:line-through;' : _role === 'deprioritized' ? 'opacity:0.7;' : ''}">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
               <div>
                 <span style="font-size:14px;font-weight:600;">${m.name}</span>
                 <span style="font-size:12px;color:var(--text-sec);margin-left:6px;">v${m.version}</span>
+                ${roleLabelHtml(_role)}
               </div>
               ${statusBadgeHtml(ri)}
             </div>
@@ -4664,9 +4868,11 @@
       return `<button onclick="workspaceState.findingsFilter='${sev}';renderFindingsWorkspace(_allFindings,'${runId||''}','${evidenceId||''}')" style="font-size:12px;padding:4px 12px;border-radius:8px;border:1px solid ${active?color:'var(--card-border)'};background:${active?'rgba(255,255,255,0.05)':'none'};color:${active?color:'var(--text-sec)'};cursor:pointer;font-family:var(--font);font-weight:${active?'600':'400'};">${label} (${count})</button>`;
     };
 
+    const _w = activeWording();
+    const _analysisLabel = _w.analysis_label || 'Analysis';
     el.innerHTML = `
       <div style="margin-bottom:16px;">
-        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Forensic Findings — ${nonPass} finding(s)${runId ? ' from ' + runId : ''}</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">${escHtml(_analysisLabel)} Findings — ${nonPass} finding(s)${runId ? ' from ' + runId : ''}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           ${filterBtn('ALL', 'all')}
           ${filterBtn('CRITICAL', 'critical')}
@@ -4752,15 +4958,22 @@
   ════════════════════════════════════════════════════════════ */
   function renderChartsPanel(caseId) {
     const el = document.getElementById('ws-charts-content');
+    // v11 Strategy Sprint — pre-fill with profile chart_presets when the user
+    // hasn't chosen streams yet.
+    const profCfg = workspaceState.profileConfig || {};
+    const presets = Array.isArray(profCfg.chart_presets) ? profCfg.chart_presets : [];
     const defaultStreams = workspaceState.chartStreams.length > 0
       ? workspaceState.chartStreams.join(',')
-      : 'battery_voltage,altitude_m';
+      : (presets.length > 0 ? presets.join(',') : 'battery_voltage,altitude_m');
     const startVal = workspaceState.chartStart || '';
     const endVal = workspaceState.chartEnd || '';
+    const presetBadge = presets.length > 0
+      ? `<span id="ws-chart-preset-badge" style="font-size:12px;margin-left:10px;padding:2px 10px;border-radius:10px;background:var(--green-glow);color:var(--green);border:1px solid var(--green);vertical-align:middle;">Profile Presets</span>`
+      : '';
 
     el.innerHTML = `
       <div style="margin-bottom:16px;">
-        <div style="font-size:15px;font-weight:600;margin-bottom:10px;">Flight Data Charts</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:10px;">Flight Data Charts${presetBadge}</div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;">
           <div>
             <label style="font-size:12px;color:var(--text-sec);display:block;margin-bottom:4px;">Streams (comma-separated)</label>

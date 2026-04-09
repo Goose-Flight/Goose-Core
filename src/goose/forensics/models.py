@@ -161,6 +161,10 @@ class AnalysisRun:
     is_replay: bool = False
     source_run_id: str | None = None
     replay_id: str | None = None
+    # v11 Strategy Sprint — active user profile at time of run.
+    # Profiles bias defaults but do not change forensic truth. Recorded here
+    # so replays can reproduce the same plugin ordering used for the run.
+    profile_id: str = "default"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -188,6 +192,7 @@ class AnalysisRun:
             "is_replay": self.is_replay,
             "source_run_id": self.source_run_id,
             "replay_id": self.replay_id,
+            "profile_id": self.profile_id,
         }
 
     @classmethod

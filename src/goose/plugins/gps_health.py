@@ -52,9 +52,19 @@ class GPSHealthPlugin(Plugin):
         output_finding_types=["satellite_count", "hdop", "position_jump", "gps_dropout"],
     )
 
+    DEFAULT_MIN_SATELLITES = MIN_SATELLITES
+    DEFAULT_MAX_HDOP = MAX_HDOP
+    DEFAULT_POSITION_JUMP_METERS = POSITION_JUMP_METERS
+    DEFAULT_DROPOUT_GAP_SEC = DROPOUT_GAP_SEC
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run GPS health checks. Returns findings for each check category."""
         findings: list[Finding] = []
+        cfg = config or {}
+        min_sats = int(cfg.get("min_satellites", MIN_SATELLITES))
+        max_hdop = float(cfg.get("max_hdop", MAX_HDOP))
+        jump_m = float(cfg.get("position_jump_meters", POSITION_JUMP_METERS))
+        dropout_sec = float(cfg.get("dropout_gap_sec", DROPOUT_GAP_SEC))
 
         if flight.gps is None or flight.gps.empty:
             findings.append(Finding(
@@ -79,10 +89,10 @@ class GPSHealthPlugin(Plugin):
             ))
             return findings
 
-        findings.extend(self._check_satellites(gps))
-        findings.extend(self._check_hdop(gps))
-        findings.extend(self._check_position_jumps(gps))
-        findings.extend(self._check_dropouts(gps))
+        findings.extend(self._check_satellites(gps, min_sats))
+        findings.extend(self._check_hdop(gps, max_hdop))
+        findings.extend(self._check_position_jumps(gps, jump_m))
+        findings.extend(self._check_dropouts(gps, dropout_sec))
 
         return findings
 
@@ -90,7 +100,7 @@ class GPSHealthPlugin(Plugin):
     # Satellite count
     # ------------------------------------------------------------------
 
-    def _check_satellites(self, gps: pd.DataFrame) -> list[Finding]:
+    def _check_satellites(self, gps: pd.DataFrame, MIN_SATELLITES: int = MIN_SATELLITES) -> list[Finding]:
         """Check that satellite count stays at or above the minimum threshold."""
         if "satellites" not in gps.columns:
             return []
@@ -153,7 +163,7 @@ class GPSHealthPlugin(Plugin):
     # HDOP
     # ------------------------------------------------------------------
 
-    def _check_hdop(self, gps: pd.DataFrame) -> list[Finding]:
+    def _check_hdop(self, gps: pd.DataFrame, MAX_HDOP: float = MAX_HDOP) -> list[Finding]:
         """Check horizontal dilution of precision stays below the threshold."""
         if "hdop" not in gps.columns:
             return []
@@ -215,7 +225,9 @@ class GPSHealthPlugin(Plugin):
     # Position jumps
     # ------------------------------------------------------------------
 
-    def _check_position_jumps(self, gps: pd.DataFrame) -> list[Finding]:
+    def _check_position_jumps(
+        self, gps: pd.DataFrame, POSITION_JUMP_METERS: float = POSITION_JUMP_METERS
+    ) -> list[Finding]:
         """Detect unrealistically large position jumps between consecutive GPS samples."""
         if "lat" not in gps.columns or "lon" not in gps.columns:
             return []
@@ -281,7 +293,9 @@ class GPSHealthPlugin(Plugin):
     # Dropouts
     # ------------------------------------------------------------------
 
-    def _check_dropouts(self, gps: pd.DataFrame) -> list[Finding]:
+    def _check_dropouts(
+        self, gps: pd.DataFrame, DROPOUT_GAP_SEC: float = DROPOUT_GAP_SEC
+    ) -> list[Finding]:
         """Detect gaps in GPS data longer than DROPOUT_GAP_SEC seconds."""
         ts = gps["timestamp"].dropna().sort_values().reset_index(drop=True)
         if len(ts) < 2:

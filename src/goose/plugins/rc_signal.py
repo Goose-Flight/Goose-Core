@@ -44,9 +44,19 @@ class RcSignalPlugin(Plugin):
         output_finding_types=["rssi_level", "rc_dropout", "stuck_channel"],
     )
 
+    DEFAULT_RSSI_WARNING_PCT = RSSI_WARNING
+    DEFAULT_RSSI_CRITICAL_PCT = RSSI_CRITICAL
+    DEFAULT_DROPOUT_GAP_SEC = DROPOUT_GAP_SEC
+    DEFAULT_STUCK_CHANNEL_SEC = STUCK_CHANNEL_SEC
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run RC signal quality checks. Returns findings."""
         findings: list[Finding] = []
+        cfg = config or {}
+        rssi_warn = float(cfg.get("rssi_warning_pct", RSSI_WARNING))
+        rssi_crit = float(cfg.get("rssi_critical_pct", RSSI_CRITICAL))
+        dropout_sec = float(cfg.get("dropout_gap_sec", DROPOUT_GAP_SEC))
+        stuck_sec = float(cfg.get("stuck_channel_sec", STUCK_CHANNEL_SEC))
 
         if flight.rc_input is None or flight.rc_input.empty:
             findings.append(Finding(
@@ -73,9 +83,9 @@ class RcSignalPlugin(Plugin):
             ))
             return findings
 
-        findings.extend(self._check_rssi(rc))
-        findings.extend(self._check_dropouts(rc))
-        findings.extend(self._check_stuck_channels(rc))
+        findings.extend(self._check_rssi(rc, rssi_warn, rssi_crit))
+        findings.extend(self._check_dropouts(rc, dropout_sec))
+        findings.extend(self._check_stuck_channels(rc, stuck_sec))
 
         return findings
 
@@ -83,7 +93,12 @@ class RcSignalPlugin(Plugin):
     # RSSI level checks
     # ------------------------------------------------------------------
 
-    def _check_rssi(self, rc: pd.DataFrame) -> list[Finding]:
+    def _check_rssi(
+        self,
+        rc: pd.DataFrame,
+        RSSI_WARNING: float = RSSI_WARNING,
+        RSSI_CRITICAL: float = RSSI_CRITICAL,
+    ) -> list[Finding]:
         """Check minimum and average RSSI against warning/critical thresholds."""
         rssi = rc["rssi"].dropna()
         if rssi.empty:
@@ -166,7 +181,9 @@ class RcSignalPlugin(Plugin):
     # Dropout detection
     # ------------------------------------------------------------------
 
-    def _check_dropouts(self, rc: pd.DataFrame) -> list[Finding]:
+    def _check_dropouts(
+        self, rc: pd.DataFrame, DROPOUT_GAP_SEC: float = DROPOUT_GAP_SEC
+    ) -> list[Finding]:
         """Detect gaps in RC input data longer than DROPOUT_GAP_SEC."""
         ts = rc["timestamp"].sort_values().reset_index(drop=True)
         if len(ts) < 2:
@@ -226,7 +243,9 @@ class RcSignalPlugin(Plugin):
     # Stuck channel detection
     # ------------------------------------------------------------------
 
-    def _check_stuck_channels(self, rc: pd.DataFrame) -> list[Finding]:
+    def _check_stuck_channels(
+        self, rc: pd.DataFrame, STUCK_CHANNEL_SEC: float = STUCK_CHANNEL_SEC
+    ) -> list[Finding]:
         """Detect RC channels whose value is unchanged for longer than STUCK_CHANNEL_SEC."""
         channel_cols = [c for c in rc.columns if c.startswith("chan") or c.startswith("channel")]
         if not channel_cols:

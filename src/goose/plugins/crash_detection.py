@@ -95,6 +95,14 @@ class CrashDetectionPlugin(Plugin):
         "motor_drop_threshold": 0.05,  # output below this = "off"
     }
 
+    # Convenience default constants (for tuning profile parity tests)
+    DEFAULT_DESCENT_RATE_THRESHOLD = 5.0
+    DEFAULT_DESCENT_SUSTAINED_SEC = 1.0
+    DEFAULT_ATTITUDE_DIVERGENCE_DEG = 30.0
+    DEFAULT_ATTITUDE_DIVERGENCE_SEC = 2.0
+    DEFAULT_IMPACT_ACCEL_G = 3.0
+    DEFAULT_MOTOR_DROP_THRESHOLD = 0.05
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run crash detection analysis. Returns findings with crash classification."""
         cfg = {**self.DEFAULT_CONFIG, **config}

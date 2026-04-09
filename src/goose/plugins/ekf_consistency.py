@@ -41,9 +41,15 @@ class EkfConsistencyPlugin(Plugin):
         output_finding_types=["velocity_innovation", "position_innovation", "ekf_fault_flags"],
     )
 
+    DEFAULT_INNOVATION_WARNING = INNOV_WARNING
+    DEFAULT_INNOVATION_CRITICAL = INNOV_CRITICAL
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run EKF health checks. Returns findings."""
         findings: list[Finding] = []
+        cfg = config or {}
+        warn = float(cfg.get("innovation_warning", INNOV_WARNING))
+        crit = float(cfg.get("innovation_critical", INNOV_CRITICAL))
 
         if flight.ekf is None or flight.ekf.empty:
             findings.append(Finding(
@@ -57,8 +63,8 @@ class EkfConsistencyPlugin(Plugin):
 
         ekf = flight.ekf.copy()
 
-        findings.extend(self._check_velocity_innovations(ekf))
-        findings.extend(self._check_position_innovations(ekf))
+        findings.extend(self._check_velocity_innovations(ekf, warn, crit))
+        findings.extend(self._check_position_innovations(ekf, warn, crit))
         findings.extend(self._check_fault_flags(ekf))
 
         return findings
@@ -67,7 +73,12 @@ class EkfConsistencyPlugin(Plugin):
     # Velocity innovation ratios
     # ------------------------------------------------------------------
 
-    def _check_velocity_innovations(self, ekf: pd.DataFrame) -> list[Finding]:
+    def _check_velocity_innovations(
+        self,
+        ekf: pd.DataFrame,
+        INNOV_WARNING: float = INNOV_WARNING,
+        INNOV_CRITICAL: float = INNOV_CRITICAL,
+    ) -> list[Finding]:
         """Check velocity innovation ratio columns vel_innov_x/y/z."""
         vel_cols = {
             "x": "vel_innov_x",
@@ -79,13 +90,21 @@ class EkfConsistencyPlugin(Plugin):
         if not available:
             return []
 
-        return self._check_innovation_group(ekf, available, group="velocity")
+        return self._check_innovation_group(
+            ekf, available, group="velocity",
+            INNOV_WARNING=INNOV_WARNING, INNOV_CRITICAL=INNOV_CRITICAL,
+        )
 
     # ------------------------------------------------------------------
     # Position innovation ratios
     # ------------------------------------------------------------------
 
-    def _check_position_innovations(self, ekf: pd.DataFrame) -> list[Finding]:
+    def _check_position_innovations(
+        self,
+        ekf: pd.DataFrame,
+        INNOV_WARNING: float = INNOV_WARNING,
+        INNOV_CRITICAL: float = INNOV_CRITICAL,
+    ) -> list[Finding]:
         """Check position innovation ratio columns pos_innov_x/y/z."""
         pos_cols = {
             "x": "pos_innov_x",
@@ -97,7 +116,10 @@ class EkfConsistencyPlugin(Plugin):
         if not available:
             return []
 
-        return self._check_innovation_group(ekf, available, group="position")
+        return self._check_innovation_group(
+            ekf, available, group="position",
+            INNOV_WARNING=INNOV_WARNING, INNOV_CRITICAL=INNOV_CRITICAL,
+        )
 
     # ------------------------------------------------------------------
     # Shared innovation ratio evaluation
@@ -108,6 +130,8 @@ class EkfConsistencyPlugin(Plugin):
         ekf: pd.DataFrame,
         cols: dict[str, str],
         group: str,
+        INNOV_WARNING: float = INNOV_WARNING,
+        INNOV_CRITICAL: float = INNOV_CRITICAL,
     ) -> list[Finding]:
         """Evaluate innovation ratios for a group of axes and return findings."""
         axis_results: dict[str, dict[str, Any]] = {}

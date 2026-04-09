@@ -61,9 +61,21 @@ class AttitudeTrackingPlugin(Plugin):
         output_finding_types=["tracking_error", "attitude_oscillation"],
     )
 
+    DEFAULT_TRACKING_ERROR_WARNING_DEG = TRACKING_ERROR_WARNING_DEG
+    DEFAULT_TRACKING_ERROR_CRITICAL_DEG = TRACKING_ERROR_CRITICAL_DEG
+    DEFAULT_OSCILLATION_SIGN_CHANGES_PER_SEC = OSCILLATION_SIGN_CHANGES_PER_SEC
+    DEFAULT_MERGE_TOLERANCE_SEC = MERGE_TOLERANCE_SEC
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run attitude tracking analysis. Returns findings per axis and for oscillation."""
         findings: list[Finding] = []
+        cfg = config or {}
+        warn_deg = float(cfg.get("tracking_error_warning_deg", TRACKING_ERROR_WARNING_DEG))
+        crit_deg = float(cfg.get("tracking_error_critical_deg", TRACKING_ERROR_CRITICAL_DEG))
+        osc_per_sec = float(
+            cfg.get("oscillation_sign_changes_per_sec", OSCILLATION_SIGN_CHANGES_PER_SEC)
+        )
+        merge_tol = float(cfg.get("merge_tolerance_sec", MERGE_TOLERANCE_SEC))
 
         # Need both attitude and setpoint data
         if flight.attitude is None or flight.attitude.empty:
@@ -102,7 +114,7 @@ class AttitudeTrackingPlugin(Plugin):
             ))
             return findings
 
-        merged = self._merge_on_timestamp(att, sp)
+        merged = self._merge_on_timestamp(att, sp, merge_tol)
         if merged.empty:
             findings.append(Finding(
                 plugin_name=self.name,
@@ -113,8 +125,8 @@ class AttitudeTrackingPlugin(Plugin):
             ))
             return findings
 
-        findings.extend(self._check_tracking_error(merged, flight))
-        findings.extend(self._check_oscillation(merged, flight))
+        findings.extend(self._check_tracking_error(merged, flight, warn_deg, crit_deg))
+        findings.extend(self._check_oscillation(merged, flight, osc_per_sec))
 
         return findings
 
@@ -123,7 +135,10 @@ class AttitudeTrackingPlugin(Plugin):
     # ------------------------------------------------------------------
 
     def _merge_on_timestamp(
-        self, att: pd.DataFrame, sp: pd.DataFrame
+        self,
+        att: pd.DataFrame,
+        sp: pd.DataFrame,
+        merge_tolerance_sec: float = MERGE_TOLERANCE_SEC,
     ) -> pd.DataFrame:
         """Merge attitude and setpoint DataFrames by nearest timestamp."""
         att_sorted = att.sort_values("timestamp").reset_index(drop=True)
@@ -139,7 +154,7 @@ class AttitudeTrackingPlugin(Plugin):
             att_sorted,
             sp_renamed,
             on="timestamp",
-            tolerance=MERGE_TOLERANCE_SEC,
+            tolerance=merge_tolerance_sec,
             direction="nearest",
         )
         return merged.dropna(subset=["timestamp"])
@@ -149,7 +164,11 @@ class AttitudeTrackingPlugin(Plugin):
     # ------------------------------------------------------------------
 
     def _check_tracking_error(
-        self, merged: pd.DataFrame, flight: Flight
+        self,
+        merged: pd.DataFrame,
+        flight: Flight,
+        TRACKING_ERROR_WARNING_DEG: float = TRACKING_ERROR_WARNING_DEG,
+        TRACKING_ERROR_CRITICAL_DEG: float = TRACKING_ERROR_CRITICAL_DEG,
     ) -> list[Finding]:
         """Compute RMS tracking error for roll/pitch/yaw in degrees."""
         axis_map = {
@@ -277,7 +296,10 @@ class AttitudeTrackingPlugin(Plugin):
     # ------------------------------------------------------------------
 
     def _check_oscillation(
-        self, merged: pd.DataFrame, flight: Flight
+        self,
+        merged: pd.DataFrame,
+        flight: Flight,
+        OSCILLATION_SIGN_CHANGES_PER_SEC: float = OSCILLATION_SIGN_CHANGES_PER_SEC,
     ) -> list[Finding]:
         """Detect rapid oscillation in attitude tracking error."""
         axis_map = {

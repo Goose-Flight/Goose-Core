@@ -29,6 +29,27 @@ SUDDEN_DROP_VOLTS = 0.5
 SUDDEN_DROP_WINDOW_SEC = 2.0
 
 
+def _resolve_battery_cfg(config: dict[str, Any]) -> dict[str, float]:
+    """Resolve configured battery thresholds, falling back to module constants."""
+    cell_count = int(config.get("cell_count", CELL_COUNT))
+    warn_per_cell = float(config.get("warn_voltage_per_cell", 3.5))
+    crit_per_cell = float(config.get("crit_voltage_per_cell", 3.3))
+    return {
+        "cell_count": cell_count,
+        "warn_voltage": warn_per_cell * cell_count,
+        "crit_voltage": crit_per_cell * cell_count,
+        "min_remaining_pct": float(config.get("min_remaining_pct", MIN_REMAINING_PCT)),
+        "current_spike_threshold_a": float(
+            config.get("current_spike_threshold_a", CURRENT_SPIKE_THRESHOLD)
+        ),
+        "sag_drop_threshold_v": float(config.get("sag_drop_threshold_v", SAG_DROP_THRESHOLD)),
+        "sudden_drop_volts": float(config.get("sudden_drop_volts", SUDDEN_DROP_VOLTS)),
+        "sudden_drop_window_sec": float(
+            config.get("sudden_drop_window_sec", SUDDEN_DROP_WINDOW_SEC)
+        ),
+    }
+
+
 class BatterySagPlugin(Plugin):
     """Analyze battery voltage, sag under load, remaining capacity, and sudden drops."""
 
@@ -53,9 +74,21 @@ class BatterySagPlugin(Plugin):
         output_finding_types=["low_voltage", "voltage_sag", "low_remaining_pct", "sudden_voltage_drop"],
     )
 
+    # Default threshold constants — exposed so tuning profile wiring can
+    # compare against the values used when no override is supplied.
+    DEFAULT_CELL_COUNT = CELL_COUNT
+    DEFAULT_WARN_VOLTAGE_PER_CELL = 3.5
+    DEFAULT_CRIT_VOLTAGE_PER_CELL = 3.3
+    DEFAULT_MIN_REMAINING_PCT = MIN_REMAINING_PCT
+    DEFAULT_CURRENT_SPIKE_THRESHOLD_A = CURRENT_SPIKE_THRESHOLD
+    DEFAULT_SAG_DROP_THRESHOLD_V = SAG_DROP_THRESHOLD
+    DEFAULT_SUDDEN_DROP_VOLTS = SUDDEN_DROP_VOLTS
+    DEFAULT_SUDDEN_DROP_WINDOW_SEC = SUDDEN_DROP_WINDOW_SEC
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run battery health checks. Returns findings for each check category."""
         findings: list[Finding] = []
+        cfg = _resolve_battery_cfg(config or {})
 
         if flight.battery is None or flight.battery.empty:
             findings.append(Finding(
@@ -79,10 +112,10 @@ class BatterySagPlugin(Plugin):
             ))
             return findings
 
-        findings.extend(self._check_min_voltage(bat))
-        findings.extend(self._check_voltage_sag(bat))
-        findings.extend(self._check_remaining_pct(bat))
-        findings.extend(self._check_sudden_drops(bat))
+        findings.extend(self._check_min_voltage(bat, cfg))
+        findings.extend(self._check_voltage_sag(bat, cfg))
+        findings.extend(self._check_remaining_pct(bat, cfg))
+        findings.extend(self._check_sudden_drops(bat, cfg))
 
         return findings
 
@@ -90,7 +123,7 @@ class BatterySagPlugin(Plugin):
     # Minimum voltage
     # ------------------------------------------------------------------
 
-    def _check_min_voltage(self, bat: pd.DataFrame) -> list[Finding]:
+    def _check_min_voltage(self, bat: pd.DataFrame, cfg: dict[str, float]) -> list[Finding]:
         """Check pack voltage against 4S warning and critical thresholds."""
         if "voltage" not in bat.columns:
             return []
@@ -98,6 +131,9 @@ class BatterySagPlugin(Plugin):
         volts = bat["voltage"].dropna()
         if volts.empty:
             return []
+
+        WARN_VOLTAGE = cfg["warn_voltage"]
+        CRIT_VOLTAGE = cfg["crit_voltage"]
 
         min_v = round(float(volts.min()), 3)
         mean_v = round(float(volts.mean()), 3)
@@ -174,7 +210,7 @@ class BatterySagPlugin(Plugin):
     # Voltage sag under load
     # ------------------------------------------------------------------
 
-    def _check_voltage_sag(self, bat: pd.DataFrame) -> list[Finding]:
+    def _check_voltage_sag(self, bat: pd.DataFrame, cfg: dict[str, float]) -> list[Finding]:
         """Detect voltage sag when current spikes above the load threshold."""
         if "voltage" not in bat.columns or "current" not in bat.columns:
             return []
@@ -182,6 +218,9 @@ class BatterySagPlugin(Plugin):
         df = bat[["timestamp", "voltage", "current"]].dropna()
         if len(df) < 10:
             return []
+
+        CURRENT_SPIKE_THRESHOLD = cfg["current_spike_threshold_a"]
+        SAG_DROP_THRESHOLD = cfg["sag_drop_threshold_v"]
 
         # Identify load events: windows where current exceeds the spike threshold
         high_load = df["current"] > CURRENT_SPIKE_THRESHOLD
@@ -261,7 +300,7 @@ class BatterySagPlugin(Plugin):
     # Remaining percentage floor
     # ------------------------------------------------------------------
 
-    def _check_remaining_pct(self, bat: pd.DataFrame) -> list[Finding]:
+    def _check_remaining_pct(self, bat: pd.DataFrame, cfg: dict[str, float]) -> list[Finding]:
         """Check that remaining battery percentage never drops below the safe floor."""
         if "remaining_pct" not in bat.columns:
             return []
@@ -269,6 +308,8 @@ class BatterySagPlugin(Plugin):
         pct = bat["remaining_pct"].dropna()
         if pct.empty:
             return []
+
+        MIN_REMAINING_PCT = cfg["min_remaining_pct"]
 
         min_pct = round(float(pct.min()), 1)
         final_pct = round(float(pct.iloc[-1]), 1) if len(pct) else min_pct
@@ -323,7 +364,7 @@ class BatterySagPlugin(Plugin):
     # Sudden voltage drops
     # ------------------------------------------------------------------
 
-    def _check_sudden_drops(self, bat: pd.DataFrame) -> list[Finding]:
+    def _check_sudden_drops(self, bat: pd.DataFrame, cfg: dict[str, float]) -> list[Finding]:
         """Detect abrupt voltage drops (>SUDDEN_DROP_VOLTS within SUDDEN_DROP_WINDOW_SEC)."""
         if "voltage" not in bat.columns:
             return []
@@ -331,6 +372,9 @@ class BatterySagPlugin(Plugin):
         df = bat[["timestamp", "voltage"]].dropna().sort_values("timestamp").reset_index(drop=True)
         if len(df) < 4:
             return []
+
+        SUDDEN_DROP_VOLTS = cfg["sudden_drop_volts"]
+        SUDDEN_DROP_WINDOW_SEC = cfg["sudden_drop_window_sec"]
 
         drop_events: list[dict[str, Any]] = []
 

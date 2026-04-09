@@ -1,0 +1,22 @@
+{
+  "corpus_id": "CORPUS-battery-sag",
+  "description": "Battery sag pipeline smoke test — verifies battery_sag plugin runs end-to-end on a normal PX4 log.",
+  "category": "battery_sag",
+  "evidence_filename": "px4_normal_flight.ulg",
+  "profile": "default",
+  "expected_parser": {
+    "should_succeed": true,
+    "expected_format": "ulog",
+    "min_parser_confidence": 0.5
+  },
+  "expected_analyzers": [
+    {
+      "plugin_id": "battery_sag",
+      "should_run": true,
+      "should_find": [],
+      "should_not_find": []
+    }
+  ],
+  "notes": "Smoke test: exercises battery_sag plugin through the full pipeline with tuning profile thresholds.",
+  "active": true
+}

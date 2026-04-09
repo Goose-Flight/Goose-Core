@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from goose.forensics import CaseService, CaseStatus
+from goose.forensics.profiles import get_profile
 
 logger = logging.getLogger(__name__)
 
@@ -209,12 +210,23 @@ async def list_cases() -> JSONResponse:
 
 @router.get("/{case_id}")
 async def get_case(case_id: str) -> JSONResponse:
-    """Return full case detail including evidence items and analysis runs."""
+    """Return full case detail including evidence items and analysis runs.
+
+    v11 Strategy Sprint — also returns the resolved ``profile_config`` for
+    the case so the GUI can apply profile-specific wording, case-field
+    visibility, and chart presets without an extra round-trip.
+    """
     try:
         from goose.web.cases_api import get_service
         svc = get_service()
         case = svc.get_case(case_id)
-        return JSONResponse({"ok": True, "case": _serialize_case_detail(case)})
+        detail = _serialize_case_detail(case)
+        profile_cfg = get_profile(getattr(case, "profile", "default") or "default")
+        return JSONResponse({
+            "ok": True,
+            "case": detail,
+            "profile_config": profile_cfg.to_dict(),
+        })
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
     except Exception as exc:

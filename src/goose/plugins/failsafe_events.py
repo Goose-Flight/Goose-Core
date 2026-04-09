@@ -41,11 +41,27 @@ class FailsafeEventsPlugin(Plugin):
         output_finding_types=["failsafe_event", "emergency_mode_transition"],
     )
 
+    DEFAULT_EMERGENCY_MODES = "rtl,return,land,emergency,failsafe,parachute,termination"
+
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         findings: list[Finding] = []
 
+        # Resolve configurable emergency mode list (fallback to module-level set)
+        cfg = config or {}
+        emergency_modes_val = cfg.get("emergency_modes")
+        if isinstance(emergency_modes_val, str):
+            emergency_modes = {
+                m.strip().lower() for m in emergency_modes_val.split(",") if m.strip()
+            }
+        elif isinstance(emergency_modes_val, (list, tuple, set)):
+            emergency_modes = {str(m).strip().lower() for m in emergency_modes_val if str(m).strip()}
+        else:
+            emergency_modes = EMERGENCY_MODES
+
         failsafe_events = self._collect_failsafe_events(flight.events)
-        emergency_transitions = self._collect_emergency_transitions(flight.mode_changes)
+        emergency_transitions = self._collect_emergency_transitions(
+            flight.mode_changes, emergency_modes
+        )
 
         total_critical = sum(
             1 for e in failsafe_events if e.severity == "critical"
@@ -169,7 +185,11 @@ class FailsafeEventsPlugin(Plugin):
         return result
 
     def _collect_emergency_transitions(
-        self, mode_changes: list[ModeChange]
+        self,
+        mode_changes: list[ModeChange],
+        emergency_modes: set[str] | None = None,
     ) -> list[ModeChange]:
         """Find mode transitions that end in an emergency/autonomous-response mode."""
-        return [mc for mc in mode_changes if _is_emergency_mode(mc.to_mode)]
+        if emergency_modes is None:
+            emergency_modes = EMERGENCY_MODES
+        return [mc for mc in mode_changes if mc.to_mode.lower() in emergency_modes]

@@ -1,0 +1,40 @@
+{
+  "corpus_id": "CORPUS-racer-profile",
+  "description": "Racer tuning profile smoke test — runs the vibration crash log through the 'racer' profile to exercise non-default thresholds end-to-end.",
+  "category": "profile_racer",
+  "evidence_filename": "px4_vibration_crash.ulg",
+  "profile": "racer",
+  "expected_parser": {
+    "should_succeed": true,
+    "expected_format": "ulog",
+    "min_parser_confidence": 0.5
+  },
+  "expected_analyzers": [
+    {
+      "plugin_id": "vibration",
+      "should_run": true,
+      "should_find": [],
+      "should_not_find": []
+    },
+    {
+      "plugin_id": "motor_saturation",
+      "should_run": true,
+      "should_find": [],
+      "should_not_find": []
+    },
+    {
+      "plugin_id": "attitude_tracking",
+      "should_run": true,
+      "should_find": [],
+      "should_not_find": []
+    },
+    {
+      "plugin_id": "battery_sag",
+      "should_run": true,
+      "should_find": [],
+      "should_not_find": []
+    }
+  ],
+  "notes": "Smoke test: verifies the racer tuning profile path wires through the harness; all four plugins must run without exception.",
+  "active": true
+}

@@ -105,6 +105,7 @@ class RunComparison:
     parser_version_changed: bool = False
     plugin_versions_changed: list[str] = field(default_factory=list)
     summary: str = ""
+    risk_assessment: str = "stable"  # "regression" | "improvement" | "version_drift" | "stable"
 
     @property
     def has_differences(self) -> bool:
@@ -132,6 +133,7 @@ class RunComparison:
             "parser_version_changed": self.parser_version_changed,
             "plugin_versions_changed": self.plugin_versions_changed,
             "summary": self.summary,
+            "risk_assessment": self.risk_assessment,
             "has_differences": self.has_differences,
         }
 
@@ -154,6 +156,7 @@ class RunComparison:
             "finding_differences", "plugin_differences", "diagnostics_difference",
             "hypothesis_differences", "tuning_profile_changed",
             "parser_version_changed", "plugin_versions_changed", "summary",
+            "risk_assessment",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -273,17 +276,95 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
     engine_b = (run_b or {}).get("engine_version", "")
     parser_changed = engine_a != engine_b  # approximate; parser version tied to engine
 
-    # Summary
+    # -------------------------------------------------------------------------
+    # Risk assessment — based on severity changes across findings
+    # -------------------------------------------------------------------------
+    _severity_order = {"pass": 0, "info": 1, "warning": 2, "critical": 3}
+    severity_escalations: list[str] = []
+    severity_improvements: list[str] = []
+
+    for diff in finding_diffs:
+        if diff.change_type == "severity_changed":
+            orig_sev = (diff.original_value or {}).get("severity", "info")
+            replay_sev = (diff.replay_value or {}).get("severity", "info")
+            orig_rank = _severity_order.get(orig_sev, 1)
+            replay_rank = _severity_order.get(replay_sev, 1)
+            # Get the title from the finding data if available
+            title = diff.finding_id
+            for f in findings_b:
+                if f.get("finding_id", f.get("title")) == diff.finding_id:
+                    title = f.get("title", diff.finding_id)
+                    break
+            if replay_rank > orig_rank:
+                severity_escalations.append(
+                    f"'{title}': {orig_sev} → {replay_sev}"
+                )
+            elif replay_rank < orig_rank:
+                severity_improvements.append(
+                    f"'{title}': {orig_sev} → {replay_sev}"
+                )
+
+    # Hypothesis themes that appeared or disappeared
+    added_themes = [d.theme for d in hyp_diffs if d.change == "added"]
+    removed_themes = [d.theme for d in hyp_diffs if d.change == "removed"]
+
+    # Risk assessment label
+    if severity_escalations:
+        risk_assessment = "regression"
+    elif severity_improvements and not severity_escalations:
+        risk_assessment = "improvement"
+    elif versions_changed and not finding_diffs:
+        risk_assessment = "version_drift"
+    else:
+        risk_assessment = "stable"
+
+    # -------------------------------------------------------------------------
+    # Descriptive summary
+    # -------------------------------------------------------------------------
     parts: list[str] = []
-    if finding_diffs:
-        parts.append(f"{len(finding_diffs)} finding difference(s)")
-    if plugin_diffs:
-        parts.append(f"{len(plugin_diffs)} plugin difference(s)")
-    if hyp_diffs:
-        parts.append(f"{len(hyp_diffs)} hypothesis difference(s)")
+
+    if severity_escalations:
+        parts.append(
+            "Severity escalation(s): " + "; ".join(severity_escalations)
+        )
+    if severity_improvements:
+        parts.append(
+            "Severity improvement(s): " + "; ".join(severity_improvements)
+        )
+
+    # Added/removed findings with titles
+    added_titles: list[str] = []
+    for fid in added:
+        t = next(
+            (f.get("title", fid) for f in findings_b if f.get("finding_id", f.get("title")) == fid),
+            fid,
+        )
+        added_titles.append(f"'{t}'")
+    removed_titles: list[str] = []
+    for fid in removed:
+        t = next(
+            (f.get("title", fid) for f in findings_a if f.get("finding_id", f.get("title")) == fid),
+            fid,
+        )
+        removed_titles.append(f"'{t}'")
+    if added_titles:
+        parts.append(f"New finding(s) in run B: {', '.join(added_titles)}")
+    if removed_titles:
+        parts.append(f"Finding(s) resolved in run B: {', '.join(removed_titles)}")
+
+    if added_themes:
+        parts.append(f"New hypothesis theme(s): {', '.join(added_themes)}")
+    if removed_themes:
+        parts.append(f"Hypothesis theme(s) no longer triggered: {', '.join(removed_themes)}")
+
+    if versions_changed:
+        parts.append(
+            f"Plugin version delta: {', '.join(versions_changed)}"
+        )
     if tuning_changed:
-        parts.append("tuning profile changed")
-    summary = "; ".join(parts) if parts else "No differences detected."
+        parts.append(f"Tuning profile changed: {tp_a!r} → {tp_b!r}")
+
+    summary = " | ".join(parts) if parts else "No differences detected."
 
     return RunComparison(
         comparison_id=comparison_id,
@@ -298,6 +379,7 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
         parser_version_changed=parser_changed,
         plugin_versions_changed=versions_changed,
         summary=summary,
+        risk_assessment=risk_assessment,
     )
 
 

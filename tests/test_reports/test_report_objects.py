@@ -136,7 +136,9 @@ class TestForensicCaseReport:
         report = generate_forensic_case_report(case_dir, run_id="RUN-1")
         assert len(report.findings_inventory) == 2
         assert len(report.hypotheses_inventory) == 1
-        assert len(report.timeline_summary) == 1
+        # timeline_summary is a dict with enriched structure (C3a sprint);
+        # check total_events count matches the 1 event we wrote.
+        assert report.timeline_summary.get("total_events", len(report.timeline_summary)) == 1
 
 
 # ---------------------------------------------------------------------------

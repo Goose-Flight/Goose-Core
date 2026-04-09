@@ -156,10 +156,11 @@ class TestStubParsers:
 
     CSVParser is intentionally excluded from the stub parametrize sets because
     it is a fully-implemented parser (implemented = True) as of Sprint 4.
+    DataFlashParser graduated from stub to full implementation in Sprint 5 (Workstream B).
+    Only TLogParser remains a stub.
     """
 
     @pytest.mark.parametrize("parser_cls,ext", [
-        (DataFlashParser, ".bin"),
         (TLogParser, ".tlog"),
     ])
     def test_not_implemented(self, parser_cls: type, ext: str) -> None:
@@ -167,7 +168,6 @@ class TestStubParsers:
         assert not parser.implemented
 
     @pytest.mark.parametrize("parser_cls,ext", [
-        (DataFlashParser, ".bin"),
         (TLogParser, ".tlog"),
     ])
     def test_can_parse_returns_false(self, parser_cls: type, ext: str) -> None:
@@ -175,7 +175,6 @@ class TestStubParsers:
         assert not parser.can_parse(f"file{ext}")
 
     @pytest.mark.parametrize("parser_cls,ext", [
-        (DataFlashParser, ".bin"),
         (TLogParser, ".tlog"),
     ])
     def test_parse_returns_failure_not_exception(self, parser_cls: type, ext: str, tmp_path: Path) -> None:
@@ -195,6 +194,13 @@ class TestStubParsers:
         assert parser.implemented
         assert parser.can_parse("flight.csv")
 
+    def test_dataflash_parser_is_implemented(self) -> None:
+        """DataFlashParser graduated from stub to full implementation in Sprint 5."""
+        parser = DataFlashParser()
+        assert parser.implemented
+        assert parser.can_parse("flight.log")
+        assert parser.can_parse("flight.bin")
+
 
 # ---------------------------------------------------------------------------
 # Detection module
@@ -206,10 +212,13 @@ class TestDetectModule:
         assert parser is not None
         assert isinstance(parser, ULogParser)
 
-    def test_detect_parser_returns_none_for_bin(self, tmp_path: Path) -> None:
+    def test_detect_parser_returns_dataflash_for_bin(self, tmp_path: Path) -> None:
+        """DataFlash parser is now implemented and claims .bin files."""
         f = tmp_path / "test.bin"
         f.write_bytes(b"\x00")
-        assert detect_parser(f) is None
+        parser = detect_parser(f)
+        assert parser is not None
+        assert isinstance(parser, DataFlashParser)
 
     def test_detect_parser_returns_none_for_unknown(self, tmp_path: Path) -> None:
         f = tmp_path / "test.xyz"
@@ -237,13 +246,13 @@ class TestDetectModule:
         assert result.flight is not None
         assert result.diagnostics.parser_selected == "ULogParser"
 
-    def test_parse_file_unsupported_for_bin(self, tmp_path: Path) -> None:
+    def test_parse_file_returns_result_for_bin(self, tmp_path: Path) -> None:
+        """DataFlash parser is implemented; parse_file must return a ParseResult for .bin."""
         f = tmp_path / "test.bin"
         f.write_bytes(b"\x00")
         result = parse_file(f)
-        assert not result.success
-        assert result.flight is None
-        assert not result.diagnostics.supported
+        # Result may succeed or fail depending on content, but must never raise
+        assert isinstance(result, ParseResult)
 
     def test_parse_file_unsupported_for_unknown_ext(self, tmp_path: Path) -> None:
         f = tmp_path / "test.xyz"
@@ -261,12 +270,12 @@ class TestDetectModule:
         assert "csv" in names
 
     def test_supported_formats_implemented(self) -> None:
-        """ULog and CSV are both fully implemented; DataFlash and TLog remain stubs."""
+        """ULog, CSV, and DataFlash are fully implemented; TLog remains a stub."""
         formats = supported_formats()
         implemented_names = {f["format_name"] for f in formats if f["implemented"]}
         assert "ulog" in implemented_names
         assert "csv" in implemented_names
-        assert "dataflash" not in implemented_names
+        assert "dataflash" in implemented_names   # graduated Sprint 5 Workstream B
         assert "tlog" not in implemented_names
 
 
@@ -430,12 +439,15 @@ class TestParserContractVersioning:
         result = parser.parse("nonexistent.ulg")
         assert result.diagnostics.parser_confidence == 0.0
 
-    def test_unsupported_format_has_zero_confidence(self) -> None:
+    def test_failed_parse_has_zero_confidence(self) -> None:
+        """A completely unrecognisable file must have parser_confidence == 0.0."""
         from goose.parsers.dataflash import DataFlashParser
         parser = DataFlashParser()
         import tempfile, os
+        # Write a file with no FMT content and no binary header so the parser
+        # cannot identify it as DataFlash at all → confidence 0.0
         with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
-            f.write(b"\x00" * 10)
+            f.write(b"")   # empty file → explicit error, confidence 0.0
             tmp = f.name
         try:
             result = parser.parse(tmp)

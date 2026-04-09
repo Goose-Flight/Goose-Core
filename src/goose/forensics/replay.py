@@ -80,6 +80,10 @@ class ReplayDifferenceSummary:
     findings_added: list[str] = field(default_factory=list)
     findings_removed: list[str] = field(default_factory=list)
     findings_changed: list[FindingDifference] = field(default_factory=list)
+    # Human-readable finding titles for added/removed findings — makes the
+    # replay output immediately readable without cross-referencing finding IDs.
+    finding_titles_added: list[str] = field(default_factory=list)
+    finding_titles_removed: list[str] = field(default_factory=list)
     hypotheses_added: int = 0
     hypotheses_removed: int = 0
     parser_confidence_delta: float | None = None
@@ -91,6 +95,8 @@ class ReplayDifferenceSummary:
             "findings_added": self.findings_added,
             "findings_removed": self.findings_removed,
             "findings_changed": [f.to_dict() for f in self.findings_changed],
+            "finding_titles_added": self.finding_titles_added,
+            "finding_titles_removed": self.finding_titles_removed,
             "hypotheses_added": self.hypotheses_added,
             "hypotheses_removed": self.hypotheses_removed,
             "parser_confidence_delta": self.parser_confidence_delta,
@@ -109,6 +115,7 @@ class ReplayDifferenceSummary:
         ]
         return cls(**{k: v for k, v in d.items() if k in {
             "findings_added", "findings_removed", "findings_changed",
+            "finding_titles_added", "finding_titles_removed",
             "hypotheses_added", "hypotheses_removed", "parser_confidence_delta",
             "plugin_execution_changes", "drift_categories",
         }})
@@ -422,10 +429,22 @@ def execute_replay(
     if orig_parser_version and replay_parser_version and orig_parser_version != replay_parser_version:
         drift_cats.append(DriftCategory.PARSER_VERSION)
 
+    # Resolve human-readable titles for added/removed findings
+    def _get_title(finding_id: str, findings_list: list[dict[str, Any]]) -> str:
+        for f in findings_list:
+            if f.get("finding_id", f.get("title")) == finding_id:
+                return f.get("title", finding_id)
+        return finding_id
+
+    finding_titles_added = [_get_title(fid, replay_findings_dicts) for fid in added]
+    finding_titles_removed = [_get_title(fid, original_findings) for fid in removed]
+
     diff_summary = ReplayDifferenceSummary(
         findings_added=added,
         findings_removed=removed,
         findings_changed=changed,
+        finding_titles_added=finding_titles_added,
+        finding_titles_removed=finding_titles_removed,
         hypotheses_added=max(0, len(replay_hyp_dicts) - len(original_hypotheses)),
         hypotheses_removed=max(0, len(original_hypotheses) - len(replay_hyp_dicts)),
         parser_confidence_delta=confidence_delta,

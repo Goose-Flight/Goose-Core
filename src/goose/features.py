@@ -71,6 +71,34 @@ CAPABILITY_REQUIREMENTS: dict[CapabilityGroup, EntitlementLevel] = {
 #
 # Unknown features default to enabled (``is_feature_enabled`` returns True)
 # so legacy call sites continue to work while the matrix grows.
+# ---------------------------------------------------------------------------
+# Named capability constants — import these at call sites instead of using
+# raw strings to get IDE completion and catch typos at import time.
+# ---------------------------------------------------------------------------
+
+# Always available — every OSS build, no entitlement check needed.
+# Checks how complete a case is: evidence, analysis, attachments, metadata,
+# exports. Returned by GET /api/cases/{id}/completeness.
+CAPABILITY_CASE_COMPLETENESS_CHECK = "case_completeness_check"
+
+# Side-by-side diff of two analysis runs within a case.
+# Available in Local Pro and above — enforced at the workflow layer.
+# Endpoint: GET /api/cases/{id}/runs/compare?run_a=...&run_b=...
+CAPABILITY_MULTI_RUN_COMPARISON = "multi_run_comparison"
+
+# Submit multiple flight logs for analysis in a single request.
+# Batch queue + result aggregation. Local Pro feature.
+CAPABILITY_BATCH_ANALYSIS = "batch_analysis"
+
+# Save and re-apply analysis configuration templates across cases.
+# Includes tuning profile presets and plugin selection presets. Local Pro.
+CAPABILITY_SAVED_TEMPLATES = "saved_templates"
+
+# Advanced ZIP export bundle: includes evidence file, findings, hypotheses,
+# audit log, and replay verification in a signed archive. Local Pro.
+CAPABILITY_ADVANCED_EXPORT_ZIP = "advanced_export_zip"
+
+
 FEATURE_TIER_MATRIX: dict[str, "EntitlementLevel"] = {
     # Core analysis — all tiers
     "quick_analysis": EntitlementLevel.OSS_CORE,
@@ -99,6 +127,12 @@ FEATURE_TIER_MATRIX: dict[str, "EntitlementLevel"] = {
     "saved_analysis_templates": EntitlementLevel.OSS_CORE,   # PRO-reserved: template reuse across runs
     "multi_run_batch": EntitlementLevel.OSS_CORE,             # PRO-reserved: batch multiple logs at once
     "advanced_export_formats": EntitlementLevel.OSS_CORE,     # PRO-reserved: ZIP bundle with evidence file
+    # Named capability constants (see module-level CAPABILITY_* names above)
+    CAPABILITY_CASE_COMPLETENESS_CHECK: EntitlementLevel.OSS_CORE,   # always available
+    CAPABILITY_MULTI_RUN_COMPARISON: EntitlementLevel.LOCAL_PRO,      # side-by-side run diff
+    CAPABILITY_BATCH_ANALYSIS: EntitlementLevel.LOCAL_PRO,            # batch log processing
+    CAPABILITY_SAVED_TEMPLATES: EntitlementLevel.LOCAL_PRO,           # config template reuse
+    CAPABILITY_ADVANCED_EXPORT_ZIP: EntitlementLevel.LOCAL_PRO,       # signed ZIP bundle export
     # Hosted Team features
     "accounts_orgs": EntitlementLevel.HOSTED_TEAM,
     "shared_cases": EntitlementLevel.HOSTED_TEAM,

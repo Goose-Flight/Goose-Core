@@ -5,7 +5,9 @@ Extracted from cases_api.py during API modularization sprint.
 
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -232,6 +234,302 @@ async def get_case(case_id: str) -> JSONResponse:
     except Exception as exc:
         logger.exception("Failed to get case %s", case_id)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/{case_id}/completeness")
+async def get_case_completeness(case_id: str) -> JSONResponse:
+    """Return a structured completeness checklist for a case.
+
+    Profile-aware:
+    - gov_mil: requires evidence, analysis, attachments, metadata, and exports for a perfect score.
+    - racer: only requires evidence and analysis.
+    - default/other: balanced weighting.
+    """
+    try:
+        from goose.web.cases_api import get_service
+        svc = get_service()
+        case = svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except Exception as exc:
+        logger.exception("Failed to load case %s for completeness check", case_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    profile = getattr(case, "profile", "default") or "default"
+    case_dir = svc.case_dir(case_id)
+    analysis_dir = case_dir / "analysis"
+
+    # -------------------------------------------------------------------------
+    # Evidence section
+    # -------------------------------------------------------------------------
+    evidence_count = len(case.evidence_items)
+    evidence_issues: list[str] = []
+    if evidence_count == 0:
+        evidence_issues.append("No evidence uploaded — upload a flight log to begin analysis")
+    evidence_section = {
+        "present": evidence_count > 0,
+        "count": evidence_count,
+        "issues": evidence_issues,
+    }
+
+    # -------------------------------------------------------------------------
+    # Analysis section
+    # -------------------------------------------------------------------------
+    run_count = len(case.analysis_runs)
+    analysis_issues: list[str] = []
+    if run_count == 0:
+        analysis_issues.append("No analysis run yet — run analysis on the uploaded evidence")
+    analysis_section = {
+        "present": run_count > 0,
+        "run_count": run_count,
+        "issues": analysis_issues,
+    }
+
+    # -------------------------------------------------------------------------
+    # Attachments section
+    # -------------------------------------------------------------------------
+    attachments_dir = case_dir / "attachments"
+    attachment_count = 0
+    if attachments_dir.exists():
+        attachment_count = len([
+            f for f in attachments_dir.iterdir()
+            if f.is_file() and not f.name.startswith(".")
+        ])
+    attachments_issues: list[str] = []
+    if attachment_count == 0:
+        attachments_issues.append(
+            "No attachments uploaded — photos or video recommended for forensic completeness"
+        )
+    attachments_section = {
+        "present": attachment_count > 0,
+        "count": attachment_count,
+        "issues": attachments_issues,
+    }
+
+    # -------------------------------------------------------------------------
+    # Hypotheses section
+    # -------------------------------------------------------------------------
+    hyp_count = 0
+    hyp_path = analysis_dir / "hypotheses.json"
+    if hyp_path.exists():
+        try:
+            hyp_bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
+            hyp_count = len(hyp_bundle.get("hypotheses", []))
+        except Exception:
+            pass
+    hypotheses_issues: list[str] = []
+    if hyp_count == 0 and run_count > 0:
+        hypotheses_issues.append("No hypotheses generated — re-run analysis to produce root-cause candidates")
+    hypotheses_section = {
+        "present": hyp_count > 0,
+        "count": hyp_count,
+        "issues": hypotheses_issues,
+    }
+
+    # -------------------------------------------------------------------------
+    # Timeline section
+    # -------------------------------------------------------------------------
+    timeline_path = case_dir / "timeline" / "timeline.json"
+    event_count = 0
+    if timeline_path.exists():
+        try:
+            tl_data = json.loads(timeline_path.read_text(encoding="utf-8"))
+            event_count = len(tl_data.get("events", []))
+        except Exception:
+            pass
+    timeline_issues: list[str] = []
+    if event_count == 0 and run_count > 0:
+        timeline_issues.append("No timeline events — timeline is built automatically during analysis")
+    timeline_section = {
+        "present": event_count > 0,
+        "event_count": event_count,
+        "issues": timeline_issues,
+    }
+
+    # -------------------------------------------------------------------------
+    # Exports section
+    # -------------------------------------------------------------------------
+    export_count = len(case.exports)
+    exports_issues: list[str] = []
+    if export_count == 0:
+        exports_issues.append(
+            "No export bundle created — export recommended before case closure"
+        )
+    exports_section = {
+        "present": export_count > 0,
+        "count": export_count,
+        "issues": exports_issues,
+    }
+
+    # -------------------------------------------------------------------------
+    # Metadata section
+    # -------------------------------------------------------------------------
+    _key_metadata_fields = ["operator_name", "event_type", "platform_name", "platform_type"]
+    missing_fields: list[str] = [
+        f for f in _key_metadata_fields
+        if not getattr(case, f, None)
+    ]
+    metadata_complete = len(missing_fields) == 0
+    metadata_issues: list[str] = []
+    if missing_fields:
+        metadata_issues.append(f"Key contextual fields missing: {', '.join(missing_fields)}")
+    metadata_section = {
+        "complete": metadata_complete,
+        "missing_fields": missing_fields,
+        "issues": metadata_issues,
+    }
+
+    # -------------------------------------------------------------------------
+    # Completeness score — profile-aware weighting
+    # -------------------------------------------------------------------------
+    # Each section contributes a weight; profile adjusts which sections are required.
+    if profile in ("gov_mil", "enterprise_gov"):
+        # Gov/mil: all sections required, exports and metadata are critical
+        weights = {
+            "evidence": 25,
+            "analysis": 25,
+            "attachments": 15,
+            "hypotheses": 10,
+            "timeline": 5,
+            "exports": 10,
+            "metadata": 10,
+        }
+    elif profile == "racer":
+        # Racer: only evidence and analysis matter for completeness
+        weights = {
+            "evidence": 50,
+            "analysis": 50,
+            "attachments": 0,
+            "hypotheses": 0,
+            "timeline": 0,
+            "exports": 0,
+            "metadata": 0,
+        }
+    else:
+        # Default/balanced
+        weights = {
+            "evidence": 20,
+            "analysis": 20,
+            "attachments": 10,
+            "hypotheses": 15,
+            "timeline": 10,
+            "exports": 10,
+            "metadata": 15,
+        }
+
+    section_scores = {
+        "evidence": weights["evidence"] if evidence_section["present"] else 0,
+        "analysis": weights["analysis"] if analysis_section["present"] else 0,
+        "attachments": weights["attachments"] if attachments_section["present"] else 0,
+        "hypotheses": weights["hypotheses"] if hypotheses_section["present"] else 0,
+        "timeline": weights["timeline"] if timeline_section["present"] else 0,
+        "exports": weights["exports"] if exports_section["present"] else 0,
+        "metadata": weights["metadata"] if metadata_section["complete"] else 0,
+    }
+    completeness_score = sum(section_scores.values())
+
+    # -------------------------------------------------------------------------
+    # Recommendations
+    # -------------------------------------------------------------------------
+    recommendations: list[str] = []
+    if not evidence_section["present"]:
+        recommendations.append("Upload at least one flight log")
+    if not analysis_section["present"] and evidence_section["present"]:
+        recommendations.append("Run analysis on uploaded evidence")
+    if not attachments_section["present"] and profile not in ("racer",):
+        recommendations.append("Upload at least one photo attachment for visual context")
+    if missing_fields:
+        recommendations.append(f"Complete operator and event metadata: {', '.join(missing_fields)}")
+    if not exports_section["present"] and run_count > 0:
+        recommendations.append("Create an export bundle for archival before closing the case")
+
+    return JSONResponse({
+        "ok": True,
+        "case_id": case_id,
+        "profile": profile,
+        "completeness_score": completeness_score,
+        "sections": {
+            "evidence": evidence_section,
+            "analysis": analysis_section,
+            "attachments": attachments_section,
+            "hypotheses": hypotheses_section,
+            "timeline": timeline_section,
+            "exports": exports_section,
+            "metadata": metadata_section,
+        },
+        "recommendations": recommendations,
+    })
+
+
+@router.get("/{case_id}/runs/compare")
+async def compare_runs_get(
+    case_id: str,
+    run_a: str,
+    run_b: str,
+) -> JSONResponse:
+    """Compare two analysis runs and return an investigator-friendly diff.
+
+    Returns the RunComparison wrapped with an executive summary and recommendation.
+    Query params: run_a={run_id}&run_b={run_id}
+    """
+    from goose.forensics.diff import compare_runs
+    from goose.web.cases_api import get_service
+
+    try:
+        svc = get_service()
+        svc.get_case(case_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+
+    case_dir = svc.case_dir(case_id)
+    try:
+        comparison = compare_runs(case_dir, run_a, run_b)
+    except Exception as exc:
+        logger.exception("Run comparison failed for case %s", case_id)
+        raise HTTPException(status_code=500, detail=f"Compare failed: {exc}") from exc
+
+    comp_dict = comparison.to_dict()
+
+    # Build investigator-friendly executive summary
+    risk = comparison.risk_assessment
+    summary = comparison.summary
+
+    recommendation: str
+    if risk == "regression":
+        sev_changes = [
+            d for d in comparison.finding_differences
+            if d.change_type == "severity_changed"
+        ]
+        plugin_area = ""
+        if sev_changes:
+            # Attempt to infer plugin from finding data
+            plugin_area = f" — check findings: {', '.join(d.finding_id for d in sev_changes[:3])}"
+        recommendation = (
+            f"Run B shows regression in finding severity{plugin_area}. "
+            "Review the escalated findings and compare plugin diagnostic output between runs."
+        )
+    elif risk == "improvement":
+        recommendation = (
+            "Run B shows improvement — one or more findings resolved to lower severity. "
+            "Verify the improvement reflects a real fix and not a data quality reduction."
+        )
+    elif risk == "version_drift":
+        recommendation = (
+            "Only plugin version changes detected. No finding regressions. "
+            "Update your baseline run to this version to avoid future false drift alerts."
+        )
+    else:
+        recommendation = (
+            "Runs are equivalent. No action required."
+        )
+
+    return JSONResponse({
+        "ok": True,
+        "comparison": comp_dict,
+        "executive_summary": summary,
+        "risk_assessment": risk,
+        "recommendation": recommendation,
+    })
 
 
 @router.patch("/{case_id}/status")

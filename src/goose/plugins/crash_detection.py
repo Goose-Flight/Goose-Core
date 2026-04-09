@@ -7,6 +7,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+import time
+import uuid
+
 from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightPhase
 from goose.plugins.base import Plugin
@@ -103,6 +106,238 @@ class CrashDetectionPlugin(Plugin):
     DEFAULT_ATTITUDE_DIVERGENCE_SEC = 2.0
     DEFAULT_IMPACT_ACCEL_G = 3.0
     DEFAULT_MOTOR_DROP_THRESHOLD = 0.05
+
+    def forensic_analyze_native(
+        self,
+        flight: Flight,
+        evidence_id: str,
+        run_id: str,
+        config: dict[str, Any],
+        parse_diagnostics: Any,
+        tuning_profile: Any = None,
+    ) -> tuple[list[Any], Any]:
+        """Emit ForensicFinding directly with full evidence timestamps and assumptions."""
+        from goose.forensics.canonical import (
+            EvidenceReference,
+            FindingSeverity,
+            ForensicFinding,
+        )
+        from goose.plugins.contract import PluginDiagnostics as PDiag
+
+        t0 = time.perf_counter()
+
+        # Merge tuning profile thresholds if supplied
+        effective_config: dict[str, Any] = {**self.DEFAULT_CONFIG, **(config or {})}
+        if tuning_profile is not None:
+            plugin_cfg = tuning_profile.get_config_for_plugin(self.manifest.plugin_id)
+            if plugin_cfg is not None and plugin_cfg.thresholds is not None:
+                merged: dict[str, Any] = dict(plugin_cfg.thresholds.values)
+                merged.update(effective_config)
+                effective_config = merged
+
+        # Check required streams
+        missing = []
+        for stream_name in self.manifest.required_streams:
+            df = getattr(flight, stream_name, None)
+            if df is None or (hasattr(df, "empty") and df.empty):
+                missing.append(stream_name)
+
+        elapsed = (time.perf_counter() - t0) * 1000
+        if missing:
+            diag = PDiag(
+                plugin_id=self.manifest.plugin_id,
+                plugin_version=self.manifest.version,
+                run_id=run_id,
+                executed=False,
+                skipped=True,
+                skip_reason=f"Missing required streams: {', '.join(missing)}",
+                missing_streams=missing,
+                findings_emitted=0,
+                execution_duration_ms=round(elapsed, 2),
+                trust_state=self.manifest.trust_state.value,
+            )
+            return [], diag
+
+        cfg = effective_config
+        crash_signals: list[dict[str, Any]] = []
+
+        alt_signal = self._check_altitude_loss(flight, cfg)
+        if alt_signal:
+            crash_signals.append(alt_signal)
+        att_signal = self._check_attitude_divergence(flight, cfg)
+        if att_signal:
+            crash_signals.append(att_signal)
+        motor_signal = self._check_motor_failure(flight, cfg)
+        if motor_signal:
+            crash_signals.append(motor_signal)
+        impact_signal = self._check_impact(flight, cfg)
+        if impact_signal:
+            crash_signals.append(impact_signal)
+        abort_signal = self._check_abrupt_termination(flight)
+        if abort_signal:
+            crash_signals.append(abort_signal)
+
+        forensic_findings: list[ForensicFinding] = []
+
+        if not crash_signals:
+            # No crash — emit a PASS finding
+            ev_ref = EvidenceReference(
+                evidence_id=evidence_id,
+                stream_name=self.manifest.primary_stream or "position",
+                time_range_start=None,
+                time_range_end=None,
+                support_summary="Flight completed without crash indicators.",
+            )
+            forensic_findings.append(ForensicFinding(
+                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                plugin_id=self.name,
+                plugin_version=self.manifest.version,
+                title="No crash detected",
+                description="Flight completed without crash indicators.",
+                severity=FindingSeverity.PASS,
+                score=100,
+                confidence=1.0,
+                confidence_scope="finding_analysis",
+                evidence_references=[ev_ref],
+                supporting_metrics={},
+                contradicting_metrics={},
+                assumptions=["No signals met crash thresholds; flight is assumed nominal"],
+                run_id=run_id,
+            ))
+        else:
+            classification = self._classify(crash_signals, flight)
+            confidence = self._compute_confidence(crash_signals)
+            timeline = self._build_timeline(crash_signals)
+
+            earliest_ts = min(
+                (s.get("timestamp_start") for s in crash_signals if s.get("timestamp_start") is not None),
+                default=None,
+            )
+            latest_ts = max(
+                (s.get("timestamp_end") for s in crash_signals if s.get("timestamp_end") is not None),
+                default=None,
+            )
+
+            severity = FindingSeverity.CRITICAL if confidence >= 0.7 else FindingSeverity.WARNING
+            score = 0 if confidence >= 0.7 else (25 if confidence >= 0.4 else 50)
+
+            # Build assumptions based on what signals were detected
+            assumptions: list[str] = []
+            signal_types = {s["type"] for s in crash_signals}
+            if "impact" in signal_types:
+                assumptions.append(
+                    "Impact inferred from attitude divergence and sudden velocity change "
+                    "— direct collision sensor not available"
+                )
+            if "altitude_loss" in signal_types:
+                assumptions.append(
+                    "Altitude loss is assumed to reflect uncontrolled descent "
+                    "— controlled landing cannot be ruled out without motor data"
+                )
+            if "attitude_divergence" in signal_types:
+                assumptions.append(
+                    "Attitude divergence from setpoint is treated as loss-of-control "
+                    "— external disturbance (wind gust) is an alternative explanation"
+                )
+            if "motor_failure" in signal_types:
+                assumptions.append(
+                    "Motor output drop is classified as failure "
+                    "— intentional disarm during landing is an alternative explanation"
+                )
+            if not assumptions:
+                assumptions.append(
+                    "Crash classification inferred from multiple correlated signals; "
+                    "individual signal interpretations may be affected by data gaps"
+                )
+
+            # Supporting metrics: aggregate key values from all signals
+            supporting_metrics: dict[str, Any] = {
+                "crash_type": classification,
+                "confidence": round(confidence, 2),
+                "signals_detected": sorted(signal_types),
+                "signal_count": len(crash_signals),
+                "timeline": timeline,
+            }
+            for signal in crash_signals:
+                for k, v in (signal.get("evidence") or {}).items():
+                    supporting_metrics[f"{signal['type']}_{k}"] = v
+
+            ev_ref = EvidenceReference(
+                evidence_id=evidence_id,
+                stream_name=self.manifest.primary_stream or "position",
+                time_range_start=earliest_ts,
+                time_range_end=latest_ts,
+                support_summary=(
+                    f"Crash window: {earliest_ts:.1f}s–{latest_ts:.1f}s. "
+                    f"Classification: {classification}."
+                ) if earliest_ts is not None and latest_ts is not None else
+                f"Crash classified as {classification}.",
+            )
+
+            forensic_findings.append(ForensicFinding(
+                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                plugin_id=self.name,
+                plugin_version=self.manifest.version,
+                title=f"Crash detected: {classification}",
+                description=(
+                    f"Crash classified as '{classification}' with {confidence:.0%} confidence. "
+                    f"Signals: {', '.join(sorted(signal_types))}."
+                ),
+                severity=severity,
+                score=score,
+                confidence=round(confidence, 2),
+                confidence_scope="finding_analysis",
+                start_time=earliest_ts,
+                end_time=latest_ts,
+                evidence_references=[ev_ref],
+                supporting_metrics=supporting_metrics,
+                contradicting_metrics={},
+                assumptions=assumptions,
+                run_id=run_id,
+            ))
+
+            # Individual signal findings
+            for signal in crash_signals:
+                sig_ts_start = signal.get("timestamp_start")
+                sig_ts_end = signal.get("timestamp_end")
+                sig_ev_ref = EvidenceReference(
+                    evidence_id=evidence_id,
+                    stream_name=self.manifest.primary_stream or "position",
+                    time_range_start=sig_ts_start,
+                    time_range_end=sig_ts_end,
+                    support_summary=signal["description"][:200],
+                )
+                forensic_findings.append(ForensicFinding(
+                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    plugin_id=self.name,
+                    plugin_version=self.manifest.version,
+                    title=signal["title"],
+                    description=signal["description"],
+                    severity=FindingSeverity.WARNING,
+                    score=signal.get("score", 30),
+                    confidence=round(signal.get("score", 30) / 100.0, 2),
+                    confidence_scope="finding_analysis",
+                    start_time=sig_ts_start,
+                    end_time=sig_ts_end,
+                    evidence_references=[sig_ev_ref],
+                    supporting_metrics=signal.get("evidence", {}),
+                    contradicting_metrics={},
+                    assumptions=[],
+                    run_id=run_id,
+                ))
+
+        elapsed = (time.perf_counter() - t0) * 1000
+        diag = PDiag(
+            plugin_id=self.manifest.plugin_id,
+            plugin_version=self.manifest.version,
+            run_id=run_id,
+            executed=True,
+            skipped=False,
+            findings_emitted=len(forensic_findings),
+            execution_duration_ms=round(elapsed, 2),
+            trust_state=self.manifest.trust_state.value,
+        )
+        return forensic_findings, diag
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Run crash detection analysis. Returns findings with crash classification."""

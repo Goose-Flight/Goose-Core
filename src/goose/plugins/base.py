@@ -33,6 +33,33 @@ class Plugin(ABC):
         """Run analysis on a flight. Return list of findings."""
         ...
 
+    def forensic_analyze_native(
+        self,
+        flight: Flight,
+        evidence_id: str,
+        run_id: str,
+        config: dict[str, Any],
+        parse_diagnostics: ParseDiagnostics,
+        tuning_profile: TuningProfile | None = None,
+    ) -> tuple[list[ForensicFinding], PluginDiagnostics] | None:
+        """Emit ForensicFinding directly, bypassing the thin-finding bridge.
+
+        Override this in plugins that can construct fully-enriched
+        ForensicFinding objects (with real timestamps, assumptions, and
+        supporting_metrics) rather than going through the lifting bridge.
+
+        The base implementation returns None, which signals forensic_analyze()
+        to fall through to the standard thin-finding bridge.  Plugins that
+        override this method must return a (findings, diagnostics) tuple.
+
+        Migration path
+        --------------
+        Plugins are ported to native emission one at a time. forensic_analyze()
+        checks whether this method has been overridden and, if so, calls it
+        instead of the bridge. Non-ported plugins continue to use analyze().
+        """
+        return None
+
     def forensic_analyze(
         self,
         flight: Flight,
@@ -49,6 +76,10 @@ class Plugin(ABC):
         All 12 built-in plugins implement analyze() returning thin
         goose.core.finding.Finding objects. This method is the bridge that
         lifts them to ForensicFinding without requiring plugins to be rewritten.
+
+        Plugins that override forensic_analyze_native() bypass the bridge
+        entirely — their native emission is used instead. This gives a clean
+        migration path without breaking non-ported plugins.
 
         The bridge will be retired progressively as plugins are ported to emit
         ForensicFinding directly. Until then this method is the single, canonical
@@ -77,6 +108,20 @@ class Plugin(ABC):
             FindingSeverity,
             ForensicFinding,
         )
+
+        # Dispatch to native emission if the plugin has overridden it.
+        # We check by comparing the bound method to the base class version —
+        # if they differ, the plugin has a native implementation.
+        # Guard with hasattr for test stubs that don't inherit from Plugin.
+        if (
+            hasattr(type(self), "forensic_analyze_native")
+            and type(self).forensic_analyze_native is not Plugin.forensic_analyze_native
+        ):
+            native_result = self.forensic_analyze_native(
+                flight, evidence_id, run_id, config, parse_diagnostics, tuning_profile
+            )
+            if native_result is not None:
+                return native_result
 
         t0 = time.perf_counter()
 

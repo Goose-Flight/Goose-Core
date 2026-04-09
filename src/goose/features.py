@@ -91,6 +91,14 @@ FEATURE_TIER_MATRIX: dict[str, "EntitlementLevel"] = {
     "full_replay_export": EntitlementLevel.LOCAL_PRO,
     "advanced_charting": EntitlementLevel.LOCAL_PRO,
     "tuning_profile_management": EntitlementLevel.LOCAL_PRO,
+    # Local Pro boundary stubs — currently at OSS_CORE but reserved for future
+    # gating when Local Pro is formally released. These are listed here so the
+    # boundary is explicit and call sites can be updated without hunting through
+    # the codebase when the tier distinction is enforced.
+    # To gate these: change the EntitlementLevel to LOCAL_PRO.
+    "saved_analysis_templates": EntitlementLevel.OSS_CORE,   # PRO-reserved: template reuse across runs
+    "multi_run_batch": EntitlementLevel.OSS_CORE,             # PRO-reserved: batch multiple logs at once
+    "advanced_export_formats": EntitlementLevel.OSS_CORE,     # PRO-reserved: ZIP bundle with evidence file
     # Hosted Team features
     "accounts_orgs": EntitlementLevel.HOSTED_TEAM,
     "shared_cases": EntitlementLevel.HOSTED_TEAM,
@@ -111,6 +119,23 @@ class FeatureGate:
 
     Defaults to ``OSS_CORE`` in the open-source build. Higher-tier builds can
     bump the current level by calling ``FeatureGate.set_level`` at startup.
+
+    OSS_CORE default:
+    -----------------
+    The open-source build runs at OSS_CORE and never degrades functionality
+    below it. All 12 plugins, the full case system, Quick Analysis, profiles,
+    GUI, and CLI are available at OSS_CORE.
+
+    Tier upgrade path:
+    ------------------
+    To enable a higher tier in a downstream build:
+        FeatureGate.set_level(EntitlementLevel.LOCAL_PRO)
+    This unlocks LOCAL_PRO features (advanced_reports, batch_analysis, etc.)
+    without touching any per-call-site logic.
+
+    IMPORTANT: Do not put billing, licensing, or remote-check logic here.
+    The core is local-first and offline-first. Any entitlement enforcement
+    for paid tiers must live in a separate wrapper outside this module.
     """
 
     _current_level: EntitlementLevel = EntitlementLevel.OSS_CORE

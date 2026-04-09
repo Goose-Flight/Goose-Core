@@ -48,6 +48,10 @@ class VerifyReplayRequest(BaseModel):
     bundle_filename: str
 
 
+class CreateBundleRequest(BaseModel):
+    include_evidence: bool = False
+
+
 # ---------------------------------------------------------------------------
 # Serializers (shared with cases module)
 # ---------------------------------------------------------------------------
@@ -109,11 +113,24 @@ async def get_exports(case_id: str) -> JSONResponse:
 
 
 @router.post("/{case_id}/exports/bundle")
-async def create_export_bundle(case_id: str) -> JSONResponse:
-    """Create a replayable JSON case bundle export in exports/ directory.
+async def create_export_bundle(
+    case_id: str,
+    body: CreateBundleRequest | None = None,
+) -> JSONResponse:
+    """Create a replayable case bundle export in exports/ directory.
 
-    Hardening sprint: enhanced bundle format with bundle_id, case_metadata,
-    replay_metadata, and export history tracking in case.json.
+    When ``include_evidence=False`` (default): produces a JSON bundle containing
+    case metadata, evidence manifest (with hashes), findings, hypotheses,
+    parse diagnostics, provenance, signal quality, and plugin diagnostics.
+
+    When ``include_evidence=True``: produces a ZIP archive containing the JSON
+    bundle above PLUS the original evidence file(s). This allows full chain-of-
+    custody transfer — a recipient can verify evidence integrity by checking
+    SHA-256 hashes from the manifest against the included files.
+
+    Note: ZIP bundles with evidence are larger and not currently gated behind
+    Local Pro (``advanced_export_formats`` feature), but the capability is
+    listed in FEATURE_TIER_MATRIX as a future Pro boundary.
     """
     from goose.web.cases_api import get_service
     try:
@@ -236,18 +253,42 @@ async def create_export_bundle(case_id: str) -> JSONResponse:
         "tuning_profile": "default",
     }
 
+    include_evidence = (body.include_evidence if body is not None else False)
+
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     short_id = bundle_id.replace("BDL-", "").lower()
-    filename = f"bundle_{ts}_{short_id}.json"
-    filepath = exports_dir / filename
-    filepath.write_text(json.dumps(bundle, indent=2, default=str), encoding="utf-8")
+    json_filename = f"bundle_{ts}_{short_id}.json"
+    json_filepath = exports_dir / json_filename
+    json_filepath.write_text(json.dumps(bundle, indent=2, default=str), encoding="utf-8")
+
+    output_path = json_filepath
+    output_filename = json_filename
+    bundle_format = "json"
+
+    if include_evidence:
+        # Build a ZIP archive: bundle JSON + original evidence file(s)
+        import zipfile
+        zip_filename = f"bundle_{ts}_{short_id}.zip"
+        zip_filepath = exports_dir / zip_filename
+        with zipfile.ZipFile(str(zip_filepath), "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.write(str(json_filepath), arcname=json_filename)
+            # Include evidence files referenced in the manifest
+            for ev_item in (case.evidence_items or []):
+                ev_path_str = getattr(ev_item, "stored_path", None) or ""
+                from pathlib import Path as _Path
+                ev_path = _Path(ev_path_str)
+                if ev_path.exists() and ev_path.is_file():
+                    zf.write(str(ev_path), arcname=f"evidence/{ev_item.filename}")
+        output_path = zip_filepath
+        output_filename = zip_filename
+        bundle_format = "zip"
 
     # Record export in case.json
     case = svc.get_case(case_id)  # refresh
     export_record = CaseExport(
         export_id=bundle_id,
         exported_at=datetime.now(),
-        export_path=str(filepath),
+        export_path=str(output_path),
         bundle_version="1.0",
         includes_replay=True,
     )
@@ -262,15 +303,22 @@ async def create_export_bundle(case_id: str) -> JSONResponse:
         action=AuditAction.CASE_EXPORTED,
         object_type="export",
         object_id=bundle_id,
-        details={"filename": filename, "bundle_version": "1.0"},
+        details={
+            "filename": output_filename,
+            "bundle_version": "1.0",
+            "bundle_format": bundle_format,
+            "include_evidence": include_evidence,
+        },
     ))
 
     return JSONResponse({
         "ok": True,
         "bundle_id": bundle_id,
-        "filename": filename,
-        "path": str(filepath),
-        "size_bytes": filepath.stat().st_size,
+        "filename": output_filename,
+        "path": str(output_path),
+        "size_bytes": output_path.stat().st_size,
+        "bundle_format": bundle_format,
+        "include_evidence": include_evidence,
     })
 
 

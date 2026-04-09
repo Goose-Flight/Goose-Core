@@ -242,6 +242,72 @@ def create_app():
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
 
+    @app.get("/api/runs/recent")
+    async def recent_runs(limit: int = 20) -> JSONResponse:
+        """Return the most recent analysis runs across all cases.
+
+        Supports the 'Open Recent' UX entry path. Returns case_id, run_id,
+        case_name, profile, severity summary, and timestamp — enough context
+        for the user to select a run to reopen without loading full case data.
+
+        Args:
+            limit: Maximum number of runs to return (default 20, capped at 100).
+        """
+        from goose.forensics import CaseService
+        import json as _json
+
+        limit = max(1, min(limit, 100))
+
+        try:
+            svc = CaseService()
+            all_runs: list[dict] = []
+
+            for case_summary in svc.list_cases():
+                case_id = case_summary.get("case_id", "")
+                if not case_id:
+                    continue
+                try:
+                    case = svc.get_case(case_id)
+                except Exception:
+                    continue
+
+                case_name = (
+                    getattr(case, "case_name", None)
+                    or getattr(case, "title", None)
+                    or case_id
+                )
+                profile = getattr(case, "profile", "default") or "default"
+
+                for run in case.analysis_runs:
+                    all_runs.append({
+                        "case_id": case_id,
+                        "case_name": case_name,
+                        "run_id": run.run_id,
+                        "profile": run.profile_id or profile,
+                        "started_at": run.started_at.isoformat(),
+                        "status": run.status,
+                        "findings_count": run.findings_count,
+                        "critical_count": run.critical_count,
+                        "warning_count": run.warning_count,
+                        "hypotheses_count": run.hypotheses_count,
+                        "engine_version": run.engine_version,
+                        "parser_name": run.parser_name,
+                    })
+
+            # Sort by most recent first
+            all_runs.sort(key=lambda r: r.get("started_at", ""), reverse=True)
+            all_runs = all_runs[:limit]
+
+            return JSONResponse({
+                "ok": True,
+                "runs": all_runs,
+                "count": len(all_runs),
+                "limit": limit,
+            })
+        except Exception as exc:
+            logger.exception("Failed to list recent runs")
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
     @app.get("/api/plugins")
     async def list_plugins() -> JSONResponse:
         """Return metadata for all discovered plugins."""

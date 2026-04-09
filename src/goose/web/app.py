@@ -367,43 +367,6 @@ def create_app():
     return app
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _try_all_parsers(filepath: str, prior_error: str | None) -> tuple[Any, str | None]:
-    """Attempt to parse a file with all available parsers in priority order.
-
-    DEAD CODE — no caller exists in the current codebase.
-    Parser dispatch is handled exclusively by ``goose.parsers.detect.parse_file()``,
-    which uses the canonical ``_ALL_PARSERS`` registry and returns a ``ParseResult``.
-
-    RETIRE: Remove this function once confirmed unused by any downstream callers.
-    Do not add new callers — use ``parse_file()`` instead.
-    """
-    parsers_to_try: list[tuple[str, str]] = [
-        ("goose.parsers.dataflash", "DataFlashParser"),
-        ("goose.parsers.tlog", "TlogParser"),
-        ("goose.parsers.csv_parser", "CsvParser"),
-    ]
-
-    last_error = prior_error
-    for module_path, class_name in parsers_to_try:
-        try:
-            import importlib
-            module = importlib.import_module(module_path)
-            parser_cls = getattr(module, class_name)
-            parser = parser_cls()
-            if parser.can_parse(filepath):
-                flight = parser.parse(filepath)
-                return flight, None
-        except Exception as exc:
-            last_error = str(exc)
-            logger.debug("Parser %s.%s failed: %s", module_path, class_name, exc)
-
-    return None, last_error
-
-
 def _format_duration(seconds: float) -> str:
     """Format a duration in seconds as a human-readable string."""
     if not math.isfinite(seconds) or seconds < 0:

@@ -161,9 +161,9 @@ class TestAllPluginManifests:
     def test_all_plugins_have_manifests(self):
         from goose.plugins import PLUGIN_REGISTRY
 
-        # 12 original builtin plugins + 2 new analyzers (mission_phase_anomaly, operator_action_sequence)
-        assert len(PLUGIN_REGISTRY) == 14, (
-            f"Expected 14 plugins, got {len(PLUGIN_REGISTRY)}: "
+        # 14 original plugins + 3 advanced analyzers (environment_conditions, damage_impact_classification, link_telemetry_health)
+        assert len(PLUGIN_REGISTRY) == 17, (
+            f"Expected 17 plugins, got {len(PLUGIN_REGISTRY)}: "
             f"{list(PLUGIN_REGISTRY.keys())}"
         )
 
@@ -318,7 +318,7 @@ class TestRegistryFunctions:
     def test_get_plugin_manifests(self):
         from goose.plugins import get_plugin_manifests
         manifests = get_plugin_manifests()
-        assert len(manifests) == 14
+        assert len(manifests) == 17
         assert all(isinstance(m, PluginManifest) for m in manifests)
 
     def test_get_plugin(self):

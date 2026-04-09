@@ -193,7 +193,7 @@ class TestPluginsRoute:
         assert res.status_code == 200
         data = res.json()
         assert data["ok"] is True
-        assert data["count"] == 14  # 14 builtin plugins
+        assert data["count"] == 17  # 17 builtin plugins
         assert isinstance(data["manifests"], list)
         # Check manifest shape
         m = data["manifests"][0]

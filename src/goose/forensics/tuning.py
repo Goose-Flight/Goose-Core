@@ -332,6 +332,50 @@ def _build_default_configs() -> list[AnalyzerConfigProfile]:
                 },
             ),
         ),
+        AnalyzerConfigProfile(
+            plugin_id="environment_conditions",
+            thresholds=ThresholdSet(
+                threshold_set_id="environment_conditions_default",
+                name="Environment Conditions Defaults",
+                description="Thresholds for environmental indicator assessment",
+                values={
+                    "high_hdop_threshold": 2.0,
+                    "min_satellites_for_multipath": 8,
+                    "vibration_env_threshold": 25.0,
+                    "attitude_bias_threshold": 5.0,
+                    "sat_drop_threshold": 4,
+                    "sat_drop_window_sec": 5.0,
+                },
+            ),
+        ),
+        AnalyzerConfigProfile(
+            plugin_id="damage_impact_classification",
+            thresholds=ThresholdSet(
+                threshold_set_id="damage_impact_classification_default",
+                name="Damage Impact Classification Defaults",
+                description="Thresholds for impact detection and damage sequence classification",
+                values={
+                    "impact_vibration_spike_ms2": 50.0,
+                    "impact_attitude_divergence_deg": 45.0,
+                    "pre_impact_window_sec": 10.0,
+                    "post_impact_window_sec": 2.0,
+                },
+            ),
+        ),
+        AnalyzerConfigProfile(
+            plugin_id="link_telemetry_health",
+            thresholds=ThresholdSet(
+                threshold_set_id="link_telemetry_health_default",
+                name="Link Telemetry Health Defaults",
+                description="Thresholds for RC link quality and telemetry gap detection",
+                values={
+                    "rssi_marginal_threshold": 0.1,
+                    "rc_loss_duration_sec": 1.0,
+                    "telemetry_gap_multiplier": 2.0,
+                    "link_recovery_count": 3,
+                },
+            ),
+        ),
     ]
 
 

@@ -27,6 +27,9 @@ from goose.plugins.log_health import LogHealthPlugin
 from goose.plugins.payload_change_detection import PayloadChangeDetectionPlugin
 from goose.plugins.mission_phase_anomaly import MissionPhaseAnomalyPlugin
 from goose.plugins.operator_action_sequence import OperatorActionSequencePlugin
+from goose.plugins.environment_conditions import EnvironmentConditionsPlugin
+from goose.plugins.damage_impact_classification import DamageImpactClassificationPlugin
+from goose.plugins.link_telemetry_health import LinkTelemetryHealthPlugin
 
 _PLUGIN_CLASSES: list[type] = [
     CrashDetectionPlugin,
@@ -43,6 +46,9 @@ _PLUGIN_CLASSES: list[type] = [
     PayloadChangeDetectionPlugin,
     MissionPhaseAnomalyPlugin,
     OperatorActionSequencePlugin,
+    EnvironmentConditionsPlugin,
+    DamageImpactClassificationPlugin,
+    LinkTelemetryHealthPlugin,
 ]
 
 # Singleton registry: plugin_id -> plugin instance

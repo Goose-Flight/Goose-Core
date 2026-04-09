@@ -259,16 +259,14 @@ def create_app():
         limit = max(1, min(limit, 100))
 
         try:
-            svc = CaseService()
+            from goose.web.cases_api import get_service
+            svc = get_service()
             all_runs: list[dict] = []
 
-            for case_summary in svc.list_cases():
-                case_id = case_summary.get("case_id", "")
+            for case in svc.list_cases():
+                # list_cases() returns Case objects directly
+                case_id = case.case_id
                 if not case_id:
-                    continue
-                try:
-                    case = svc.get_case(case_id)
-                except Exception:
                     continue
 
                 case_name = (

@@ -1741,30 +1741,62 @@
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
         <!-- Quick Analysis -->
         <div class="welcome-card" onclick="welcomeStart('quick')"
-             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s;">
-          <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:8px;">Quick Analysis</div>
-          <div style="font-size:13px;color:var(--text-sec);line-height:1.5;">
-            Upload a log and get findings instantly. No case is created. Ideal for fast triage.
+             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s,border-color 0.15s;position:relative;overflow:hidden;"
+             onmouseover="this.style.borderColor='rgba(110,204,114,0.35)';this.style.background='rgba(110,204,114,0.03)'"
+             onmouseout="this.style.borderColor='var(--card-border)';this.style.background='var(--card)'">
+          <div style="margin-bottom:14px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:0.02em;">Quick Analysis</div>
+          <div style="font-size:13px;color:var(--text-sec);line-height:1.6;">
+            Upload a log, get findings instantly. No case created — ideal for fast triage or a one-off question.
+          </div>
+          <div style="margin-top:14px;font-size:13px;font-weight:700;color:var(--green);letter-spacing:0.06em;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
+            Start <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </div>
         </div>
 
         <!-- Investigation Case -->
         <div class="welcome-card" onclick="welcomeStart('case')"
-             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s;">
-          <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:8px;">Investigation Case</div>
-          <div style="font-size:13px;color:var(--text-sec);line-height:1.5;">
-            Create a full forensic case with audit trail, attachments, and persistent analysis runs.
+             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s,border-color 0.15s;"
+             onmouseover="this.style.borderColor='rgba(110,204,114,0.35)';this.style.background='rgba(110,204,114,0.03)'"
+             onmouseout="this.style.borderColor='var(--card-border)';this.style.background='var(--card)'">
+          <div style="margin-bottom:14px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:0.02em;">Investigation Case</div>
+          <div style="font-size:13px;color:var(--text-sec);line-height:1.6;">
+            Full forensic case with evidence custody, SHA-256 hashing, audit trail, and persistent analysis runs.
+          </div>
+          <div style="margin-top:14px;font-size:13px;font-weight:700;color:var(--green);letter-spacing:0.06em;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
+            Create Case <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </div>
         </div>
 
         <!-- Recent Cases -->
         <div class="welcome-card" onclick="welcomeStart('recent')"
-             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s;">
-          <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:8px;">Open Recent Case</div>
-          <div style="font-size:13px;color:var(--text-sec);line-height:1.5;">
-            Resume one of your last five investigation cases.
+             style="padding:24px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);cursor:pointer;transition:background 0.15s,border-color 0.15s;"
+             onmouseover="this.style.borderColor='rgba(110,204,114,0.35)';this.style.background='rgba(110,204,114,0.03)'"
+             onmouseout="this.style.borderColor='var(--card-border)';this.style.background='var(--card)'">
+          <div style="margin-bottom:14px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
           </div>
-          <div id="welcome-recent-list" style="margin-top:14px;font-size:12px;color:var(--text-muted);"></div>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:0.02em;">Open Recent</div>
+          <div style="font-size:13px;color:var(--text-sec);line-height:1.6;">
+            Resume one of your recent investigation cases.
+          </div>
+          <div id="welcome-recent-list" style="margin-top:12px;font-size:12px;color:var(--text-muted);"></div>
         </div>
       </div>
 
@@ -1774,7 +1806,8 @@
         <div style="display:flex;flex-direction:column;gap:14px;">
           <label style="font-size:13px;color:var(--text-sec);">
             Profile
-            <select id="welcome-profile-select" style="display:block;margin-top:6px;width:100%;padding:8px 10px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;">
+            <select id="welcome-profile-select" onchange="updateWelcomeProfileDescription()"
+                    style="display:block;margin-top:6px;width:100%;padding:8px 10px;font-family:var(--font);font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;">
               <option value="default">Default</option>
               <option value="racer">Racer</option>
               <option value="research">Research / University</option>
@@ -1783,6 +1816,7 @@
               <option value="gov_mil">Gov / Mil</option>
               <option value="advanced">Advanced / Custom</option>
             </select>
+            <div id="welcome-profile-desc" style="font-size:12px;color:var(--text-muted);margin-top:5px;min-height:16px;font-style:italic;">Standard investigation workflow</div>
           </label>
           <label style="font-size:13px;color:var(--text-sec);">
             Flight log file
@@ -1848,13 +1882,13 @@
       <div class="upload-sub">or click to browse your filesystem</div>
 
       <div class="upload-formats">
-        <span class="fmt-tag" style="background:var(--green-glow);border-color:var(--green);color:var(--green);">.ulg</span>
-        <span class="fmt-tag" style="opacity:0.4;">.bin</span>
-        <span class="fmt-tag" style="opacity:0.4;">.log</span>
-        <span class="fmt-tag" style="opacity:0.4;">.tlog</span>
-        <span class="fmt-tag" style="opacity:0.4;">.csv</span>
+        <span class="fmt-tag" title="PX4 ULog — fully supported" style="background:var(--green-glow);border-color:var(--green);color:var(--green);">.ulg</span>
+        <span class="fmt-tag" title="ArduPilot DataFlash — supported" style="background:rgba(110,204,114,0.06);border-color:rgba(110,204,114,0.3);color:rgba(110,204,114,0.7);">.bin</span>
+        <span class="fmt-tag" title="ArduPilot DataFlash text — supported" style="background:rgba(110,204,114,0.06);border-color:rgba(110,204,114,0.3);color:rgba(110,204,114,0.7);">.log</span>
+        <span class="fmt-tag" title="MAVLink TLog — stub (Goose Pro)" style="opacity:0.3;">.tlog</span>
+        <span class="fmt-tag" title="Generic CSV — supported" style="background:rgba(110,204,114,0.06);border-color:rgba(110,204,114,0.3);color:rgba(110,204,114,0.7);">.csv</span>
       </div>
-      <div style="font-size:14px;color:var(--text-muted);margin-top:6px;">PX4 ULog (.ulg) fully supported &mdash; other formats coming soon</div>
+      <div style="font-size:14px;color:var(--text-muted);margin-top:6px;">ULog &middot; DataFlash &middot; CSV supported &mdash; TLog via Goose Pro</div>
 
       <div id="file-pill-container" class="file-pill-wrap" style="display:none"></div>
     </div>
@@ -3962,6 +3996,12 @@
     if (sel && desc) desc.textContent = PROFILE_DESCRIPTIONS[sel.value] || '';
   }
 
+  function updateWelcomeProfileDescription() {
+    const sel = document.getElementById('welcome-profile-select');
+    const desc = document.getElementById('welcome-profile-desc');
+    if (sel && desc) desc.textContent = PROFILE_DESCRIPTIONS[sel.value] || '';
+  }
+
   function showNewCaseModal() {
     const modal = document.getElementById('new-case-modal');
     modal.style.display = 'flex';
@@ -5630,6 +5670,7 @@
   function welcomeStart(kind) {
     if (kind === 'quick') {
       document.getElementById('welcome-quick-panel').style.display = '';
+      updateWelcomeProfileDescription();
     } else if (kind === 'case') {
       switchTab('cases');
       // Open new-case modal if it exists

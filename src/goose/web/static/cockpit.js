@@ -404,6 +404,111 @@ const Cockpit = (() => {
       }
       chart.setCursor({ left: chart.valToPos(ts[idx], 'x'), top: -1 });
     });
+
+    // Update chart-value badges with current readings
+    _updateChartValues(time);
+  }
+
+  function _nearestVal(arr, idx) {
+    if (!arr || idx == null || arr[idx] == null) return null;
+    return arr[idx];
+  }
+
+  function _fmtVal(v, unit, decimals = 1) {
+    if (v == null) return '--';
+    return v.toFixed(decimals) + (unit ? '\u202f' + unit : '');
+  }
+
+  function _updateChartValues(time) {
+    // Helper to find nearest index in a timestamps array
+    function nearestIdx(timestamps) {
+      if (!timestamps) return 0;
+      let idx = 0;
+      for (let i = 0; i < timestamps.length; i++) {
+        if (timestamps[i] >= time) { idx = i; break; }
+        idx = i;
+      }
+      return idx;
+    }
+
+    const d = tsData;
+
+    // Altitude
+    if (d.altitude) {
+      const i = nearestIdx(d.altitude.timestamps);
+      const rel = _nearestVal(d.altitude.alt_rel, i);
+      const msl = _nearestVal(d.altitude.alt_msl, i);
+      const el = document.getElementById('cv-altitude');
+      if (el) el.textContent = rel != null ? _fmtVal(rel, 'm') : (msl != null ? _fmtVal(msl, 'm MSL') : '');
+    }
+
+    // Battery
+    if (d.battery) {
+      const i = nearestIdx(d.battery.timestamps);
+      const pct = _nearestVal(d.battery.remaining_pct, i);
+      const v = _nearestVal(d.battery.voltage, i);
+      const el = document.getElementById('cv-battery');
+      if (el) {
+        const parts = [];
+        if (pct != null) parts.push(_fmtVal(pct, '%', 0));
+        if (v != null) parts.push(_fmtVal(v, 'V'));
+        el.textContent = parts.join('  ');
+      }
+    }
+
+    // GPS
+    if (d.gps) {
+      const i = nearestIdx(d.gps.timestamps);
+      const sats = _nearestVal(d.gps.satellites, i);
+      const hdop = _nearestVal(d.gps.hdop, i);
+      const el = document.getElementById('cv-gps');
+      if (el) {
+        const parts = [];
+        if (sats != null) parts.push(sats.toFixed(0) + '\u202fsats');
+        if (hdop != null) parts.push('HDOP\u202f' + _fmtVal(hdop, '', 2));
+        el.textContent = parts.join('  ');
+      }
+    }
+
+    // Attitude
+    if (d.attitude) {
+      const i = nearestIdx(d.attitude.timestamps);
+      const roll = _nearestVal(d.attitude.roll, i);
+      const pitch = _nearestVal(d.attitude.pitch, i);
+      const el = document.getElementById('cv-attitude');
+      if (el) {
+        const parts = [];
+        if (roll != null) parts.push('R\u202f' + _fmtVal(roll, '\u00B0'));
+        if (pitch != null) parts.push('P\u202f' + _fmtVal(pitch, '\u00B0'));
+        el.textContent = parts.join('  ');
+      }
+    }
+
+    // Vibration
+    if (d.vibration) {
+      const i = nearestIdx(d.vibration.timestamps);
+      const x = _nearestVal(d.vibration.accel_x, i);
+      const y = _nearestVal(d.vibration.accel_y, i);
+      const z = _nearestVal(d.vibration.accel_z, i);
+      const el = document.getElementById('cv-vibration');
+      if (el && (x != null || y != null || z != null)) {
+        const mag = Math.sqrt((x||0)**2 + (y||0)**2 + (z||0)**2);
+        el.textContent = _fmtVal(mag, 'm/s\u00B2');
+      }
+    }
+
+    // Velocity
+    if (d.velocity) {
+      const i = nearestIdx(d.velocity.timestamps);
+      const vx = _nearestVal(d.velocity.vx, i);
+      const vy = _nearestVal(d.velocity.vy, i);
+      const vz = _nearestVal(d.velocity.vz, i);
+      const el = document.getElementById('cv-velocity');
+      if (el && (vx != null || vy != null)) {
+        const spd = Math.sqrt((vx||0)**2 + (vy||0)**2);
+        el.textContent = _fmtVal(spd, 'm/s');
+      }
+    }
   }
 
   // ── Helpers ───────────────────────────────────────────
@@ -440,7 +545,7 @@ const Cockpit = (() => {
       view.innerHTML = `
         <div class="cockpit-no-data">
           <div class="cockpit-no-data-icon">&#x1F4CA;</div>
-          <div class="cockpit-no-data-text">No time-series data available for this flight log.<br>Upload a .ulg file for full cockpit visualization.</div>
+          <div class="cockpit-no-data-text">No time-series data available for this flight log.<br>Supported formats: ULog (.ulg), DataFlash (.bin/.log), CSV (.csv)</div>
         </div>`;
       return;
     }

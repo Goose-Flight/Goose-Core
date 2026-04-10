@@ -29,6 +29,43 @@
       --font:         'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
     }
 
+    /* ── Themes ─────────────────────────────────────────────── */
+    html.theme-hud {
+      --bg:           #000000;
+      --surface:      #010501;
+      --card:         rgba(0,255,65,0.04);
+      --card-border:  rgba(0,255,65,0.12);
+      --card-hover:   rgba(0,255,65,0.06);
+      --text:         #00FF41;
+      --text-sec:     rgba(0,255,65,0.5);
+      --text-muted:   rgba(0,255,65,0.25);
+      --green:        #00FF41;
+      --green-pass:   #00CC33;
+      --green-glow:   rgba(0,255,65,0.15);
+      --amber:        #FFD700;
+      --amber-glow:   rgba(255,215,0,0.12);
+      --red:          #FF2222;
+      --red-glow:     rgba(255,34,34,0.12);
+    }
+
+    html.theme-clean {
+      --bg:           #F4F5F7;
+      --surface:      #FFFFFF;
+      --card:         rgba(0,0,0,0.03);
+      --card-border:  rgba(0,0,0,0.08);
+      --card-hover:   rgba(0,0,0,0.04);
+      --text:         #1A1C1E;
+      --text-sec:     rgba(26,28,30,0.5);
+      --text-muted:   rgba(26,28,30,0.3);
+      --green:        #2D8E3B;
+      --green-pass:   #1E6B28;
+      --green-glow:   rgba(45,142,59,0.1);
+      --amber:        #C47A00;
+      --amber-glow:   rgba(196,122,0,0.1);
+      --red:          #C0392B;
+      --red-glow:     rgba(192,57,43,0.1);
+    }
+
     html { font-size: 15px; scroll-behavior: smooth; }
 
     body {
@@ -1700,6 +1737,13 @@
   </style>
 </head>
 <body>
+<script>
+  (function() {
+    var t = localStorage.getItem('goose-theme');
+    if (t === 'hud') document.documentElement.classList.add('theme-hud');
+    else if (t === 'clean') document.documentElement.classList.add('theme-clean');
+  })();
+</script>
 
 <!-- ── Header ────────────────────────────────────────────────── -->
 <header>
@@ -1716,6 +1760,8 @@
   </div>
 
   <div class="header-meta">air-gapped <span>·</span> localhost:8000</div>
+
+  <button id="theme-toggle-btn" class="nav-tab" onclick="cycleTheme()" title="Toggle theme" style="margin-right:8px;opacity:0.7;">DARK</button>
 
   <nav>
     <button class="nav-tab" id="nav-welcome" onclick="switchTab('welcome')">Welcome</button>
@@ -2470,6 +2516,32 @@
     // Controls wording, field visibility, plugin ordering, and chart presets.
     profileConfig: null,
   };
+
+  /* ── Theme cycling ─────────────────────────────────────────── */
+  (function() {
+    var themes = ['dark', 'hud', 'clean'];
+    var labels = { dark: 'DARK', hud: 'HUD', clean: 'CLEAN' };
+    var saved = localStorage.getItem('goose-theme') || 'dark';
+    window._currentTheme = themes.includes(saved) ? saved : 'dark';
+    function applyTheme(t) {
+      document.documentElement.classList.remove('theme-hud', 'theme-clean');
+      if (t === 'hud')   document.documentElement.classList.add('theme-hud');
+      if (t === 'clean') document.documentElement.classList.add('theme-clean');
+      localStorage.setItem('goose-theme', t);
+      window._currentTheme = t;
+      var btn = document.getElementById('theme-toggle-btn');
+      if (btn) btn.textContent = labels[t];
+    }
+    window.cycleTheme = function() {
+      var idx = (themes.indexOf(window._currentTheme) + 1) % themes.length;
+      applyTheme(themes[idx]);
+    };
+    // Set correct button label on load
+    document.addEventListener('DOMContentLoaded', function() {
+      var btn = document.getElementById('theme-toggle-btn');
+      if (btn) btn.textContent = labels[window._currentTheme] || 'DARK';
+    });
+  })();
 
   /* ════════════════════════════════════════════════════════════
      Tab navigation

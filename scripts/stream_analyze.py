@@ -57,7 +57,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS analyzed_logs (
     log_id              TEXT PRIMARY KEY,
     analyzed_at         TEXT NOT NULL,
-    -- Listing metadata (from logs.px4.io API)
+    -- Listing metadata (from logs.px4.io API — stored for reference only, never used to classify)
     date                TEXT,
     vehicle_type_api    TEXT,
     airframe            TEXT,
@@ -75,7 +75,9 @@ CREATE TABLE IF NOT EXISTS analyzed_logs (
     hardware            TEXT,
     firmware            TEXT,
     primary_mode        TEXT,
-    -- Crash assessment
+    motor_count         INTEGER,
+    log_format          TEXT,
+    -- Crash assessment (evidence-based, from telemetry only)
     crashed             INTEGER,
     crash_confidence    REAL,
     crash_signals       TEXT,
@@ -90,15 +92,99 @@ CREATE TABLE IF NOT EXISTS analyzed_logs (
     has_battery         INTEGER,
     has_motors          INTEGER,
     has_vibration       INTEGER,
-    signal_streams      INTEGER
+    has_rc              INTEGER,
+    has_ekf             INTEGER,
+    has_cpu             INTEGER,
+    has_magnetometer    INTEGER,
+    has_barometer       INTEGER,
+    has_airspeed        INTEGER,
+    signal_streams      INTEGER,
+    -- ── Raw telemetry features for re-analysis without re-download ────────────
+    -- Attitude
+    max_roll_deg        REAL,   -- peak absolute roll (degrees)
+    max_pitch_deg       REAL,   -- peak absolute pitch (degrees)
+    max_yaw_rate_dps    REAL,   -- peak yaw rate (deg/s)
+    -- Attitude tracking error (setpoint vs actual)
+    max_roll_err_deg    REAL,
+    max_pitch_err_deg   REAL,
+    -- Motors
+    motor_cutoff_frac   REAL,   -- fraction through log where motors last active (0-1)
+    motor_cutoff_tilt   REAL,   -- attitude tilt angle at motor cutoff (degrees)
+    motor_min_avg       REAL,   -- average of per-motor minimums across flight
+    motor_max_avg       REAL,   -- average of per-motor maximums
+    motor_imbalance     REAL,   -- max spread between motors at any point
+    -- Altitude / position
+    alt_peak_m          REAL,   -- max altitude reached (relative, meters)
+    alt_final_m         REAL,   -- altitude at end of log
+    alt_drop_rate       REAL,   -- m/s descent in last 30% of flight
+    alt_drop_m          REAL,   -- total drop in last 30% of flight
+    horiz_dist_m        REAL,   -- total horizontal distance flown (GPS-derived)
+    -- GPS quality
+    gps_fix_min         INTEGER, -- minimum GPS fix type seen (0=no fix, 3=3D)
+    gps_sat_min         INTEGER, -- minimum satellites tracked
+    gps_hdop_max        REAL,    -- maximum horizontal dilution of precision
+    -- Battery
+    batt_v_min          REAL,   -- minimum voltage seen
+    batt_v_start        REAL,   -- voltage at start of flight
+    batt_v_end          REAL,   -- voltage at end of flight
+    batt_drop_v         REAL,   -- total voltage drop
+    batt_pct_min        REAL,   -- minimum remaining percentage
+    batt_current_max    REAL,   -- peak current draw (A)
+    -- Vibration / IMU
+    peak_g_last20pct    REAL,   -- max g-force in last 20% of log (crash indicator)
+    peak_g_overall      REAL,   -- max g-force across entire flight
+    vib_rms_x           REAL,   -- RMS vibration X axis
+    vib_rms_y           REAL,   -- RMS vibration Y axis
+    vib_rms_z           REAL,   -- RMS vibration Z axis
+    -- EKF health
+    ekf_vel_innov_max   REAL,   -- max velocity innovation magnitude
+    ekf_pos_innov_max   REAL,   -- max position innovation magnitude
+    -- RC input
+    rc_rssi_min         REAL,   -- minimum RSSI (0-1)
+    rc_loss_events      INTEGER, -- number of RC signal loss events
+    -- Flight events
+    error_count         INTEGER, -- number of error-level events
+    warning_count_evt   INTEGER, -- number of warning-level events
+    failsafe_count      INTEGER, -- number of failsafe activations
+    mode_change_count   INTEGER, -- total mode transitions
+    -- Velocity
+    vel_horiz_max       REAL,   -- max horizontal speed (m/s)
+    vel_vert_max        REAL,   -- max vertical speed magnitude (m/s)
+    -- CPU
+    cpu_load_max        REAL,   -- peak CPU load (0-1)
+    cpu_load_avg        REAL    -- average CPU load
 );
 
-CREATE INDEX IF NOT EXISTS idx_analyzed_at ON analyzed_logs (analyzed_at);
-CREATE INDEX IF NOT EXISTS idx_crashed ON analyzed_logs (crashed);
+CREATE INDEX IF NOT EXISTS idx_analyzed_at     ON analyzed_logs (analyzed_at);
+CREATE INDEX IF NOT EXISTS idx_crashed         ON analyzed_logs (crashed);
 CREATE INDEX IF NOT EXISTS idx_crash_confidence ON analyzed_logs (crash_confidence);
-CREATE INDEX IF NOT EXISTS idx_rating ON analyzed_logs (rating);
-CREATE INDEX IF NOT EXISTS idx_score ON analyzed_logs (score);
+CREATE INDEX IF NOT EXISTS idx_rating          ON analyzed_logs (rating);
+CREATE INDEX IF NOT EXISTS idx_score           ON analyzed_logs (score);
 """
+
+# Columns added after initial release — applied as migrations to existing DBs
+_MIGRATION_COLUMNS = [
+    "motor_count INTEGER", "log_format TEXT",
+    "has_rc INTEGER", "has_ekf INTEGER", "has_cpu INTEGER",
+    "has_magnetometer INTEGER", "has_barometer INTEGER", "has_airspeed INTEGER",
+    "max_roll_deg REAL", "max_pitch_deg REAL", "max_yaw_rate_dps REAL",
+    "max_roll_err_deg REAL", "max_pitch_err_deg REAL",
+    "motor_cutoff_frac REAL", "motor_cutoff_tilt REAL",
+    "motor_min_avg REAL", "motor_max_avg REAL", "motor_imbalance REAL",
+    "alt_peak_m REAL", "alt_final_m REAL", "alt_drop_rate REAL", "alt_drop_m REAL",
+    "horiz_dist_m REAL",
+    "gps_fix_min INTEGER", "gps_sat_min INTEGER", "gps_hdop_max REAL",
+    "batt_v_min REAL", "batt_v_start REAL", "batt_v_end REAL",
+    "batt_drop_v REAL", "batt_pct_min REAL", "batt_current_max REAL",
+    "peak_g_last20pct REAL", "peak_g_overall REAL",
+    "vib_rms_x REAL", "vib_rms_y REAL", "vib_rms_z REAL",
+    "ekf_vel_innov_max REAL", "ekf_pos_innov_max REAL",
+    "rc_rssi_min REAL", "rc_loss_events INTEGER",
+    "error_count INTEGER", "warning_count_evt INTEGER", "failsafe_count INTEGER",
+    "mode_change_count INTEGER",
+    "vel_horiz_max REAL", "vel_vert_max REAL",
+    "cpu_load_max REAL", "cpu_load_avg REAL",
+]
 
 # ---------------------------------------------------------------------------
 # Listing helpers (reused from download_public_logs.py)
@@ -181,8 +267,219 @@ def _download_to_temp(log_id: str) -> str | None:
 # Analysis
 # ---------------------------------------------------------------------------
 
+def _safe_float(val) -> float | None:
+    try:
+        v = float(val)
+        return None if (v != v) else round(v, 4)  # NaN check
+    except Exception:
+        return None
+
+
+def _safe_int(val) -> int | None:
+    try:
+        return int(val)
+    except Exception:
+        return None
+
+
+def _extract_features(flight) -> dict:
+    """Extract all raw telemetry features from a Flight object.
+
+    These are stored in the DB so we can re-run scoring / crash detection
+    logic without re-downloading or re-parsing the original log file.
+    """
+    import numpy as np
+    f: dict = {}
+
+    # ── Attitude ──────────────────────────────────────────────────────────────
+    if not flight.attitude.empty and "roll" in flight.attitude.columns:
+        att = flight.attitude
+        f["max_roll_deg"]  = _safe_float(np.degrees(att["roll"].abs().max()))
+        f["max_pitch_deg"] = _safe_float(np.degrees(att["pitch"].abs().max())) if "pitch" in att.columns else None
+        if "yawspeed" in att.columns:
+            f["max_yaw_rate_dps"] = _safe_float(np.degrees(att["yawspeed"].abs().max()))
+
+    # ── Attitude tracking error ───────────────────────────────────────────────
+    if not flight.attitude.empty and not flight.attitude_setpoint.empty:
+        try:
+            att = flight.attitude[["timestamp", "roll", "pitch"]].dropna()
+            sp  = flight.attitude_setpoint[["timestamp", "roll_body", "pitch_body"]].dropna()
+            merged = att.merge(sp, on="timestamp", how="inner")
+            if not merged.empty:
+                f["max_roll_err_deg"]  = _safe_float(np.degrees((merged["roll"]  - merged["roll_body"]).abs().max()))
+                f["max_pitch_err_deg"] = _safe_float(np.degrees((merged["pitch"] - merged["pitch_body"]).abs().max()))
+        except Exception:
+            pass
+
+    # ── Motors ────────────────────────────────────────────────────────────────
+    if not flight.motors.empty:
+        mcols = [c for c in flight.motors.columns if c.startswith("output_")]
+        if mcols:
+            motor_df = flight.motors[mcols]
+            # cutoff position
+            active_mask = (motor_df > 0.05).any(axis=1)
+            active_idx  = active_mask[active_mask].index
+            if len(active_idx) > 0 and len(flight.motors) > 5:
+                last_pos = flight.motors.index.get_loc(active_idx[-1])
+                f["motor_cutoff_frac"] = _safe_float(last_pos / len(flight.motors))
+                # tilt at cutoff
+                if not flight.attitude.empty and "roll" in flight.attitude.columns:
+                    cutoff_ts = float(flight.motors["timestamp"].iloc[last_pos])
+                    att_near = flight.attitude[flight.attitude["timestamp"] <= cutoff_ts].tail(5)
+                    if not att_near.empty:
+                        roll_c  = float(np.degrees(att_near["roll"].abs().mean()))
+                        pitch_c = float(np.degrees(att_near["pitch"].abs().mean())) if "pitch" in att_near.columns else 0.0
+                        f["motor_cutoff_tilt"] = _safe_float(max(roll_c, pitch_c))
+            # per-motor stats
+            per_min = motor_df.min(axis=0)
+            per_max = motor_df.max(axis=0)
+            f["motor_min_avg"]   = _safe_float(per_min.mean())
+            f["motor_max_avg"]   = _safe_float(per_max.mean())
+            # imbalance: max spread between motors at each timestep
+            f["motor_imbalance"] = _safe_float((motor_df.max(axis=1) - motor_df.min(axis=1)).max())
+
+    # ── Altitude / position ───────────────────────────────────────────────────
+    if not flight.position.empty:
+        pos = flight.position
+        alt_col = "alt_rel" if "alt_rel" in pos.columns else ("alt_msl" if "alt_msl" in pos.columns else None)
+        if alt_col and len(pos) >= 5:
+            alt = pos[alt_col].dropna()
+            ts  = pos["timestamp"]
+            f["alt_peak_m"]  = _safe_float(alt.max())
+            f["alt_final_m"] = _safe_float(alt.iloc[-1])
+            if len(alt) >= 20:
+                tail_start = int(len(alt) * 0.7)
+                tail_alt   = alt.iloc[tail_start:]
+                tail_ts    = ts.iloc[tail_start:]
+                dt = float(tail_ts.iloc[-1] - tail_ts.iloc[0])
+                if dt > 0:
+                    drop = float(tail_alt.iloc[0] - tail_alt.iloc[-1])
+                    f["alt_drop_rate"] = _safe_float(drop / dt)
+                    f["alt_drop_m"]    = _safe_float(drop)
+        # horizontal distance
+        if "lat" in pos.columns and "lon" in pos.columns and len(pos) >= 2:
+            try:
+                lat = pos["lat"].dropna().values
+                lon = pos["lon"].dropna().values
+                n = min(len(lat), len(lon))
+                if n >= 2:
+                    dlat = np.diff(lat[:n]) * 111320.0
+                    dlon = np.diff(lon[:n]) * 111320.0 * np.cos(np.radians(lat[:n-1]))
+                    f["horiz_dist_m"] = _safe_float(np.sqrt(dlat**2 + dlon**2).sum())
+            except Exception:
+                pass
+
+    # ── GPS quality ───────────────────────────────────────────────────────────
+    if not flight.gps.empty:
+        gps = flight.gps
+        if "fix_type" in gps.columns:
+            f["gps_fix_min"] = _safe_int(gps["fix_type"].min())
+        if "satellites_used" in gps.columns:
+            f["gps_sat_min"] = _safe_int(gps["satellites_used"].min())
+        if "hdop" in gps.columns:
+            f["gps_hdop_max"] = _safe_float(gps["hdop"].max())
+
+    # ── Battery ───────────────────────────────────────────────────────────────
+    if not flight.battery.empty:
+        bat = flight.battery
+        if "voltage" in bat.columns:
+            v = bat["voltage"].dropna()
+            if len(v) >= 2:
+                f["batt_v_min"]   = _safe_float(v.min())
+                f["batt_v_start"] = _safe_float(v.iloc[0])
+                f["batt_v_end"]   = _safe_float(v.iloc[-1])
+                f["batt_drop_v"]  = _safe_float(float(v.iloc[0]) - float(v.min()))
+        if "remaining_pct" in bat.columns:
+            f["batt_pct_min"] = _safe_float(bat["remaining_pct"].min())
+        if "current" in bat.columns:
+            f["batt_current_max"] = _safe_float(bat["current"].max())
+
+    # ── Vibration / IMU ───────────────────────────────────────────────────────
+    if not flight.vibration.empty:
+        vib = flight.vibration
+        accel_cols = [c for c in vib.columns if c.startswith("accel_")]
+        if accel_cols:
+            total_g = np.sqrt(sum(vib[c]**2 for c in accel_cols)) / 9.81
+            f["peak_g_overall"] = _safe_float(total_g.max())
+            last_20 = int(len(total_g) * 0.8)
+            f["peak_g_last20pct"] = _safe_float(total_g.iloc[last_20:].max())
+        if "vibration_x" in vib.columns:
+            f["vib_rms_x"] = _safe_float(np.sqrt((vib["vibration_x"]**2).mean()))
+        if "vibration_y" in vib.columns:
+            f["vib_rms_y"] = _safe_float(np.sqrt((vib["vibration_y"]**2).mean()))
+        if "vibration_z" in vib.columns:
+            f["vib_rms_z"] = _safe_float(np.sqrt((vib["vibration_z"]**2).mean()))
+
+    # ── EKF ───────────────────────────────────────────────────────────────────
+    if not flight.ekf.empty:
+        ekf = flight.ekf
+        vel_cols = [c for c in ekf.columns if "vel_innov" in c or "velocity_innov" in c]
+        pos_cols = [c for c in ekf.columns if "pos_innov" in c or "position_innov" in c]
+        if vel_cols:
+            f["ekf_vel_innov_max"] = _safe_float(ekf[vel_cols].abs().max().max())
+        if pos_cols:
+            f["ekf_pos_innov_max"] = _safe_float(ekf[pos_cols].abs().max().max())
+
+    # ── RC ────────────────────────────────────────────────────────────────────
+    if not flight.rc_input.empty:
+        rc = flight.rc_input
+        if "rssi" in rc.columns:
+            f["rc_rssi_min"] = _safe_float(rc["rssi"].min())
+        # RC loss = transitions to rssi < 0.1
+        if "rssi" in rc.columns:
+            rssi = rc["rssi"].fillna(1.0)
+            loss_events = int(((rssi < 0.1) & (rssi.shift(1) >= 0.1)).sum())
+            f["rc_loss_events"] = loss_events
+
+    # ── Flight events ─────────────────────────────────────────────────────────
+    if flight.events:
+        f["error_count"]       = sum(1 for e in flight.events if e.severity == "critical")
+        f["warning_count_evt"] = sum(1 for e in flight.events if e.severity == "warning")
+        f["failsafe_count"]    = sum(1 for e in flight.events if e.event_type == "failsafe")
+    if flight.mode_changes:
+        f["mode_change_count"] = len(flight.mode_changes)
+
+    # ── Velocity ──────────────────────────────────────────────────────────────
+    if not flight.velocity.empty:
+        vel = flight.velocity
+        if "vx" in vel.columns and "vy" in vel.columns:
+            horiz = np.sqrt(vel["vx"]**2 + vel["vy"]**2)
+            f["vel_horiz_max"] = _safe_float(horiz.max())
+        if "vz" in vel.columns:
+            f["vel_vert_max"] = _safe_float(vel["vz"].abs().max())
+
+    # ── CPU ───────────────────────────────────────────────────────────────────
+    if not flight.cpu.empty:
+        cpu = flight.cpu
+        load_col = next((c for c in ["load", "cpu_load", "ram_usage"] if c in cpu.columns), None)
+        if load_col:
+            f["cpu_load_max"] = _safe_float(cpu[load_col].max())
+            f["cpu_load_avg"] = _safe_float(cpu[load_col].mean())
+
+    return f
+
+
 def _analyze(log_path: str, entry: dict) -> dict:
     """Parse + analyze one log. Returns result dict for DB insertion."""
+    null_features = {
+        "max_roll_deg": None, "max_pitch_deg": None, "max_yaw_rate_dps": None,
+        "max_roll_err_deg": None, "max_pitch_err_deg": None,
+        "motor_cutoff_frac": None, "motor_cutoff_tilt": None,
+        "motor_min_avg": None, "motor_max_avg": None, "motor_imbalance": None,
+        "alt_peak_m": None, "alt_final_m": None, "alt_drop_rate": None, "alt_drop_m": None,
+        "horiz_dist_m": None,
+        "gps_fix_min": None, "gps_sat_min": None, "gps_hdop_max": None,
+        "batt_v_min": None, "batt_v_start": None, "batt_v_end": None,
+        "batt_drop_v": None, "batt_pct_min": None, "batt_current_max": None,
+        "peak_g_last20pct": None, "peak_g_overall": None,
+        "vib_rms_x": None, "vib_rms_y": None, "vib_rms_z": None,
+        "ekf_vel_innov_max": None, "ekf_pos_innov_max": None,
+        "rc_rssi_min": None, "rc_loss_events": None,
+        "error_count": None, "warning_count_evt": None,
+        "failsafe_count": None, "mode_change_count": None,
+        "vel_horiz_max": None, "vel_vert_max": None,
+        "cpu_load_max": None, "cpu_load_avg": None,
+    }
     result: dict = {
         "log_id":           entry["log_id"],
         "analyzed_at":      datetime.now(timezone.utc).isoformat(),
@@ -201,6 +498,8 @@ def _analyze(log_path: str, entry: dict) -> dict:
         "hardware":         None,
         "firmware":         None,
         "primary_mode":     None,
+        "motor_count":      None,
+        "log_format":       None,
         "crashed":          None,
         "crash_confidence": None,
         "crash_signals":    None,
@@ -213,7 +512,14 @@ def _analyze(log_path: str, entry: dict) -> dict:
         "has_battery":      0,
         "has_motors":       0,
         "has_vibration":    0,
+        "has_rc":           0,
+        "has_ekf":          0,
+        "has_cpu":          0,
+        "has_magnetometer": 0,
+        "has_barometer":    0,
+        "has_airspeed":     0,
         "signal_streams":   0,
+        **null_features,
     }
     try:
         from goose.parsers.ulog import ULogParser
@@ -233,11 +539,19 @@ def _analyze(log_path: str, entry: dict) -> dict:
         result["hardware"]      = meta.hardware or meta.autopilot
         result["firmware"]      = meta.firmware_version
         result["primary_mode"]  = flight.primary_mode
+        result["motor_count"]   = meta.motor_count
+        result["log_format"]    = meta.log_format
         result["has_gps"]       = int(not flight.gps.empty)
         result["has_attitude"]  = int(not flight.attitude.empty)
         result["has_battery"]   = int(not flight.battery.empty)
         result["has_motors"]    = int(not flight.motors.empty)
         result["has_vibration"] = int(not flight.vibration.empty)
+        result["has_rc"]        = int(not flight.rc_input.empty)
+        result["has_ekf"]       = int(not flight.ekf.empty)
+        result["has_cpu"]       = int(not flight.cpu.empty)
+        result["has_magnetometer"] = int(not flight.magnetometer.empty)
+        result["has_barometer"] = int(not flight.barometer.empty)
+        result["has_airspeed"]  = int(not flight.airspeed.empty)
 
         ca = flight.crash_assessment()
         result["crashed"]          = int(ca["crashed"])
@@ -246,6 +560,12 @@ def _analyze(log_path: str, entry: dict) -> dict:
 
         if pr.diagnostics:
             result["signal_streams"] = len(pr.diagnostics.stream_coverage)
+
+        # Extract raw telemetry features
+        try:
+            result.update(_extract_features(flight))
+        except Exception as feat_exc:
+            pass  # features are best-effort; don't fail the whole record
 
         # Run plugins
         plugins = load_plugins()
@@ -275,6 +595,17 @@ def _open_db(path: Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(path))
     conn.executescript(SCHEMA)
+    # Migrate existing DBs — add new columns if absent (safe to re-run)
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(analyzed_logs)")}
+    for col_def in _MIGRATION_COLUMNS:
+        col_name = col_def.split()[0]
+        if col_name not in existing:
+            conn.execute(f"ALTER TABLE analyzed_logs ADD COLUMN {col_def}")
+    # Feature column indexes — only after columns exist
+    for col, idx in [("max_roll_deg", "idx_max_roll"), ("batt_v_min", "idx_batt_v_min"),
+                     ("peak_g_last20pct", "idx_peak_g")]:
+        if col in {row[1] for row in conn.execute("PRAGMA table_info(analyzed_logs)")}:
+            conn.execute(f"CREATE INDEX IF NOT EXISTS {idx} ON analyzed_logs ({col})")
     conn.commit()
     return conn
 

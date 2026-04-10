@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS analyzed_logs (
     rate_yaw_err_rms    REAL,
     rate_roll_err_max   REAL,   -- peak roll rate error
     rate_pitch_err_max  REAL,
+    rate_yaw_err_max    REAL,
     rate_roll_err_p95   REAL,   -- 95th percentile (captures sustained error)
     rate_pitch_err_p95  REAL,
     -- Attitude loop
@@ -285,7 +286,7 @@ _MIGRATION_COLUMNS = [
     "cpu_load_max REAL", "cpu_load_avg REAL",
     # Tracking errors
     "rate_roll_err_rms REAL", "rate_pitch_err_rms REAL", "rate_yaw_err_rms REAL",
-    "rate_roll_err_max REAL", "rate_pitch_err_max REAL",
+    "rate_roll_err_max REAL", "rate_pitch_err_max REAL", "rate_yaw_err_max REAL",
     "rate_roll_err_p95 REAL", "rate_pitch_err_p95 REAL",
     "att_roll_err_rms REAL", "att_pitch_err_rms REAL", "att_yaw_err_rms REAL",
     "att_roll_err_p95 REAL", "att_pitch_err_p95 REAL",

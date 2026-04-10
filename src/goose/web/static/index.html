@@ -1880,6 +1880,12 @@
     <!-- ── Top Findings row ──────────────────────────── -->
     <div class="qa-findings-row" id="qa-findings-row"></div>
 
+    <!-- ── Data tabs panel (analysis first) ────────── -->
+    <div class="qa-data-section" id="qa-data-section">
+      <div class="qa-data-tab-bar" id="qa-data-tab-bar"></div>
+      <!-- panes injected by JS -->
+    </div>
+
     <!-- ── Timeline strip ───────────────────────────── -->
     <div class="qa-timeline-strip" id="qa-timeline-strip" style="display:none;">
       <div class="qa-timeline-label">
@@ -1902,12 +1908,6 @@
 
     <!-- ── All-charts grid ───────────────────────────── -->
     <div class="qa-all-charts-grid" id="qa-all-charts-grid"></div>
-
-    <!-- ── Data tabs panel ──────────────────────────── -->
-    <div class="qa-data-section" id="qa-data-section">
-      <div class="qa-data-tab-bar" id="qa-data-tab-bar"></div>
-      <!-- panes injected by JS -->
-    </div>
 
   </div>
 
@@ -5773,31 +5773,49 @@
 
   // ── QA Cockpit constants ──────────────────────────────────────────
   // Profile bundles define the PREFERRED tab order; all available charts always render in the grid
+  // Featured charts per profile — shown first and highlighted.
+  // ALL available data streams are shown in every profile; featured just controls ordering + accent.
   const QA_PROFILE_CHART_BUNDLES = {
-    default:     ['altitude', 'attitude', 'battery', 'motors', 'vibration', 'gps', 'velocity', 'rc', 'ekf'],
-    racer:       ['attitude', 'attitude_rate', 'motors', 'battery', 'vibration', 'velocity', 'rc', 'altitude', 'gps'],
-    research:    ['altitude', 'attitude', 'attitude_rate', 'velocity', 'velocity_setpoint', 'ekf', 'gps', 'vibration', 'battery'],
-    shop_repair: ['battery', 'motors', 'vibration', 'attitude', 'gps', 'altitude', 'rc', 'velocity', 'ekf'],
-    factory_qa:  ['motors', 'vibration', 'battery', 'attitude', 'attitude_rate', 'gps', 'altitude', 'velocity', 'ekf'],
-    gov_mil:     ['altitude', 'velocity', 'velocity_setpoint', 'attitude', 'gps', 'battery', 'motors', 'ekf', 'rc'],
-    advanced:    ['altitude', 'attitude', 'attitude_rate', 'motors', 'battery', 'vibration', 'gps', 'velocity', 'velocity_setpoint', 'ekf', 'rc', 'cpu'],
+    default:     ['altitude', 'attitude', 'att_tracking', 'battery', 'motors', 'vibration', 'gps', 'velocity', 'rc', 'ekf'],
+    racer:       ['attitude', 'att_tracking', 'rate_tracking', 'motors', 'battery', 'vibration', 'velocity', 'rc', 'altitude', 'gps', 'ctrl_response'],
+    research:    ['altitude', 'attitude', 'att_tracking', 'rate_tracking', 'velocity', 'vel_tracking', 'ekf', 'gps', 'vibration', 'battery', 'raw_gyro', 'raw_accel', 'barometer', 'magnetometer'],
+    shop_repair: ['battery', 'motors', 'vibration', 'attitude', 'gps', 'altitude', 'rc', 'velocity', 'ekf', 'barometer'],
+    factory_qa:  ['motors', 'vibration', 'battery', 'attitude', 'attitude_rate', 'rate_tracking', 'gps', 'altitude', 'velocity', 'ekf', 'raw_gyro', 'raw_accel'],
+    gov_mil:     ['altitude', 'velocity', 'vel_tracking', 'attitude', 'att_tracking', 'gps', 'battery', 'motors', 'ekf', 'rc', 'manual_control'],
+    advanced:    ['altitude', 'attitude', 'att_tracking', 'attitude_rate', 'rate_tracking', 'motors', 'ctrl_response', 'battery', 'vibration', 'gps', 'velocity', 'vel_tracking', 'ekf', 'rc', 'cpu', 'magnetometer', 'barometer', 'raw_gyro', 'raw_accel', 'manual_control', 'actuator_controls', 'wind', 'airspeed', 'rc_channels'],
   };
   // Master list of all chart keys with labels and units
   const QA_ALL_CHART_META = {
-    altitude:             { label: 'Altitude',         unit: 'm',    color: '#6ECC72' },
-    attitude:             { label: 'Attitude',          unit: '°',    color: '#E24B4A' },
-    attitude_setpoint:    { label: 'Attitude SP',       unit: '°',    color: '#E24B4A', sp: true },
-    attitude_rate:        { label: 'Attitude Rate',     unit: '°/s',  color: '#A77BCA' },
-    attitude_rate_setpoint:{ label: 'Rate SP',          unit: '°/s',  color: '#A77BCA', sp: true },
-    velocity:             { label: 'Velocity',          unit: 'm/s',  color: '#5B9BD5' },
-    velocity_setpoint:    { label: 'Velocity SP',       unit: 'm/s',  color: '#5B9BD5', sp: true },
-    motors:               { label: 'Motors',            unit: '0–1',  color: '#EF9F27' },
-    battery:              { label: 'Battery',           unit: '',     color: '#EF9F27' },
-    gps:                  { label: 'GPS',               unit: '',     color: '#6ECC72' },
-    vibration:            { label: 'Vibration',         unit: 'm/s²', color: '#E24B4A' },
-    rc:                   { label: 'RC Signal',         unit: '',     color: '#EF9F27' },
-    ekf:                  { label: 'EKF',               unit: '',     color: '#A77BCA' },
-    cpu:                  { label: 'CPU Load',          unit: '%',    color: '#5BC0BE' },
+    // ── Core flight dynamics ──────────────────────────────────
+    altitude:             { label: 'Altitude',           unit: 'm',    color: '#6ECC72' },
+    attitude:             { label: 'Attitude',           unit: '°',    color: '#E24B4A' },
+    attitude_setpoint:    { label: 'Attitude SP',        unit: '°',    color: '#E24B4A', sp: true },
+    attitude_rate:        { label: 'Attitude Rate',      unit: '°/s',  color: '#A77BCA' },
+    attitude_rate_setpoint:{ label: 'Rate SP',           unit: '°/s',  color: '#A77BCA', sp: true },
+    velocity:             { label: 'Velocity',           unit: 'm/s',  color: '#5B9BD5' },
+    velocity_setpoint:    { label: 'Velocity SP',        unit: 'm/s',  color: '#5B9BD5', sp: true },
+    motors:               { label: 'Motors',             unit: '0–1',  color: '#EF9F27' },
+    battery:              { label: 'Battery',            unit: '',     color: '#EF9F27' },
+    gps:                  { label: 'GPS',                unit: '',     color: '#6ECC72' },
+    vibration:            { label: 'Vibration',          unit: 'm/s²', color: '#E24B4A' },
+    rc:                   { label: 'RC Signal',          unit: '',     color: '#EF9F27' },
+    ekf:                  { label: 'EKF Health',         unit: '',     color: '#A77BCA' },
+    cpu:                  { label: 'CPU Load',           unit: '%',    color: '#5BC0BE' },
+    // ── Correlation / analysis overlays ──────────────────────
+    att_tracking:         { label: 'Attitude Tracking',  unit: '°',    color: '#E24B4A', corr: true },
+    rate_tracking:        { label: 'Rate Tracking',      unit: '°/s',  color: '#A77BCA', corr: true },
+    vel_tracking:         { label: 'Velocity Tracking',  unit: 'm/s',  color: '#5B9BD5', corr: true },
+    ctrl_response:        { label: 'Control→Response',   unit: '',     color: '#EF9F27', corr: true },
+    // ── Additional raw streams ────────────────────────────────
+    manual_control:       { label: 'Stick Inputs',       unit: '0–1',  color: '#5B9BD5' },
+    actuator_controls:    { label: 'Actuator Demands',   unit: '0–1',  color: '#EF9F27' },
+    magnetometer:         { label: 'Magnetometer',       unit: 'Ga',   color: '#A77BCA' },
+    airspeed:             { label: 'Airspeed',           unit: 'm/s',  color: '#5BC0BE' },
+    wind:                 { label: 'Wind Estimate',      unit: 'm/s',  color: '#D46A9F' },
+    rc_channels:          { label: 'RC Channels',        unit: '',     color: '#E8854A' },
+    barometer:            { label: 'Barometer',          unit: 'Pa/°C',color: '#6ECC72' },
+    raw_gyro:             { label: 'Raw Gyro',           unit: '°/s',  color: '#E24B4A' },
+    raw_accel:            { label: 'Raw Accel',          unit: 'm/s²', color: '#5B9BD5' },
   };
 
   const QA_PROFILE_WORDING = {
@@ -6017,6 +6035,145 @@
         const data=[d.timestamps], series=[];
         keys.forEach((k,i)=>{data.push(d[k]);series.push({...actSeries(k,MC8[i],1.5),fill:'rgba(91,188,190,0.05)'});});
         return new uPlot(baseOpts('CPU',data,series,'%'), data, container);
+      }
+      // ── Correlation / analysis overlays ─────────────────────────
+      if (key === 'att_tracking') {
+        // Attitude actual vs setpoint — same axes, error visible as gap
+        const d=ts.attitude, sp=ts.attitude_setpoint; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.roll){data.push(d.roll);series.push(actSeries('Roll','#E24B4A',2));}
+        if(d.pitch){data.push(d.pitch);series.push(actSeries('Pitch','#6ECC72',2));}
+        if(sp){
+          if(sp.roll){data.push(sp.roll);series.push(spSeries('Roll SP','#E24B4A'));}
+          if(sp.pitch){data.push(sp.pitch);series.push(spSeries('Pitch SP','#6ECC72'));}
+        }
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Attitude Tracking',data,series,'°'), data, container);
+      }
+      if (key === 'rate_tracking') {
+        const d=ts.attitude_rate, sp=ts.attitude_rate_setpoint; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.roll){data.push(d.roll);series.push(actSeries('Roll rate','#E24B4A',2));}
+        if(d.pitch){data.push(d.pitch);series.push(actSeries('Pitch rate','#6ECC72',2));}
+        if(d.yaw){data.push(d.yaw);series.push(actSeries('Yaw rate','#5B9BD5',2));}
+        if(sp){
+          if(sp.roll){data.push(sp.roll);series.push(spSeries('Roll SP','#E24B4A'));}
+          if(sp.pitch){data.push(sp.pitch);series.push(spSeries('Pitch SP','#6ECC72'));}
+          if(sp.yaw){data.push(sp.yaw);series.push(spSeries('Yaw SP','#5B9BD5'));}
+        }
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Rate Tracking',data,series,'°/s'), data, container);
+      }
+      if (key === 'vel_tracking') {
+        const d=ts.velocity, sp=ts.velocity_setpoint; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.vx){data.push(d.vx);series.push(actSeries('Vx','#E24B4A',2));}
+        if(d.vy){data.push(d.vy);series.push(actSeries('Vy','#6ECC72',2));}
+        if(d.vz){data.push(d.vz);series.push(actSeries('Vz','#5B9BD5',2));}
+        if(sp){
+          if(sp.vx){data.push(sp.vx);series.push(spSeries('Vx SP','#E24B4A'));}
+          if(sp.vy){data.push(sp.vy);series.push(spSeries('Vy SP','#6ECC72'));}
+          if(sp.vz){data.push(sp.vz);series.push(spSeries('Vz SP','#5B9BD5'));}
+        }
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Velocity Tracking',data,series,'m/s'), data, container);
+      }
+      if (key === 'ctrl_response') {
+        // Actuator demand (thrust) vs attitude rate magnitude — control effectiveness
+        const ac=ts.actuator_controls, ar=ts.attitude_rate;
+        if(!ac&&!ar) return null;
+        const base=ac||ar;
+        const data=[base.timestamps], series=[];
+        if(ac&&ac.thrust){data.push(ac.thrust);series.push(actSeries('Thrust demand','#EF9F27',2));}
+        if(ac&&ac.roll){data.push(ac.roll);series.push(actSeries('Roll demand','#E24B4A',1));}
+        if(ar&&ar.roll){data.push(ar.roll);series.push(spSeries('Roll rate','#E24B4A'));}
+        if(ar&&ar.pitch){data.push(ar.pitch);series.push(spSeries('Pitch rate','#6ECC72'));}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Control→Response',data,series,''), data, container);
+      }
+      // ── Raw sensor streams ────────────────────────────────────
+      if (key === 'manual_control') {
+        const d=ts.manual_control; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.x){data.push(d.x);series.push(actSeries('Roll (x)','#E24B4A'));}
+        if(d.y){data.push(d.y);series.push(actSeries('Pitch (y)','#6ECC72'));}
+        if(d.r){data.push(d.r);series.push(actSeries('Yaw (r)','#5B9BD5'));}
+        if(d.z){data.push(d.z);series.push(actSeries('Throttle (z)','#EF9F27',2));}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Stick Inputs',data,series,'0–1'), data, container);
+      }
+      if (key === 'actuator_controls') {
+        const d=ts.actuator_controls; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.roll){data.push(d.roll);series.push(actSeries('Roll','#E24B4A'));}
+        if(d.pitch){data.push(d.pitch);series.push(actSeries('Pitch','#6ECC72'));}
+        if(d.yaw){data.push(d.yaw);series.push(actSeries('Yaw','#5B9BD5'));}
+        if(d.thrust){data.push(d.thrust);series.push({...actSeries('Thrust','#EF9F27',2),fill:'rgba(239,159,39,0.06)'});}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Actuator Demands',data,series,'0–1'), data, container);
+      }
+      if (key === 'magnetometer') {
+        const d=ts.magnetometer; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.mag_x){data.push(d.mag_x);series.push(actSeries('Mag X','#E24B4A',1));}
+        if(d.mag_y){data.push(d.mag_y);series.push(actSeries('Mag Y','#6ECC72',1));}
+        if(d.mag_z){data.push(d.mag_z);series.push(actSeries('Mag Z','#5B9BD5',1));}
+        if(d.heading_deg){data.push(d.heading_deg);series.push({...actSeries('Heading','#EF9F27',2)});}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Magnetometer',data,series,'Ga'), data, container);
+      }
+      if (key === 'airspeed') {
+        const d=ts.airspeed; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.indicated){data.push(d.indicated);series.push(actSeries('IAS','#5BC0BE',2));}
+        if(d.true_airspeed){data.push(d.true_airspeed);series.push(actSeries('TAS','#6ECC72'));}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Airspeed',data,series,'m/s'), data, container);
+      }
+      if (key === 'wind') {
+        const d=ts.wind; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.wind_x){data.push(d.wind_x);series.push(actSeries('Wind E','#E24B4A',1));}
+        if(d.wind_y){data.push(d.wind_y);series.push(actSeries('Wind N','#6ECC72',1));}
+        if(d.wind_speed){data.push(d.wind_speed);series.push({...actSeries('Speed','#D46A9F',2),fill:'rgba(212,106,159,0.05)'});}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Wind Estimate',data,series,'m/s'), data, container);
+      }
+      if (key === 'rc_channels') {
+        const d=ts.rc_channels; if(!d) return null;
+        const chanKeys=Object.keys(d).filter(k=>k.startsWith('chan')&&Array.isArray(d[k])).sort();
+        if(!chanKeys.length) return null;
+        const data=[d.timestamps], series=[];
+        chanKeys.slice(0,isMini?4:8).forEach((k,i)=>{data.push(d[k]);series.push(actSeries(k.toUpperCase(),MC8[i%MC8.length],1));});
+        if(d.rssi){data.push(d.rssi);series.push({...actSeries('RSSI','#EF9F27',1.5)});}
+        return new uPlot(baseOpts('RC Channels',data,series,''), data, container);
+      }
+      if (key === 'barometer') {
+        const d=ts.barometer; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.baro_alt_meter){data.push(d.baro_alt_meter);series.push({...actSeries('Baro Alt','#6ECC72',2),fill:'rgba(110,204,114,0.05)'});}
+        if(d.temperature_c){data.push(d.temperature_c);series.push(actSeries('Temp °C','#EF9F27',1));}
+        if(!series.length&&d.pressure_pa){data.push(d.pressure_pa);series.push(actSeries('Pressure Pa','#5B9BD5',1.5));}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Barometer',data,series,''), data, container);
+      }
+      if (key === 'raw_gyro') {
+        const d=ts.raw_gyro; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.gyro_x){data.push(d.gyro_x);series.push(actSeries('Gyro X','#E24B4A',1));}
+        if(d.gyro_y){data.push(d.gyro_y);series.push(actSeries('Gyro Y','#6ECC72',1));}
+        if(d.gyro_z){data.push(d.gyro_z);series.push(actSeries('Gyro Z','#5B9BD5',1));}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Raw Gyro',data,series,'°/s'), data, container);
+      }
+      if (key === 'raw_accel') {
+        const d=ts.raw_accel; if(!d) return null;
+        const data=[d.timestamps], series=[];
+        if(d.accel_x){data.push(d.accel_x);series.push(actSeries('Accel X','#E24B4A',1));}
+        if(d.accel_y){data.push(d.accel_y);series.push(actSeries('Accel Y','#6ECC72',1));}
+        if(d.accel_z){data.push(d.accel_z);series.push(actSeries('Accel Z','#5B9BD5',1));}
+        if(!series.length) return null;
+        return new uPlot(baseOpts('Raw Accel',data,series,'m/s²'), data, container);
       }
     } catch(e) { console.error('QA chart error', key, e); }
     return null;
@@ -6303,13 +6460,16 @@
       }));
     }
 
+    const featuredSet = new Set(bundle);
     orderedKeys.forEach(key => {
       const meta2 = QA_ALL_CHART_META[key] || {};
+      const isFeatured = featuredSet.has(key);
       const btn = document.createElement('button');
-      btn.className = 'qa-chart-tab' + (key === orderedKeys[0] ? ' active' : '');
+      btn.className = 'qa-chart-tab' + (key === orderedKeys[0] ? ' active' : '') + (isFeatured ? ' featured' : ' secondary');
       btn.dataset.key = key;
       btn.textContent = meta2.label || key;
-      if (meta2.sp) btn.style.opacity = '0.7';
+      if (meta2.sp) btn.style.opacity = '0.75';
+      if (meta2.corr) btn.setAttribute('title', 'Correlation analysis');
       btn.onclick = () => renderMainChart(key);
       tabBar.appendChild(btn);
     });
@@ -6324,7 +6484,8 @@
         const meta2 = QA_ALL_CHART_META[key] || {};
         const wrap = document.createElement('div');
         wrap.className = 'qa-chart-mini';
-        wrap.innerHTML = `<div class="qa-chart-mini-header"><span class="qa-chart-mini-title">${escHtml(meta2.label||key)}</span>${meta2.sp?'<span style="font-size:10px;color:var(--text-muted);">SETPOINT</span>':''}</div><div class="qa-chart-mini-body"></div>`;
+        const tagHtml = meta2.sp ? '<span style="font-size:10px;color:var(--text-muted);margin-left:6px;">SP</span>' : meta2.corr ? '<span style="font-size:10px;color:var(--amber,#EF9F27);margin-left:6px;">ANALYSIS</span>' : '';
+        wrap.innerHTML = `<div class="qa-chart-mini-header"><span class="qa-chart-mini-title">${escHtml(meta2.label||key)}</span>${tagHtml}</div><div class="qa-chart-mini-body"></div>`;
         gridEl.appendChild(wrap);
         const bodyEl = wrap.querySelector('.qa-chart-mini-body');
         const cw = bodyEl.clientWidth > 20 ? bodyEl.clientWidth : 340;

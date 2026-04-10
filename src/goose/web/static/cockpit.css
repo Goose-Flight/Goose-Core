@@ -1017,6 +1017,24 @@
   background: var(--card);
 }
 
+/* Featured (profile-prioritized) tabs get a subtle top accent */
+.qa-chart-tab.featured {
+  color: var(--text-sec);
+}
+.qa-chart-tab.featured.active {
+  color: var(--green);
+  border-top: 2px solid var(--green);
+}
+
+/* Secondary (all other available) tabs are dimmer */
+.qa-chart-tab.secondary {
+  font-weight: 500;
+  opacity: 0.55;
+  font-size: 10px;
+}
+.qa-chart-tab.secondary:hover { opacity: 0.85; }
+.qa-chart-tab.secondary.active { opacity: 1; color: var(--text-sec); }
+
 /* ══ Full Chart Grid (all streams) ══════════════════════ */
 .qa-all-charts-grid {
   display: grid;

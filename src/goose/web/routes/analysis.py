@@ -472,6 +472,8 @@ async def analyze_case(case_id: str) -> JSONResponse:
             "firmware_version": meta.firmware_version,
             "hardware": meta.hardware,
             "crashed": flight.crashed,
+            "crash_confidence": flight.crash_confidence,
+            "crash_signals": flight.crash_signals,
         }
         narrative = generate_narrative(all_findings, metadata=narr_meta, overall_score=overall_score)
         narrative_human = generate_human_narrative(all_findings, metadata=narr_meta, overall_score=overall_score)
@@ -502,6 +504,8 @@ async def analyze_case(case_id: str) -> JSONResponse:
             "motor_count": meta.motor_count,
             "primary_mode": flight.primary_mode,
             "crashed": flight.crashed,
+            "crash_confidence": flight.crash_confidence,
+            "crash_signals": flight.crash_signals,
         },
         "parse_diagnostics": parse_result.diagnostics.to_dict(),
         "summary": {

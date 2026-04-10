@@ -223,6 +223,8 @@ async def quick_analysis(
                 "primary_mode": flight.primary_mode,
                 "modes_used": modes_used,
                 "crashed": flight.crashed,
+                "crash_confidence": flight.crash_confidence,
+                "crash_signals": flight.crash_signals,
             },
             "summary": {
                 "total_findings": len(forensic_findings),

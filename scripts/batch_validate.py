@@ -40,6 +40,8 @@ def _analyze_one(log_path: Path, profile: str) -> dict:
         "firmware": None,
         "primary_mode": None,
         "crashed": None,
+        "crash_confidence": None,
+        "crash_signals": None,
         "score": None,
         "findings_total": 0,
         "critical": 0,
@@ -74,7 +76,10 @@ def _analyze_one(log_path: Path, profile: str) -> dict:
         result["hardware"] = meta.hardware or meta.autopilot
         result["firmware"] = meta.firmware_version
         result["primary_mode"] = flight.primary_mode
-        result["crashed"] = flight.crashed
+        ca = flight.crash_assessment()
+        result["crashed"] = ca["crashed"]
+        result["crash_confidence"] = ca["confidence"]
+        result["crash_signals"] = "; ".join(ca["signals"]) if ca["signals"] else ""
 
         result["has_gps"] = not flight.gps.empty
         result["has_attitude"] = not flight.attitude.empty
@@ -137,11 +142,19 @@ def _collect_logs(dirs: list[Path], limit: int | None) -> list[Path]:
 
 def _print_row(r: dict, idx: int, total: int) -> None:
     status = "OK" if r["ok"] else "ERR"
-    crash = "CRASH" if r.get("crashed") else ("ok" if r.get("parse_ok") else "?")
+    conf = r.get("crash_confidence")
+    if conf is not None and conf >= 0.60:
+        crash = f"CRASH({conf:.0%})"
+    elif conf is not None and conf > 0:
+        crash = f"maybe({conf:.0%})"
+    elif r.get("parse_ok"):
+        crash = "ok"
+    else:
+        crash = "?"
     score = f"score={r['score']}" if r["score"] is not None else "no score"
     findings = f"C{r['critical']}/W{r['warning']}/I{r['info']}"
     err = f"  ERR: {r['error'][:60]}" if r.get("error") else ""
-    print(f"[{idx:>3}/{total}] {status} {r['file'][:45]:<46} {crash:<6} {score:<10} {findings}{err}")
+    print(f"[{idx:>3}/{total}] {status} {r['file'][:45]:<46} {crash:<12} {score:<10} {findings}{err}")
 
 
 def main() -> None:
@@ -202,7 +215,8 @@ def main() -> None:
     elapsed = time.time() - t0
     ok = [r for r in results if r["ok"]]
     failed = [r for r in results if not r["ok"]]
-    crashed = [r for r in ok if r.get("crashed")]
+    confirmed = [r for r in ok if r.get("crashed")]
+    maybe = [r for r in ok if not r.get("crashed") and (r.get("crash_confidence") or 0) > 0.0]
     scores = [r["score"] for r in ok if r["score"] is not None]
 
     print(f"\n{'-'*70}")
@@ -211,8 +225,14 @@ def main() -> None:
         avg = sum(scores) / len(scores)
         print(f"Score:   avg={avg:.0f}  min={min(scores)}  max={max(scores)}")
     if ok:
-        crash_rate = len(crashed) / len(ok) * 100
-        print(f"Crashes: {len(crashed)}/{len(ok)} detected ({crash_rate:.0f}%)")
+        print(f"Crash:   confirmed(>=60%) {len(confirmed)}  |  partial evidence {len(maybe)}  |  clean {len(ok)-len(confirmed)-len(maybe)}")
+        # Show confidence distribution
+        confs = [r.get("crash_confidence") or 0.0 for r in ok]
+        high = sum(1 for c in confs if c >= 0.80)
+        med  = sum(1 for c in confs if 0.60 <= c < 0.80)
+        low  = sum(1 for c in confs if 0.20 <= c < 0.60)
+        if high or med or low:
+            print(f"         high(>=80%) {high}  medium(60-79%) {med}  low(20-59%) {low}")
         c_tot = sum(r["critical"] for r in ok)
         w_tot = sum(r["warning"] for r in ok)
         print(f"Findings: {c_tot} critical, {w_tot} warning across {len(ok)} logs")
@@ -227,7 +247,8 @@ def main() -> None:
         out_path = Path(args.out)
         fields = [
             "file", "size_mb", "profile", "ok", "parse_ok", "duration_sec",
-            "vehicle_type", "hardware", "firmware", "primary_mode", "crashed",
+            "vehicle_type", "hardware", "firmware", "primary_mode",
+            "crashed", "crash_confidence", "crash_signals",
             "score", "findings_total", "critical", "warning", "info",
             "hypotheses", "signal_streams",
             "has_gps", "has_attitude", "has_battery", "has_motors", "has_vibration",

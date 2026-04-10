@@ -241,7 +241,9 @@ CREATE TABLE IF NOT EXISTS analyzed_logs (
     -- ── Airspeed (fixed-wing) ─────────────────────────────────────────────────
     airspeed_max         REAL,
     airspeed_min         REAL,
-    airspeed_std         REAL
+    airspeed_std         REAL,
+    -- ── Topic inventory ───────────────────────────────────────────────────────
+    topics_json          TEXT    -- JSON array of all ULog topic names present in this log
 );
 
 CREATE INDEX IF NOT EXISTS idx_analyzed_at     ON analyzed_logs (analyzed_at);
@@ -249,6 +251,14 @@ CREATE INDEX IF NOT EXISTS idx_crashed         ON analyzed_logs (crashed);
 CREATE INDEX IF NOT EXISTS idx_crash_confidence ON analyzed_logs (crash_confidence);
 CREATE INDEX IF NOT EXISTS idx_rating          ON analyzed_logs (rating);
 CREATE INDEX IF NOT EXISTS idx_score           ON analyzed_logs (score);
+
+-- Fleet-wide topic coverage: one row per (log, topic)
+CREATE TABLE IF NOT EXISTS log_topics (
+    log_id      TEXT NOT NULL,
+    topic_name  TEXT NOT NULL,
+    PRIMARY KEY (log_id, topic_name)
+);
+CREATE INDEX IF NOT EXISTS idx_log_topics_topic ON log_topics (topic_name);
 """
 
 # All feature columns — used for migration on existing DBs
@@ -309,6 +319,8 @@ _MIGRATION_COLUMNS = [
     # Wind / airspeed
     "wind_speed_max REAL", "wind_speed_avg REAL",
     "airspeed_max REAL", "airspeed_min REAL", "airspeed_std REAL",
+    # Topic inventory
+    "topics_json TEXT",
 ]
 
 # ---------------------------------------------------------------------------
@@ -867,6 +879,7 @@ def _analyze(log_path: str, entry: dict) -> dict:
         "has_barometer":    0,
         "has_airspeed":     0,
         "signal_streams":   0,
+        "topics_json":      None,
         **null_features,
     }
     try:
@@ -881,6 +894,13 @@ def _analyze(log_path: str, entry: dict) -> dict:
 
         flight = pr.flight
         meta = flight.metadata
+
+        # Capture all ULog topic names present in this log
+        try:
+            topics = pr.diagnostics.parse_artifacts.get("topics_present", []) if pr.diagnostics else []
+            result["topics_json"] = json.dumps(sorted(topics)) if topics else None
+        except Exception:
+            pass
 
         result["duration_sec"]  = round(meta.duration_sec, 1)
         result["vehicle_type"]  = meta.vehicle_type
@@ -968,6 +988,18 @@ def _insert(conn: sqlite3.Connection, r: dict) -> None:
     placeholders = ", ".join("?" * len(cols))
     sql = f"INSERT OR REPLACE INTO analyzed_logs ({', '.join(cols)}) VALUES ({placeholders})"
     conn.execute(sql, [r[c] for c in cols])
+    # Populate log_topics for fleet-wide topic coverage queries
+    topics = r.get("topics_json")
+    if topics:
+        try:
+            topic_list = json.loads(topics)
+            conn.execute("DELETE FROM log_topics WHERE log_id = ?", (r["log_id"],))
+            conn.executemany(
+                "INSERT OR IGNORE INTO log_topics (log_id, topic_name) VALUES (?, ?)",
+                [(r["log_id"], t) for t in topic_list],
+            )
+        except Exception:
+            pass
     conn.commit()
 
 

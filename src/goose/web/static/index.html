@@ -2710,7 +2710,7 @@
 
     renderCrashCard(findings, crashed);
     renderFlightStats(meta);
-    renderGauges(findings);
+    renderGauges(findings, lastResults && lastResults.timeseries);
     renderFlightMap(data);
     renderTimeline(findings, meta.duration_sec);
     renderSeverityBreakdown(sevCounts);
@@ -2978,8 +2978,9 @@
         if (timeLabel) timeLabel.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
         // Move map position marker
         updateMapPosition(t);
-        // Sync all inline charts to this timestamp
+        // Sync all inline charts and gauges to this timestamp
         syncInlineCharts(t);
+        syncGauges(t);
       }
       sliderWrap.addEventListener('mousedown', e => { dragging = true; updateSlider(e); });
       sliderWrap.addEventListener('click', updateSlider);
@@ -2998,6 +2999,7 @@
           if (timeLabel) timeLabel.textContent = (m2 > 0 ? m2 + 'm ' : '') + s2 + 's';
           updateMapPosition(t);
           syncInlineCharts(t);
+          syncGauges(t);
         });
       }
     }
@@ -3050,9 +3052,10 @@
       timeLabel.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
     }
 
-    // Sync map + charts
+    // Sync map + charts + gauges
     updateMapPosition(timeSec);
     syncInlineCharts(timeSec);
+    syncGauges(timeSec);
 
     // Scroll to the first chart section
     const chartSection = document.getElementById('chart-section-altitude');
@@ -3075,6 +3078,66 @@
       try {
         chart.setCursor({ left: chart.valToPos(ts[idx], 'x'), top: -1 });
       } catch(e) {}
+    });
+  }
+
+  /* ── Sync gauges to timeline ──────────────────────────────── */
+  function syncGauges(timeSec) {
+    const ts = window._gaugeTs;
+    if (!ts) return;
+    const row = document.getElementById('gauges-row');
+    if (!row) return;
+
+    function nearest(timestamps, values) {
+      if (!timestamps || !values || !timestamps.length) return null;
+      let idx = 0;
+      for (let i = 0; i < timestamps.length; i++) {
+        if (timestamps[i] <= timeSec) idx = i; else break;
+      }
+      const v = values[idx];
+      return (v == null || isNaN(v)) ? null : v;
+    }
+
+    const batt = ts.battery;
+    const vib  = ts.vibration;
+    const mot  = ts.motors;
+    const att  = ts.attitude;
+
+    const battV = batt ? nearest(batt.timestamps, batt.voltage) : null;
+    const vibRms = vib ? (() => {
+      const x = nearest(vib.timestamps, vib.accel_x);
+      const y = nearest(vib.timestamps, vib.accel_y);
+      const z = nearest(vib.timestamps, vib.accel_z);
+      if (x == null && y == null && z == null) return null;
+      return Math.sqrt((x||0)**2 + (y||0)**2 + (z||0)**2);
+    })() : null;
+    const motorAvg = mot ? (() => {
+      const keys = Object.keys(mot).filter(k => k.startsWith('output_'));
+      if (!keys.length) return null;
+      const vals = keys.map(k => nearest(mot.timestamps, mot[k])).filter(v => v != null);
+      return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+    })() : null;
+    const roll  = att ? nearest(att.timestamps, att.roll)  : null;
+    const pitch = att ? nearest(att.timestamps, att.pitch) : null;
+    const tilt  = (roll != null && pitch != null) ? Math.sqrt(roll**2 + pitch**2) : null;
+
+    const liveVals = {
+      Battery:   battV    != null ? battV.toFixed(1) + 'V'         : null,
+      Vibration: vibRms   != null ? vibRms.toFixed(2)              : null,
+      Motors:    motorAvg != null ? (motorAvg*100).toFixed(0) + '%' : null,
+      Stability: tilt     != null ? tilt.toFixed(1) + '\u00b0'     : null,
+    };
+
+    row.querySelectorAll('[data-gauge]').forEach(el => {
+      const lbl    = el.dataset.gauge;
+      const val    = liveVals[lbl];
+      const numEl  = el.querySelector('[data-gauge-num]');
+      const subEl  = el.querySelector('[data-gauge-sub]');
+      if (numEl && val != null) {
+        numEl.textContent = val;
+        numEl.setAttribute('font-size', '13');
+      }
+      if (subEl) subEl.textContent = val != null ? 'live' : '/100';
     });
   }
 
@@ -3368,7 +3431,8 @@
   }
 
   /* ── Mini Gauges ────────────────────────────────────────────── */
-  function renderGauges(findings) {
+  function renderGauges(findings, timeseries) {
+    window._gaugeTs = timeseries || null;
     const row = document.getElementById('gauges-row');
     if (!row) return;
 
@@ -3402,15 +3466,15 @@
       const { color } = hasData ? scoreStyle(pct) : { color: 'var(--text-muted)' };
       const displayVal = hasData ? pct : 'N/A';
 
-      return `<div style="background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+      return `<div data-gauge="${g.label}" style="background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;">
         <svg width="80" height="80" viewBox="0 0 80 80">
           <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="5"/>
           <circle cx="40" cy="40" r="36" fill="none" stroke="${color}" stroke-width="5"
                   stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
                   stroke-linecap="round" transform="rotate(-90 40 40)"
                   style="transition:stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1);"/>
-          <text x="40" y="36" text-anchor="middle" fill="${color}" font-family="var(--font)" font-size="20" font-weight="700">${displayVal}</text>
-          <text x="40" y="52" text-anchor="middle" fill="var(--text-muted)" font-family="var(--font)" font-size="10">${hasData ? '/100' : ''}</text>
+          <text data-gauge-num x="40" y="36" text-anchor="middle" fill="${color}" font-family="var(--font)" font-size="20" font-weight="700">${displayVal}</text>
+          <text data-gauge-sub x="40" y="52" text-anchor="middle" fill="var(--text-muted)" font-family="var(--font)" font-size="12">${hasData ? '/100' : ''}</text>
         </svg>
         <div style="font-size:14px;font-weight:600;color:var(--text-sec);text-align:center;">${g.label}</div>
       </div>`;

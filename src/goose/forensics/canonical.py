@@ -215,7 +215,7 @@ class ForensicFinding:
     run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d = {
             "finding_id": self.finding_id,
             "plugin_id": self.plugin_id,
             "plugin_version": self.plugin_version,
@@ -236,6 +236,12 @@ class ForensicFinding:
             "generated_at": self.generated_at.isoformat(),
             "run_id": self.run_id,
         }
+        # Frontend-compatible aliases so the SPA doesn't break on field name mismatches
+        d["plugin_name"] = self.plugin_id
+        d["timestamp_start"] = self.start_time
+        d["timestamp_end"] = self.end_time
+        d["evidence"] = self.supporting_metrics
+        return d
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2)

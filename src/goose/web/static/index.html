@@ -3936,6 +3936,22 @@
   }
 
   /* ════════════════════════════════════════════════════════════
+     Auth fetch interceptor — automatically adds Bearer token to all /api/ calls.
+     window.GOOSE_TOKEN is injected by the server at page-serve time (C-1).
+     ════════════════════════════════════════════════════════════ */
+  (function () {
+    const _orig = window.fetch.bind(window);
+    window.fetch = function (url, opts) {
+      opts = opts ? Object.assign({}, opts) : {};
+      if (typeof url === 'string' && url.startsWith('/api/')) {
+        const tok = window.GOOSE_TOKEN || '';
+        opts.headers = Object.assign({ 'Authorization': 'Bearer ' + tok }, opts.headers || {});
+      }
+      return _orig(url, opts);
+    };
+  })();
+
+  /* ════════════════════════════════════════════════════════════
      Helpers
   ════════════════════════════════════════════════════════════ */
   function showError(msg) {

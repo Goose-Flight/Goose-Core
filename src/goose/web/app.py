@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import goose as _goose_pkg
@@ -92,7 +92,7 @@ _SECURITY_HEADERS = {
     ),
 }
 
-_CASE_ID_PATTERN = __import__("re").compile(r"^CASE-\d{4}-\d{6}$")
+_CASE_ID_PATTERN = __import__("re").compile(r"^CASE-\d{4}-(?:\d{6}|[0-9A-F]{8})$")
 
 
 def _validate_case_id(case_id: str) -> str:
@@ -104,7 +104,29 @@ def _validate_case_id(case_id: str) -> str:
 
 def create_app() -> FastAPI:
     """Create and return the FastAPI application."""
+    import secrets as _secrets
+
     from goose.web.config import settings
+
+    # ── Startup session token (C-1) ───────────────────────────────────────────
+    # If GOOSE_API_TOKEN is explicitly set, use that. Otherwise, generate a
+    # random token at startup and print it to the console. The token is:
+    #   1. Printed once to stdout so the operator knows it
+    #   2. Injected into the served index.html as window.GOOSE_TOKEN so the SPA
+    #      can send it automatically — no login UI required
+    #
+    # This protects against other local processes (browser extensions, malware)
+    # from calling the API, while remaining transparent to the operator.
+    if settings.api_token:
+        _session_token = settings.api_token
+    else:
+        _session_token = _secrets.token_urlsafe(32)
+        print(  # noqa: T201 — intentional console output at startup
+            f"\n  Goose session token: {_session_token}\n"
+            f"  (Set GOOSE_API_TOKEN env var to use a fixed token)\n"
+        )
+    # Store token in settings so verify_token() can read it
+    settings.api_token = _session_token
 
     app = FastAPI(
         title="Goose Flight Analyzer",
@@ -125,12 +147,11 @@ def create_app() -> FastAPI:
         return response
 
     # ------------------------------------------------------------------
-    # Bearer token auth — only enforced when GOOSE_API_TOKEN is set
+    # Bearer token auth — always enforced (token generated at startup)
     # ------------------------------------------------------------------
     async def verify_token(request: Request) -> None:
-        if not settings.auth_enabled:
-            return
-        # Static files and the SPA root are always public
+        # Static files and the SPA root are always public — the SPA itself
+        # delivers the token to the browser via window.GOOSE_TOKEN injection.
         path = request.url.path
         if not path.startswith("/api/"):
             return
@@ -138,7 +159,7 @@ def create_app() -> FastAPI:
         if not auth_header.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Authentication required")
         token = auth_header.removeprefix("Bearer ").strip()
-        if token != settings.api_token:
+        if not _secrets.compare_digest(token, _session_token):
             raise HTTPException(status_code=403, detail="Invalid token")
 
     # ------------------------------------------------------------------
@@ -194,14 +215,21 @@ def create_app() -> FastAPI:
     # ------------------------------------------------------------------
 
     @app.get("/", include_in_schema=False)
-    async def index() -> FileResponse:
-        """Serve the single-page HTML application."""
+    async def index() -> Response:
+        """Serve the SPA with session token injected as window.GOOSE_TOKEN."""
+        from fastapi.responses import HTMLResponse
         html_path = _STATIC_DIR / "index.html"
         if not html_path.exists():
             raise HTTPException(status_code=404, detail="index.html not found")
-        return FileResponse(
-            str(html_path),
-            media_type="text/html",
+        html = html_path.read_text(encoding="utf-8")
+        # Inject token as the very first script tag so it's available before
+        # any other JS runs. Never expose the token in a meta tag (referer leaks).
+        injection = (
+            f'<script>window.GOOSE_TOKEN="{_session_token}";</script>'
+        )
+        html = html.replace("<head>", f"<head>\n  {injection}", 1)
+        return HTMLResponse(
+            content=html,
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
 

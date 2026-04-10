@@ -114,8 +114,9 @@ class CaseService:
 
         return case
 
-    # Pattern enforced on all case_id parameters — CASE-YYYY-NNNNNN
-    _CASE_ID_RE: re.Pattern = re.compile(r"^CASE-\d{4}-\d{6}$")
+    # Accepts both legacy sequential IDs (CASE-2026-000001) and new random-hex IDs
+    # (CASE-2026-A3F7C912).  Both formats are validated before any filesystem use.
+    _CASE_ID_RE: re.Pattern = re.compile(r"^CASE-\d{4}-(?:\d{6}|[0-9A-F]{8})$")
 
     @classmethod
     def _check_case_id(cls, case_id: str) -> None:
@@ -391,13 +392,22 @@ class CaseService:
             f.write(entry.to_jsonl() + "\n")
 
     def _next_case_id(self) -> str:
+        """Generate a non-enumerable case ID.
+
+        Format: CASE-YYYY-XXXXXXXX where XXXXXXXX is 8 random hex chars.
+        This makes case directories non-guessable (M-3), while keeping the
+        CASE-YYYY- prefix for human readability and the regex allowlist.
+        Old CASE-YYYY-NNNNNN sequential IDs are still accepted by the validator.
+        """
+        import secrets
         year = datetime.now().year
-        existing = [
-            d.name for d in self.base_dir.iterdir()
-            if d.is_dir() and d.name.startswith(f"CASE-{year}-")
-        ]
-        next_seq = len(existing) + 1
-        return f"CASE-{year}-{next_seq:06d}"
+        rnd = secrets.token_hex(4).upper()  # 8 random hex chars
+        candidate = f"CASE-{year}-{rnd}"
+        # Extremely unlikely collision, but guard anyway
+        while (self.base_dir / candidate).exists():
+            rnd = secrets.token_hex(4).upper()
+            candidate = f"CASE-{year}-{rnd}"
+        return candidate
 
     def _next_evidence_id(self, case: Case) -> str:
         return f"EV-{len(case.evidence_items) + 1:04d}"

@@ -5938,7 +5938,7 @@
         const data = [d.timestamps]; const series = [];
         if (d.alt_rel) { data.push(d.alt_rel); series.push({label:'Alt(rel)',stroke:'#6ECC72',width:1.5,points:{show:false}}); }
         if (series.length === 0) return null;
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
       battery:   (el) => {
         const d = ts.battery; if (!d) return null;
@@ -5946,7 +5946,7 @@
         if (d.voltage) { data.push(d.voltage); series.push({label:'V',stroke:'#EF9F27',width:1.5,points:{show:false}}); }
         if (d.remaining_pct) { data.push(d.remaining_pct); series.push({label:'%',stroke:'#6ECC72',width:1,points:{show:false}}); }
         if (series.length === 0) return null;
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
       attitude:  (el) => {
         const d = ts.attitude; if (!d) return null;
@@ -5954,7 +5954,7 @@
         if (d.roll)  { data.push(d.roll);  series.push({label:'Roll',stroke:'#E24B4A',width:1,points:{show:false}}); }
         if (d.pitch) { data.push(d.pitch); series.push({label:'Pitch',stroke:'#6ECC72',width:1,points:{show:false}}); }
         if (series.length === 0) return null;
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
       motors:    (el) => {
         const d = ts.motors; if (!d) return null;
@@ -5963,7 +5963,7 @@
         const MC = ['#6ECC72','#E24B4A','#5B9BD5','#EF9F27','#A77BCA','#5BC0BE'];
         const data = [d.timestamps]; const series = [];
         keys.forEach((k,i) => { data.push(d[k]); series.push({label:'M'+(i+1),stroke:MC[i%MC.length],width:1,points:{show:false}}); });
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
       gps:       (el) => {
         const d = ts.gps; if (!d) return null;
@@ -5971,7 +5971,7 @@
         if (d.satellites) { data.push(d.satellites); series.push({label:'Sats',stroke:'#6ECC72',width:1.5,points:{show:false}}); }
         if (d.hdop) { data.push(d.hdop); series.push({label:'HDOP',stroke:'#EF9F27',width:1,points:{show:false}}); }
         if (series.length === 0) return null;
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
       vibration: (el) => {
         const d = ts.vibration; if (!d) return null;
@@ -5980,7 +5980,7 @@
         if (d.accel_y) { data.push(d.accel_y); series.push({label:'Y',stroke:'#6ECC72',width:1,points:{show:false}}); }
         if (d.accel_z) { data.push(d.accel_z); series.push({label:'Z',stroke:'#5B9BD5',width:1,points:{show:false}}); }
         if (series.length === 0) return null;
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
       velocity:  (el) => {
         const d = ts.velocity; if (!d) return null;
@@ -5988,13 +5988,13 @@
         if (d.vx) { data.push(d.vx); series.push({label:'Vx',stroke:'#E24B4A',width:1,points:{show:false}}); }
         if (d.vy) { data.push(d.vy); series.push({label:'Vy',stroke:'#6ECC72',width:1,points:{show:false}}); }
         if (series.length === 0) return null;
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
       rc:        (el) => {
         const d = ts.rc; if (!d || !d.rssi) return null;
         const data = [d.timestamps, d.rssi];
         const series = [{label:'RSSI',stroke:'#EF9F27',width:1.5,points:{show:false}}];
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
       ekf:       (el) => {
         const d = ts.ekf; if (!d || !d.timestamps) return null;
@@ -6003,7 +6003,7 @@
         const MC = ['#6ECC72','#EF9F27','#E24B4A','#5B9BD5'];
         const data = [d.timestamps]; const series = [];
         keys.slice(0,4).forEach((k,i) => { data.push(d[k]); series.push({label:k,stroke:MC[i],width:1,points:{show:false}}); });
-        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+        return new uPlot({width:(container.clientWidth>20?container.clientWidth:300)-8,height:140,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
       },
     };
     const builder = CHART_BUILDERS[chartKey];
@@ -6115,17 +6115,13 @@
     mainWrap.id = 'qa-cockpit-main-chart-wrap';
     mainBody.appendChild(mainWrap);
 
-    // Use Cockpit.render but only for the first chart type (full Cockpit data)
-    // Build a single-stream data object so Cockpit renders one chart
-    const mainData = { timeseries: { [mainKey]: ts[mainKey] }, metadata: data.metadata };
-    // Also pass mode_changes/events for timeline sync
-    if (ts.mode_changes) mainData.timeseries.mode_changes = ts.mode_changes;
-    if (ts.events) mainData.timeseries.events = ts.events;
-    if (ts.attitude_setpoint) mainData.timeseries.attitude_setpoint = ts.attitude_setpoint;
-
-    // We render main chart inline using Cockpit's individual builders approach
-    // To avoid Cockpit overwriting the full view, build a targeted uPlot
-    requestAnimationFrame(() => {
+    // Double-rAF: first frame lets browser paint the now-visible cockpit,
+    // second frame measures real clientWidth after layout is complete.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      // Reliable width: measured after layout, with fallback to viewport estimate
+      const mainW = mainBody.clientWidth > 50
+        ? mainBody.clientWidth
+        : Math.max(window.innerWidth - 420, 300);
       const MAIN_BUILDERS = {
         altitude: () => {
           const d = ts.altitude; if (!d) return null;
@@ -6133,7 +6129,7 @@
           if (d.alt_rel) { data.push(d.alt_rel); series.push({label:'Alt (rel)',stroke:'#6ECC72',width:2,fill:'rgba(110,204,114,0.06)',points:{show:false}}); }
           if (d.alt_msl) { data.push(d.alt_msl); series.push({label:'Alt (MSL)',stroke:'#5B9BD5',width:1,points:{show:false}}); }
           if (!series.length) return null;
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m'}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m'}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
         attitude: () => {
           const d = ts.attitude; if (!d) return null;
@@ -6142,7 +6138,7 @@
           if (d.pitch) { data.push(d.pitch); series.push({label:'Pitch',stroke:'#6ECC72',width:1.5,points:{show:false}}); }
           if (d.yaw)   { data.push(d.yaw);   series.push({label:'Yaw',stroke:'#5B9BD5',width:1.5,points:{show:false}}); }
           if (!series.length) return null;
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'°'}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'°'}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
         battery: () => {
           const d = ts.battery; if (!d) return null;
@@ -6151,7 +6147,7 @@
           if (d.current)       { data.push(d.current);       series.push({label:'Current',stroke:'#E24B4A',width:1.5,points:{show:false}}); }
           if (d.remaining_pct) { data.push(d.remaining_pct); series.push({label:'Remaining%',stroke:'#6ECC72',width:1,points:{show:false}}); }
           if (!series.length) return null;
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
         motors: () => {
           const d = ts.motors; if (!d) return null;
@@ -6160,7 +6156,7 @@
           const MC = ['#6ECC72','#E24B4A','#5B9BD5','#EF9F27','#A77BCA','#5BC0BE','#E8854A','#D46A9F'];
           const data = [d.timestamps]; const series = [];
           keys.forEach((k,i) => { data.push(d[k]); series.push({label:'M'+(i+1),stroke:MC[i%MC.length],width:1.2,points:{show:false}}); });
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'0–1'}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'0–1'}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
         gps: () => {
           const d = ts.gps; if (!d) return null;
@@ -6168,7 +6164,7 @@
           if (d.satellites) { data.push(d.satellites); series.push({label:'Satellites',stroke:'#6ECC72',width:2,points:{show:false}}); }
           if (d.hdop)        { data.push(d.hdop);       series.push({label:'HDOP',stroke:'#EF9F27',width:1.5,points:{show:false}}); }
           if (!series.length) return null;
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
         vibration: () => {
           const d = ts.vibration; if (!d) return null;
@@ -6177,7 +6173,7 @@
           if (d.accel_y) { data.push(d.accel_y); series.push({label:'Y',stroke:'#6ECC72',width:1,points:{show:false}}); }
           if (d.accel_z) { data.push(d.accel_z); series.push({label:'Z',stroke:'#5B9BD5',width:1,points:{show:false}}); }
           if (!series.length) return null;
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m/s²'}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m/s²'}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
         velocity: () => {
           const d = ts.velocity; if (!d) return null;
@@ -6186,13 +6182,13 @@
           if (d.vy) { data.push(d.vy); series.push({label:'Vy',stroke:'#6ECC72',width:1.5,points:{show:false}}); }
           if (d.vz) { data.push(d.vz); series.push({label:'Vz',stroke:'#5B9BD5',width:1,points:{show:false}}); }
           if (!series.length) return null;
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m/s'}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m/s'}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
         rc: () => {
           const d = ts.rc; if (!d||!d.rssi) return null;
           const data = [d.timestamps, d.rssi];
           const series = [{label:'RSSI',stroke:'#EF9F27',width:2,fill:'rgba(239,159,39,0.06)',points:{show:false}}];
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
         ekf: () => {
           const d = ts.ekf; if (!d||!d.timestamps) return null;
@@ -6201,7 +6197,7 @@
           const MC = ['#6ECC72','#EF9F27','#E24B4A','#5B9BD5'];
           const data = [d.timestamps]; const series = [];
           keys.forEach((k,i) => { data.push(d[k]); series.push({label:k,stroke:MC[i],width:1,points:{show:false}}); });
-          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
+          return new uPlot({width:mainW-16,height:320,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
         },
       };
       const mainBuilder = MAIN_BUILDERS[mainKey];

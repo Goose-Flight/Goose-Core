@@ -238,7 +238,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
                 thin_cfg = dict(plugin_cfg.thresholds.values)
             thin = plugin.analyze(flight, thin_cfg)
             all_findings.extend(thin)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("Plugin %s failed: %s", plugin.name, exc)
             plugin_errors.append({"plugin": plugin.name, "error": str(exc)})
 
@@ -459,7 +459,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     try:
         timeseries = _extract_timeseries(flight)
-    except Exception as ts_exc:
+    except Exception as ts_exc:  # noqa: BLE001
         logger.warning("Time-series extraction failed: %s", ts_exc)
         timeseries = {}
 
@@ -475,7 +475,8 @@ async def analyze_case(case_id: str) -> JSONResponse:
         }
         narrative = generate_narrative(all_findings, metadata=narr_meta, overall_score=overall_score)
         narrative_human = generate_human_narrative(all_findings, metadata=narr_meta, overall_score=overall_score)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Narrative generation failed: %s", exc)
         narrative = narrative_human = None
 
     return JSONResponse({
@@ -655,8 +656,8 @@ async def get_plugins(case_id: str) -> JSONResponse:
         try:
             bundle = json.loads(diag_path.read_text(encoding="utf-8"))
             plugin_run_info = bundle.get("plugin_diagnostics", [])
-        except Exception:
-            pass
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
+            logger.debug("Failed to load plugin diagnostics: %s", exc)
 
     return JSONResponse({
         "ok": True,

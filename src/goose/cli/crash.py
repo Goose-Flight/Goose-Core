@@ -36,7 +36,9 @@ def _load_and_run_plugins(flight: Flight) -> list[Finding]:
     try:
         from goose.plugins.registry import load_plugins
         plugins = load_plugins()
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
+        import logging as _logging
+        _logging.getLogger(__name__).debug("Plugin load failed: %s", exc)
         plugins = []
 
     for plugin in plugins:
@@ -45,8 +47,10 @@ def _load_and_run_plugins(flight: Flight) -> list[Finding]:
         try:
             plugin_findings = plugin.analyze(flight, {})
             findings.extend(plugin_findings)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
             # Plugin failed — record as info finding so it appears in output
+            import logging as _logging
+            _logging.getLogger(__name__).debug("Plugin %s failed: %s", plugin.name, exc)
             findings.append(Finding(
                 plugin_name=plugin.name,
                 title=f"{plugin.name} plugin error",

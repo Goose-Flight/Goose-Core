@@ -304,7 +304,7 @@ def _validate_single_case(
     try:
         from goose.parsers.detect import parse_file
         parse_result = parse_file(str(evidence_path))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         observed = ObservedOutcome(corpus_id=cc.corpus_id, parser_succeeded=False)
         if cc.expected_parser.should_succeed:
             return CorpusCaseResult(
@@ -363,7 +363,9 @@ def _validate_single_case(
             plugins_ran.append(plugin.manifest.plugin_id)
             for f in ff_list:
                 all_findings_titles.append(f.title)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            import logging as _logging
+            _logging.getLogger(__name__).debug("Corpus plugin %s failed: %s", plugin.manifest.plugin_id, exc)
             plugins_skipped.append(plugin.manifest.plugin_id)
 
     # Generate hypotheses (count only)

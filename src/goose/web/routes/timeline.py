@@ -48,7 +48,7 @@ async def get_timeline(case_id: str) -> JSONResponse:
                 "count": len(events),
                 "message": "Structured timeline from latest analysis run.",
             })
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass  # fall through to legacy reconstruction
 
     # --- Legacy fallback: reconstruct from findings + parse diagnostics ----
@@ -73,7 +73,7 @@ async def get_timeline(case_id: str) -> JSONResponse:
                         "related_finding_ids": [f.get("finding_id")] if f.get("finding_id") else [],
                         "notes": (f.get("description") or "")[:200],
                     })
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     diag_path = case_dir / "parsed" / "parse_diagnostics.json"
@@ -91,7 +91,7 @@ async def get_timeline(case_id: str) -> JSONResponse:
                     "source": "parser",
                     "severity": None,
                 })
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     prov_path = case_dir / "parsed" / "provenance.json"
@@ -120,7 +120,7 @@ async def get_timeline(case_id: str) -> JSONResponse:
                     "source": "parser",
                     "severity": None,
                 })
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     events.sort(key=lambda e: e.get("start_time") or 0)

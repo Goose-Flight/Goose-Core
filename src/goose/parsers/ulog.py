@@ -113,7 +113,7 @@ class ULogParser(BaseParser):
 
         try:
             ulog = ULog(str(filepath))
-        except Exception as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             diag.errors.append(f"ULog open failed: {exc}")
             diag.parser_confidence = 0.0
             diag.parse_completed_at = datetime.now().replace(microsecond=0)
@@ -231,7 +231,7 @@ class ULogParser(BaseParser):
             events = self._extract_events(ulog, start_us)
             parameters = self._extract_parameters(ulog)
             primary_mode = self._compute_primary_mode(mode_changes, metadata.duration_sec)
-        except Exception as exc:
+        except (KeyError, ValueError, TypeError, AttributeError) as exc:
             diag.errors.append(f"Extraction failed mid-parse: {exc}")
             diag.parser_confidence = 0.0
             diag.parse_completed_at = datetime.now().replace(microsecond=0)

@@ -419,7 +419,7 @@ def _load_run_findings(analysis_dir: Path, run_id: str) -> list[dict[str, Any]]:
         try:
             bundle = json.loads(specific_path.read_text(encoding="utf-8"))
             return bundle.get("findings", [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     # Fallback: shared pointer only when it matches the requested run_id
@@ -429,7 +429,7 @@ def _load_run_findings(analysis_dir: Path, run_id: str) -> list[dict[str, Any]]:
             bundle = json.loads(fallback_path.read_text(encoding="utf-8"))
             if bundle.get("run_id") == run_id:
                 return bundle.get("findings", [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
     return []
 
@@ -445,7 +445,7 @@ def _load_run_hypotheses(analysis_dir: Path, run_id: str) -> list[dict[str, Any]
         try:
             bundle = json.loads(specific_path.read_text(encoding="utf-8"))
             return bundle.get("hypotheses", [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     hyp_path = analysis_dir / "hypotheses.json"
@@ -454,7 +454,7 @@ def _load_run_hypotheses(analysis_dir: Path, run_id: str) -> list[dict[str, Any]
             bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
             if bundle.get("run_id") == run_id:
                 return bundle.get("hypotheses", [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
     return []
 

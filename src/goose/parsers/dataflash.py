@@ -509,7 +509,7 @@ def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
                     "columns": columns,
                     "size": size,
                 }
-            except Exception as exc:
+            except (struct.error, ValueError, UnicodeDecodeError) as exc:
                 logger.debug("FMT record parse error at offset %d: %s", i, exc)
             i += 86
 
@@ -538,7 +538,7 @@ def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
                 row = {cols[j]: decoded[j] for j in range(min(len(cols), len(decoded)))}
                 records[desc["name"]].append(row)
                 i += size
-            except Exception as exc:
+            except (struct.error, ValueError, UnicodeDecodeError) as exc:
                 logger.debug("Binary record parse error at offset %d (type %d): %s", i, msg_type, exc)
                 i += 1
         else:
@@ -633,7 +633,7 @@ class DataFlashParser(BaseParser):
                 records = _parse_binary_dataflash(raw_bytes)
             else:
                 records = _parse_text_dataflash(raw_text)
-        except Exception as exc:
+        except (struct.error, ValueError, UnicodeDecodeError, OSError) as exc:
             diag.errors.append(f"Parse failed: {exc}")
             diag.parser_confidence = 0.0
             diag.parse_completed_at = datetime.now().replace(microsecond=0)
@@ -656,7 +656,7 @@ class DataFlashParser(BaseParser):
             events = _extract_events_text(records)
             fw_version = _extract_firmware_from_msg(records)
             vehicle_type = _infer_vehicle_type_from_mode(mode_changes)
-        except Exception as exc:
+        except (KeyError, ValueError, TypeError, AttributeError) as exc:
             diag.errors.append(f"Stream extraction failed: {exc}")
             diag.parser_confidence = 0.0
             diag.parse_completed_at = datetime.now().replace(microsecond=0)

@@ -125,7 +125,7 @@ def _generate_json_findings(case_dir: Path, run_id: str | None) -> dict[str, Any
         import json
         try:
             return json.loads(findings_path.read_text(encoding="utf-8"))
-        except Exception as exc:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
             logger.warning("Failed to read findings JSON: %s", exc)
     return {"findings": [], "source": str(findings_path), "available": findings_path.exists()}
 
@@ -139,7 +139,7 @@ def _generate_json_hypotheses(case_dir: Path, run_id: str | None) -> dict[str, A
         import json
         try:
             return json.loads(hyp_path.read_text(encoding="utf-8"))
-        except Exception as exc:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
             logger.warning("Failed to read hypotheses JSON: %s", exc)
     return {"hypotheses": [], "source": str(hyp_path), "available": hyp_path.exists()}
 
@@ -151,7 +151,7 @@ def _generate_timeline(case_dir: Path, run_id: str | None) -> dict[str, Any]:
         import json
         try:
             return json.loads(tl_path.read_text(encoding="utf-8"))
-        except Exception as exc:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
             logger.warning("Failed to read timeline JSON: %s", exc)
     return {"events": [], "source": str(tl_path), "available": tl_path.exists()}
 

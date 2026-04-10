@@ -505,7 +505,7 @@ def _extract_ekf_innovation_spikes(ekf: Any) -> list[TimelineEvent]:
                     severity="warning",
                     notes=f"EKF innovation spike on '{col}' (>{_EKF_INNOVATION_THRESHOLD}) for {t_end - t_start:.1f}s",
                 ))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("EKF innovation spike detection failed on column '%s': %s", col, exc)
             continue
     return events

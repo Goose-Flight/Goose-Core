@@ -36,7 +36,7 @@ def _safe_load_plugins() -> list[Plugin]:
             cls = ep.load()
             if isinstance(cls, type) and issubclass(cls, Plugin):
                 loaded.append(cls())
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("Failed to load plugin entry point '%s': %s", ep.name, exc)
     return loaded
 

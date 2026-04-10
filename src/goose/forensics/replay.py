@@ -9,12 +9,15 @@ ReplayVerificationRecord with full structured diff.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class ReplayStatus(str, Enum):
@@ -283,8 +286,8 @@ def execute_replay(
             fb = json.loads(findings_path.read_text(encoding="utf-8"))
             if fb.get("run_id") == source_run_id:
                 original_findings = fb.get("findings", [])
-        except Exception:
-            pass
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
+            logger.debug("Failed to load original findings: %s", exc)
 
     hyp_path = analysis_dir / "hypotheses.json"
     if hyp_path.exists():
@@ -292,8 +295,8 @@ def execute_replay(
             hb = json.loads(hyp_path.read_text(encoding="utf-8"))
             if hb.get("run_id") == source_run_id:
                 original_hypotheses = hb.get("hypotheses", [])
-        except Exception:
-            pass
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
+            logger.debug("Failed to load original hypotheses: %s", exc)
 
     # Load original parser confidence
     diag_path = analysis_dir / "plugin_diagnostics.json"
@@ -302,8 +305,8 @@ def execute_replay(
         try:
             original_plugin_diag = json.loads(diag_path.read_text(encoding="utf-8"))
             original_parser_confidence = original_plugin_diag.get("parser_confidence")
-        except Exception:
-            pass
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
+            logger.debug("Failed to load plugin diagnostics: %s", exc)
 
     # 4. Check evidence exists for replay
     evidence_items = case_data.get("evidence_items", [])
@@ -325,7 +328,7 @@ def execute_replay(
     try:
         from goose.parsers.detect import parse_file
         parse_result = parse_file(ev_path)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         return _incompatible_record(
             replay_id, case_id, source_run_id, replay_run_id,
             f"Parse failed during replay: {exc}",
@@ -372,8 +375,8 @@ def execute_replay(
             )
             replay_forensic_findings.extend(ff_list)
             replay_plugin_diagnostics.append(p_diag)
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Replay plugin %s failed: %s", plugin.manifest.plugin_id, exc)
 
     # Generate replay hypotheses
     from goose.forensics.lifting import generate_hypotheses
@@ -419,8 +422,8 @@ def execute_replay(
         try:
             prov = json.loads(prov_path.read_text(encoding="utf-8"))
             orig_parser_version = prov.get("parser_version", "")
-        except Exception:
-            pass
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
+            logger.debug("Failed to load provenance: %s", exc)
 
     replay_parser_version = ""
     if parse_result.provenance:
@@ -511,8 +514,8 @@ def execute_replay(
         )
         with open(audit_path, "a", encoding="utf-8") as f:
             f.write(entry.to_jsonl() + "\n")
-    except Exception:
-        pass  # best-effort audit
+    except OSError as exc:
+        logger.debug("Best-effort audit write failed: %s", exc)
 
     return record
 

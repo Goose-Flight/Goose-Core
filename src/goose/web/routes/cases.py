@@ -315,7 +315,7 @@ async def get_case_completeness(case_id: str) -> JSONResponse:
         try:
             hyp_bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
             hyp_count = len(hyp_bundle.get("hypotheses", []))
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
     hypotheses_issues: list[str] = []
     if hyp_count == 0 and run_count > 0:
@@ -335,7 +335,7 @@ async def get_case_completeness(case_id: str) -> JSONResponse:
         try:
             tl_data = json.loads(timeline_path.read_text(encoding="utf-8"))
             event_count = len(tl_data.get("events", []))
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
     timeline_issues: list[str] = []
     if event_count == 0 and run_count > 0:

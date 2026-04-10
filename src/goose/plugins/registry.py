@@ -75,7 +75,7 @@ def discover_pro_plugins() -> list[Plugin]:
                 logger.debug(
                     "Entry point %s did not resolve to a Plugin subclass — skipped.", ep.name
                 )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug(
                 "Failed to load entry-point plugin %s: %s — skipped.", ep.name, exc
             )

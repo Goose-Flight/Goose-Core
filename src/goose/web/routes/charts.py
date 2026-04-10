@@ -59,7 +59,7 @@ async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, e
                         "values": values,
                         "units": units,
                     }
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     # If no canonical file, try re-parsing evidence to extract streams
@@ -115,7 +115,7 @@ async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, e
                                         "values": clean_v,
                                         "units": units,
                                     }
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     logger.warning("Chart data re-parse failed: %s", exc)
 
     return JSONResponse({

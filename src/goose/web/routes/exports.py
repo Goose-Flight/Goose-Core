@@ -381,7 +381,7 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
     try:
         from goose.parsers.ulog import UlogParser
         current_parser = getattr(UlogParser, "VERSION", "")
-    except Exception:
+    except (ImportError, AttributeError):
         pass
 
     # Compute drifts
@@ -537,7 +537,7 @@ async def anomaly_report(case_id: str) -> JSONResponse:
             for f in bundle.get("findings", []):
                 if f.get("severity") in ("critical", "warning"):
                     findings.append(f)
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     # Load hypotheses and filter to confidence >= 0.5
@@ -549,7 +549,7 @@ async def anomaly_report(case_id: str) -> JSONResponse:
             for h in bundle.get("hypotheses", []):
                 if h.get("confidence", 0) >= 0.5:
                     hypotheses.append(h)
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     report = AnomalyReport(
@@ -585,7 +585,7 @@ async def crash_report(case_id: str) -> JSONResponse:
         try:
             bundle = json.loads(findings_path.read_text(encoding="utf-8"))
             all_findings = bundle.get("findings", [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     # Identify crash-related findings
@@ -617,7 +617,7 @@ async def crash_report(case_id: str) -> JSONResponse:
                 stmt = (h.get("statement", "") or "").lower()
                 if any(kw in stmt for kw in crash_keywords) or h.get("confidence", 0) >= 0.7:
                     crash_hypotheses.append(h)
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     crash_detected = len(crash_findings) > 0
@@ -704,14 +704,14 @@ async def quick_analysis_summary_route(case_id: str) -> JSONResponse:
         try:
             data = json.loads(findings_path.read_text(encoding="utf-8"))
             findings = data.get("findings", []) if isinstance(data, dict) else (data or [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
     hyp_path = case_dir / "analysis" / "hypotheses.json"
     if hyp_path.exists():
         try:
             data = json.loads(hyp_path.read_text(encoding="utf-8"))
             hypotheses = data.get("hypotheses", []) if isinstance(data, dict) else (data or [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     # Parser info from parse_diagnostics + provenance
@@ -722,14 +722,14 @@ async def quick_analysis_summary_route(case_id: str) -> JSONResponse:
         try:
             diag = json.loads(diag_path.read_text(encoding="utf-8"))
             parser_confidence = diag.get("parser_confidence")
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
     prov_path = case_dir / "parsed" / "provenance.json"
     if prov_path.exists():
         try:
             prov = json.loads(prov_path.read_text(encoding="utf-8"))
             flight_duration = prov.get("flight_duration_sec")
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     # Filename from first evidence item, if any

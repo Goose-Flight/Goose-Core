@@ -122,7 +122,7 @@ class CSVParser(BaseParser):
         # --- Load CSV -------------------------------------------------------
         try:
             df = pd.read_csv(str(filepath), low_memory=False)
-        except Exception as exc:
+        except (OSError, ValueError, pd.errors.ParserError) as exc:
             diag.errors.append(f"CSV read failed: {exc}")
             diag.parser_confidence = 0.0
             diag.parse_duration_ms = round((time.monotonic() - t0) * 1000, 1)

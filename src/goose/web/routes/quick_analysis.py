@@ -137,7 +137,7 @@ async def quick_analysis(
                 forensic_findings.extend(ff_list)
                 thin = plugin.analyze(flight, {})
                 thin_findings.extend(thin)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("Quick analysis plugin %s failed: %s", plugin.name, exc)
                 plugin_errors.append({"plugin": plugin.name, "error": str(exc)})
 
@@ -238,7 +238,7 @@ async def quick_analysis(
         if tmp_path is not None and tmp_path.exists():
             try:
                 tmp_path.unlink()
-            except Exception:
+            except OSError:
                 pass
 
 

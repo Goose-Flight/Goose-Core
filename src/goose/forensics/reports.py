@@ -662,9 +662,9 @@ def _load_audit_entries(case_dir: Path) -> list[dict[str, Any]]:
                 continue
             try:
                 entries.append(json.loads(line))
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 continue
-    except Exception:
+    except OSError:
         return []
     return entries
 
@@ -970,7 +970,7 @@ def generate_evidence_manifest_report(case_dir: Path, profile_id: str = "default
                             "path": f"{sub}/{f.name}",
                             "size_bytes": f.stat().st_size,
                         })
-                    except Exception:
+                    except OSError:
                         continue
 
     immutability = {

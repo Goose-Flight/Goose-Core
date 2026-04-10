@@ -64,7 +64,7 @@ def analyze(
             continue
         try:
             findings.extend(plugin.analyze(flight, {}))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             findings.append(Finding(
                 plugin_name=plugin.name,
                 title=f"{plugin.name} plugin error",

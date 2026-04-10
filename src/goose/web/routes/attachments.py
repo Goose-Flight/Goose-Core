@@ -64,8 +64,8 @@ def _load_manifest(case_id: str) -> list[dict]:
         data = json.loads(p.read_text(encoding="utf-8"))
         if isinstance(data, list):
             return data
-    except Exception:
-        logger.warning("Corrupt attachment manifest for case %s", case_id)
+    except (json.JSONDecodeError, ValueError, OSError) as exc:
+        logger.warning("Corrupt attachment manifest for case %s: %s", case_id, exc)
     return []
 
 

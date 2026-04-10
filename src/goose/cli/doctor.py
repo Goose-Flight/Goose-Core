@@ -64,7 +64,7 @@ def doctor(fix: bool) -> None:
         console.print(f"  [green]OK[/green] {len(found)} plugin(s) discovered")
         for p in found:
             console.print(f"    - {p.name} v{p.version}")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         console.print(f"  [red]FAIL[/red] Plugin discovery failed: {exc}")
         issues.append("plugin-discovery")
 
@@ -75,7 +75,7 @@ def doctor(fix: bool) -> None:
     try:
         from goose.parsers.ulog import ULogParser
         console.print("  [green]OK[/green] ULog parser available")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         console.print(f"  [red]FAIL[/red] ULog parser: {exc}")
         issues.append("ulog-parser")
 

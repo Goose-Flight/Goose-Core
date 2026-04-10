@@ -64,7 +64,7 @@ async def get_run(case_id: str, run_id: str) -> JSONResponse:
             bundle = json.loads(diag_path.read_text(encoding="utf-8"))
             if bundle.get("run_id") == run_id:
                 plugin_statuses = bundle.get("plugin_diagnostics", [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     # Get findings count for this run
@@ -76,7 +76,7 @@ async def get_run(case_id: str, run_id: str) -> JSONResponse:
             bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
             if bundle.get("run_id") == run_id:
                 hypotheses_count = len(bundle.get("hypotheses", []))
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     result = run.to_dict()
@@ -143,7 +143,7 @@ async def get_replay_verification(case_id: str, run_id: str) -> JSONResponse:
                 if va > latest_verified_at:
                     latest_verified_at = va
                     latest_record = data
-        except Exception:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError):
             continue
 
     return JSONResponse({"ok": True, "replay": latest_record})
@@ -164,15 +164,15 @@ async def compare_runs_endpoint(case_id: str, body: CompareRunsRequest) -> JSONR
     case_dir = svc.case_dir(case_id)
     try:
         comparison = compare_runs(case_dir, body.run_a_id, body.run_b_id)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.exception("Run comparison failed")
         raise HTTPException(status_code=500, detail=f"Compare failed: {exc}") from exc
 
     # Persist the comparison so it can be retrieved later without re-computing
     try:
         save_comparison(case_dir, comparison)
-    except Exception:
-        logger.warning("Failed to persist comparison %s — returning result anyway", comparison.comparison_id)
+    except OSError as exc:
+        logger.warning("Failed to persist comparison %s — returning result anyway: %s", comparison.comparison_id, exc)
 
     return JSONResponse({"ok": True, "comparison": comparison.to_dict()})
 

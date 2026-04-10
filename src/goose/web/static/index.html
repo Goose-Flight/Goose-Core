@@ -6729,16 +6729,19 @@
     if (!signals.length) {
       sigPane.innerHTML = '<div class="qa-panel-empty">No signal quality data available</div>';
     } else {
-      const highSig = signals.filter(s=>(s.quality_score||0)>=0.7).length;
-      sigPane.innerHTML = `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${highSig}/${signals.length} streams at high quality confidence</div>` +
+      const highSig = signals.filter(s=>(s.reliability_estimate||s.quality_score||0)>=0.7).length;
+      sigPane.innerHTML = `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${highSig}/${signals.length} streams at high quality</div>` +
         signals.map(s => {
-          const q = s.quality_score != null ? s.quality_score : (s.present ? 1 : 0);
+          const q = s.reliability_estimate != null ? s.reliability_estimate : (s.quality_score != null ? s.quality_score : (s.row_count > 0 ? 1 : 0));
           const pct = Math.round(q*100);
-          const cls = q>=0.7?'sq-high':q>=0.4?'sq-medium':(s.present?'sq-low':'sq-absent');
+          const absent = q === 0 && s.row_count === 0;
+          const cls = q>=0.7?'sq-high':q>=0.4?'sq-medium':(absent?'sq-absent':'sq-low');
+          const name = s.stream_name || s.stream || '?';
+          const note = s.notes ? `<span style="font-size:10px;color:var(--text-muted);margin-left:8px;">${escHtml(s.notes)}</span>` : '';
           return `<div class="qa-signal-bar">
-            <span class="qa-signal-label">${escHtml(s.stream||'?')}</span>
-            <div class="qa-signal-track"><div class="qa-signal-fill ${cls}" style="width:${pct}%"></div></div>
-            <span class="qa-signal-note">${pct}%</span>
+            <span class="qa-signal-label">${escHtml(name)}</span>
+            <div class="qa-signal-track"><div class="qa-signal-fill ${cls}" style="width:${Math.max(pct,absent?0:2)}%"></div></div>
+            <span class="qa-signal-note">${absent?'absent':pct+'%'}</span>${note}
           </div>`;
         }).join('');
     }

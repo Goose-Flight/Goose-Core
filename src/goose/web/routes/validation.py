@@ -51,7 +51,7 @@ async def run_validation_endpoint() -> JSONResponse:
     if not corpus_dir.exists():
         raise HTTPException(
             status_code=404,
-            detail=f"Corpus directory not found: {corpus_dir}",
+            detail="Validation corpus not configured",  # L-1: don't leak path
         )
 
     try:

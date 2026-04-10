@@ -6,6 +6,7 @@ Extracted from cases_api.py during API modularization sprint.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -17,6 +18,7 @@ router = APIRouter(tags=["evidence"])
 
 
 def _serialize_evidence(ev: Any) -> dict[str, Any]:
+    """Serialize evidence metadata — stored_path deliberately excluded (H-1)."""
     return {
         "evidence_id": ev.evidence_id,
         "filename": ev.filename,
@@ -25,7 +27,6 @@ def _serialize_evidence(ev: Any) -> dict[str, Any]:
         "sha256": ev.sha256,
         "sha512": ev.sha512,
         "source_acquisition_mode": ev.source_acquisition_mode,
-        "stored_path": ev.stored_path,
         "acquired_at": ev.acquired_at.isoformat(),
         "acquired_by": ev.acquired_by,
         "immutable": ev.immutable,
@@ -40,24 +41,43 @@ async def ingest_evidence(
     notes: str = "",
 ) -> JSONResponse:
     """Ingest a file as immutable evidence into the case."""
+    from goose.web.config import settings
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
+
+    # Extension allowlist — only known flight log formats accepted
+    suffix = Path(file.filename).suffix.lower()
+    if suffix not in settings.allowed_log_extensions:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type '{suffix}'. Accepted: {sorted(settings.allowed_log_extensions)}",
+        )
 
     from goose.web.cases_api import get_service
     try:
         svc = get_service()
         svc.get_case(case_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid case identifier")
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+        raise HTTPException(status_code=404, detail="Case not found")
 
     try:
         content = await file.read()
         if not content:
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
+        # Enforce upload size limit
+        if len(content) > settings.max_upload_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File exceeds maximum upload size of {settings.max_upload_mb} MiB",
+            )
+
         ev = svc.ingest_evidence_bytes(
             case_id=case_id,
-            filename=file.filename,
+            filename=Path(file.filename).name,  # strip any directory components
             content=content,
             acquired_by="gui",
             notes=notes,
@@ -68,9 +88,9 @@ async def ingest_evidence(
         )
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         logger.exception("Evidence ingest failed for case %s", case_id)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{case_id}/evidence")
@@ -85,8 +105,10 @@ async def list_evidence(case_id: str) -> JSONResponse:
             "evidence": [_serialize_evidence(ev) for ev in case.evidence_items],
             "count": len(case.evidence_items),
         })
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid case identifier")
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
-    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Case not found")
+    except Exception:
         logger.exception("Failed to list evidence for case %s", case_id)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error")

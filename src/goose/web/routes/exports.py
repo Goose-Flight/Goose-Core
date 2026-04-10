@@ -77,7 +77,7 @@ def _serialize_evidence(ev: Any) -> dict[str, Any]:
         "sha256": ev.sha256,
         "sha512": ev.sha512,
         "source_acquisition_mode": ev.source_acquisition_mode,
-        "stored_path": ev.stored_path,
+        # stored_path deliberately excluded — leaks server filesystem topology (H-1)
         "acquired_at": ev.acquired_at.isoformat(),
         "acquired_by": ev.acquired_by,
         "immutable": ev.immutable,
@@ -288,7 +288,7 @@ async def create_export_bundle(
         "ok": True,
         "bundle_id": bundle_id,
         "filename": output_filename,
-        "path": str(output_path),
+        # "path" deliberately excluded — would expose server filesystem path (H-1)
         "size_bytes": output_path.stat().st_size,
         "bundle_format": bundle_format,
         "include_evidence": include_evidence,

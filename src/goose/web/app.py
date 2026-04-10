@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 import math
-import os
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +18,6 @@ logger = logging.getLogger(__name__)
 _STATIC_DIR = Path(__file__).parent / "static"
 
 # Timeseries extraction shared with Quick Analysis cockpit
-from goose.web.timeseries_utils import extract_timeseries as _extract_timeseries  # noqa: E402
 
 # Keep private aliases for any call sites inside this module
 def _downsample(arr: list, max_points: int = 2000) -> list:

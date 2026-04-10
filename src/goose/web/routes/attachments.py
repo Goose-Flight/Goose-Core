@@ -103,18 +103,27 @@ async def upload_attachment(
     uploaded_by: str = Form("gui"),
 ) -> JSONResponse:
     """Upload a non-telemetry attachment to a case."""
+    from goose.web.config import settings
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
     try:
         att_dir = _attachments_dir(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except (ValueError, FileNotFoundError):
+        raise HTTPException(status_code=404, detail="Case not found")
 
     try:
         content = await file.read()
         if not content:
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+        # Enforce attachment size limit
+        if len(content) > settings.max_attachment_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Attachment exceeds maximum size of {settings.max_attachment_mb} MiB",
+            )
 
         attachment_id = _new_attachment_id()
         safe = _sanitize_filename(file.filename)
@@ -157,22 +166,24 @@ async def upload_attachment(
         return JSONResponse({"ok": True, "attachment": att.to_dict()}, status_code=201)
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         logger.exception("Attachment upload failed for case %s", case_id)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{case_id}/attachments")
 async def list_attachments(case_id: str) -> JSONResponse:
     try:
         _attachments_dir(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except (ValueError, FileNotFoundError):
+        raise HTTPException(status_code=404, detail="Case not found")
     entries = _load_manifest(case_id)
+    # Strip stored_path from manifest entries before returning (H-1)
+    safe_entries = [{k: v for k, v in e.items() if k != "stored_path"} for e in entries]
     return JSONResponse({
         "ok": True,
-        "attachments": entries,
-        "count": len(entries),
+        "attachments": safe_entries,
+        "count": len(safe_entries),
     })
 
 
@@ -180,28 +191,40 @@ async def list_attachments(case_id: str) -> JSONResponse:
 async def get_attachment_metadata(case_id: str, attachment_id: str) -> JSONResponse:
     try:
         _attachments_dir(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except (ValueError, FileNotFoundError):
+        raise HTTPException(status_code=404, detail="Case not found")
     for entry in _load_manifest(case_id):
         if entry.get("attachment_id") == attachment_id:
-            return JSONResponse({"ok": True, "attachment": entry})
-    raise HTTPException(status_code=404, detail=f"Attachment not found: {attachment_id}")
+            safe = {k: v for k, v in entry.items() if k != "stored_path"}
+            return JSONResponse({"ok": True, "attachment": safe})
+    raise HTTPException(status_code=404, detail="Attachment not found")
 
 
 @router.get("/{case_id}/attachments/{attachment_id}/file")
 async def get_attachment_file(case_id: str, attachment_id: str) -> FileResponse:
     try:
-        _attachments_dir(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+        att_dir = _attachments_dir(case_id)
+    except (ValueError, FileNotFoundError):
+        raise HTTPException(status_code=404, detail="Case not found")
     for entry in _load_manifest(case_id):
         if entry.get("attachment_id") == attachment_id:
             stored_path = entry.get("stored_path")
-            if not stored_path or not Path(stored_path).exists():
+            if not stored_path:
+                raise HTTPException(status_code=404, detail="Attachment file missing on disk")
+            # Re-validate stored_path against the case attachment directory (M-4):
+            # the manifest stores an absolute path; assert it stays inside att_dir
+            # so a tampered manifest can't serve arbitrary filesystem files.
+            resolved = Path(stored_path).resolve()
+            if not resolved.is_relative_to(att_dir.resolve()):
+                logger.warning(
+                    "Attachment %s stored_path escapes case dir — denying", attachment_id
+                )
+                raise HTTPException(status_code=403, detail="Invalid attachment")
+            if not resolved.exists():
                 raise HTTPException(status_code=404, detail="Attachment file missing on disk")
             return FileResponse(
-                stored_path,
+                str(resolved),
                 media_type=entry.get("content_type") or "application/octet-stream",
                 filename=entry.get("filename") or "attachment",
             )
-    raise HTTPException(status_code=404, detail=f"Attachment not found: {attachment_id}")
+    raise HTTPException(status_code=404, detail="Attachment not found")

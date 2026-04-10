@@ -33,9 +33,11 @@ class CreateCaseRequest(BaseModel):
     and merged into the created ``Case`` before it is persisted. Extra/unknown
     keys at the HTTP layer are ignored by pydantic.
     """
-    created_by: str = "gui"
+    # L-3: validate length and character set for audit-log fields
+    from pydantic import Field as _Field
+    created_by: str = _Field(default="gui", max_length=64, pattern=r"^[\w\-. @]+$")
     tags: list[str] = []
-    notes: str = ""
+    notes: str = _Field(default="", max_length=4096)
     # --- v11 Strategy Sprint: profile + extended metadata ---
     profile: str = "default"
     # Operational context

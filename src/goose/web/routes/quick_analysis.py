@@ -55,20 +55,36 @@ async def quick_analysis(
     hypotheses + summary as JSON. **No case is created, no evidence is
     stored, no audit entry is written.**
     """
+    from goose.web.config import settings
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
+
+    # Extension allowlist — only known flight log formats accepted
+    suffix = Path(file.filename).suffix.lower()
+    if suffix not in settings.allowed_log_extensions:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type '{suffix}'. Accepted: {sorted(settings.allowed_log_extensions)}",
+        )
 
     cfg = get_profile(profile)
     qa_id = _new_qa_id()
     started_at = datetime.now()
 
     # Write to a temp file the parser can read; cleaned up on return.
-    suffix = Path(file.filename).suffix or ".bin"
     tmp_path: Path | None = None
     try:
         content = await file.read()
         if not content:
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+        # Enforce upload size limit
+        if len(content) > settings.max_upload_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File exceeds maximum upload size of {settings.max_upload_mb} MiB",
+            )
 
         with tempfile.NamedTemporaryFile(
             prefix="goose_qa_", suffix=suffix, delete=False
@@ -78,11 +94,11 @@ async def quick_analysis(
 
         try:
             parse_result = parse_file(str(tmp_path))
-        except Exception as exc:
-            logger.exception("Quick analysis parse failed")
+        except Exception:
+            logger.exception("Quick analysis parse failed for %s", Path(file.filename).name)
             raise HTTPException(
                 status_code=422,
-                detail=f"Parser error: {exc}",
+                detail="Could not parse the uploaded file. Ensure it is a valid flight log.",
             )
 
         if parse_result is None or not parse_result.success or parse_result.flight is None:

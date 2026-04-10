@@ -11,6 +11,7 @@ Sprint 1 — Case & Evidence Foundation
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -18,7 +19,6 @@ import stat
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from goose import __version__
 from goose.forensics.hashing import hash_file, verify_sha256
@@ -30,6 +30,9 @@ from goose.forensics.models import (
     EvidenceItem,
     EvidenceManifest,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _utcnow() -> datetime:
@@ -111,11 +114,35 @@ class CaseService:
 
         return case
 
+    # Pattern enforced on all case_id parameters — CASE-YYYY-NNNNNN
+    _CASE_ID_RE: re.Pattern = re.compile(r"^CASE-\d{4}-\d{6}$")
+
+    @classmethod
+    def _check_case_id(cls, case_id: str) -> None:
+        """Raise ValueError if case_id fails the allowlist regex.
+
+        This is the first line of defence against path-traversal: an ID like
+        ``../../etc/passwd`` or ``CASE-2026-000001/../../evil`` will not match
+        the pattern and is rejected before any filesystem path is constructed.
+        """
+        if not cls._CASE_ID_RE.match(case_id):
+            raise ValueError(f"Invalid case_id format: {case_id!r}")
+
+    def _safe_case_path(self, case_id: str) -> Path:
+        """Return the resolved case directory path, verifying it stays inside base_dir."""
+        self._check_case_id(case_id)
+        resolved = (self.base_dir / case_id).resolve()
+        if not resolved.is_relative_to(self.base_dir.resolve()):
+            raise ValueError(f"case_id {case_id!r} resolves outside base directory")
+        return resolved
+
     def get_case(self, case_id: str) -> Case:
         """Load a case from disk by case_id.
 
         Raises FileNotFoundError if case does not exist.
+        Raises ValueError if case_id format is invalid (path traversal guard).
         """
+        self._check_case_id(case_id)
         case_json = self.base_dir / case_id / "case.json"
         if not case_json.exists():
             raise FileNotFoundError(f"Case not found: {case_id}")
@@ -281,10 +308,10 @@ class CaseService:
                 acquired_by=acquired_by,
                 notes=notes,
             )
-            # Overwrite filename to original (not temp name)
+            # Overwrite filename with the sanitized original name (not temp name)
             ev = EvidenceItem(
                 evidence_id=ev.evidence_id,
-                filename=filename,
+                filename=safe,
                 content_type=ev.content_type,
                 size_bytes=ev.size_bytes,
                 sha256=ev.sha256,
@@ -336,8 +363,8 @@ class CaseService:
         return entries
 
     def case_dir(self, case_id: str) -> Path:
-        """Return the root directory for a case."""
-        return self.base_dir / case_id
+        """Return the root directory for a case (path-traversal safe)."""
+        return self._safe_case_path(case_id)
 
     # ------------------------------------------------------------------
     # Private helpers

@@ -598,7 +598,7 @@ def _extract_features(flight) -> dict:
                                        suffixes=("","_sp"))
                 for axis, sp_col in [("roll","rollspeed"),("pitch","pitchspeed"),("yaw","yawspeed")]:
                     if sp_col+"_sp" in merged.columns:
-                        err = np.degrees(np.abs(merged[sp_col+"speed"] - merged[sp_col+"speed_sp"]))
+                        err = np.degrees(np.abs(merged[sp_col] - merged[sp_col+"_sp"]))
                         f[f"rate_{axis}_err_rms"] = _safe_float(np.sqrt((err**2).mean()))
                         f[f"rate_{axis}_err_max"] = _safe_float(err.max())
                         if axis != "yaw":

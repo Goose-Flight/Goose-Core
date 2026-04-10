@@ -87,7 +87,7 @@ def run(db_path: Path, top_n: int, export: str | None) -> None:
 
     print(f"\nAnomaly score distribution:")
     print(f"  Mean  : {norm_scores.mean():.1f}")
-    print(f"  Median: {norm_scores.median():.1f}")
+    print(f"  Median: {np.median(norm_scores):.1f}")
     print(f"  >70   : {(norm_scores > 70).sum()} logs")
     print(f"  >90   : {(norm_scores > 90).sum()} logs")
 

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GOOSE — Flight Log Analyzer</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
+  <link rel="stylesheet" href="/static/uPlot.min.css">
   <link rel="stylesheet" href="/static/cockpit.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -4028,13 +4028,13 @@
       const date = new Date(c.created_at).toLocaleString();
       const evLabel = c.evidence_count === 1 ? '1 evidence file' : `${c.evidence_count} evidence files`;
       const runLabel = c.analysis_run_count > 0 ? ` · ${c.analysis_run_count} run${c.analysis_run_count > 1 ? 's' : ''}` : '';
-      const tags = (c.tags || []).length > 0 ? `<span style="margin-left:8px;opacity:0.6">${c.tags.join(', ')}</span>` : '';
+      const tags = (c.tags || []).length > 0 ? `<span style="margin-left:8px;opacity:0.6">${c.tags.map(t => escHtml(t)).join(', ')}</span>` : '';
       return `
-        <div class="case-card" onclick="openCase('${c.case_id}')">
-          <div class="case-card-id">${c.case_id}</div>
+        <div class="case-card" onclick="openCase('${escAttr(c.case_id)}')">
+          <div class="case-card-id">${escHtml(c.case_id)}</div>
           <div class="case-card-meta">${date} · ${evLabel}${runLabel}${tags}</div>
-          ${c.notes ? `<div style="font-size:12px;color:var(--text-sec);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.notes}</div>` : ''}
-          <span class="case-card-status">${c.status}</span>
+          ${c.notes ? `<div style="font-size:12px;color:var(--text-sec);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(c.notes)}</div>` : ''}
+          <span class="case-card-status">${escHtml(c.status)}</span>
         </div>`;
     }).join('');
   }
@@ -4343,23 +4343,23 @@
         const sBg = statusBg(h.status);
 
         const supportLinks = (h.supporting_finding_ids || []).map(fid =>
-          `<span onclick="workspaceState.activeFindingId='${fid}';switchWsTab('findings');" style="font-size:12px;color:var(--green);cursor:pointer;text-decoration:underline;">${fid}</span>`
+          `<span onclick="workspaceState.activeFindingId='${escAttr(fid)}';switchWsTab('findings');" style="font-size:12px;color:var(--green);cursor:pointer;text-decoration:underline;">${escHtml(fid)}</span>`
         ).join(', ');
 
         const contradictLinks = (h.contradicting_finding_ids || []).map(fid =>
-          `<span onclick="workspaceState.activeFindingId='${fid}';switchWsTab('findings');" style="font-size:12px;color:var(--red);cursor:pointer;text-decoration:underline;">${fid}</span>`
+          `<span onclick="workspaceState.activeFindingId='${escAttr(fid)}';switchWsTab('findings');" style="font-size:12px;color:var(--red);cursor:pointer;text-decoration:underline;">${escHtml(fid)}</span>`
         ).join(', ');
 
         return `
         <div class="card" style="margin-bottom:12px;padding:16px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
             <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:12px;font-weight:700;text-transform:uppercase;padding:2px 10px;border-radius:8px;background:${sBg};color:${sColor};border:1px solid ${sColor};">${h.status}</span>
-              <span style="font-size:12px;color:var(--text-sec);">${h.theme || ''}</span>
+              <span style="font-size:12px;font-weight:700;text-transform:uppercase;padding:2px 10px;border-radius:8px;background:${sBg};color:${sColor};border:1px solid ${sColor};">${escHtml(h.status)}</span>
+              <span style="font-size:12px;color:var(--text-sec);">${escHtml(h.theme || '')}</span>
             </div>
             <span style="font-size:13px;font-weight:600;color:${bandColor(h.confidence_band)};">${Math.round((h.confidence||0)*100)}% confidence</span>
           </div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:10px;">${h.statement}</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;">${escHtml(h.statement)}</div>
           <div style="margin-bottom:8px;">
             <div style="font-size:12px;color:var(--text-sec);margin-bottom:4px;">
               <span style="color:var(--green);">Supporting (${(h.supporting_finding_ids||[]).length}):</span>
@@ -4374,10 +4374,10 @@
             <div style="margin-top:10px;">
               <div style="font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:4px;">UNRESOLVED QUESTIONS</div>
               <ul style="margin:0;padding-left:18px;">
-                ${h.unresolved_questions.map(q => `<li style="font-size:12px;color:var(--text-sec);margin-bottom:3px;">${q}</li>`).join('')}
+                ${h.unresolved_questions.map(q => `<li style="font-size:12px;color:var(--text-sec);margin-bottom:3px;">${escHtml(q)}</li>`).join('')}
               </ul>
             </div>` : ''}
-          <div style="font-size:12px;color:var(--text-dim,#555);margin-top:10px;">${h.hypothesis_id} · scope: ${h.confidence_scope}</div>
+          <div style="font-size:12px;color:var(--text-dim,#555);margin-top:10px;">${escHtml(h.hypothesis_id)} · scope: ${escHtml(h.confidence_scope)}</div>
         </div>`}).join('')}`;
   }
 
@@ -4486,7 +4486,7 @@
         // Required streams with check marks
         const reqStreamsHtml = m.required_streams.map(s => {
           const present = missingStreams.indexOf(s) === -1;
-          return `<span style="font-size:12px;color:${present ? 'var(--green)' : 'var(--red)'};">${present ? '&#10003;' : '&#10007;'} ${s}</span>`;
+          return `<span style="font-size:12px;color:${present ? 'var(--green)' : 'var(--red)'};">${present ? '&#10003;' : '&#10007;'} ${escHtml(s)}</span>`;
         }).join(' &nbsp; ');
 
         const _role = pluginRole(m.plugin_id);
@@ -4494,28 +4494,28 @@
           <div class="card" style="padding:16px;${isBlocked ? 'opacity:0.5;text-decoration:line-through;' : _role === 'deprioritized' ? 'opacity:0.7;' : ''}">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
               <div>
-                <span style="font-size:14px;font-weight:600;">${m.name}</span>
-                <span style="font-size:12px;color:var(--text-sec);margin-left:6px;">v${m.version}</span>
+                <span style="font-size:14px;font-weight:600;">${escHtml(m.name)}</span>
+                <span style="font-size:12px;color:var(--text-sec);margin-left:6px;">v${escHtml(m.version)}</span>
                 ${roleLabelHtml(_role)}
               </div>
               ${statusBadgeHtml(ri)}
             </div>
-            <div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${m.description}</div>
+            <div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${escHtml(m.description)}</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-              <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:8px;border:1px solid ${catColor(m.category)};color:${catColor(m.category)};">${m.category}</span>
+              <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:8px;border:1px solid ${catColor(m.category)};color:${catColor(m.category)};">${escHtml(m.category)}</span>
               <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:8px;border:1px solid ${trustColor(tState)};color:${trustColor(tState)};">${trustLabel(tState)}</span>
             </div>
             <div style="font-size:12px;color:var(--text-sec);margin-bottom:6px;">
               ${m.required_streams.length > 0 ? `<div>Required: ${reqStreamsHtml}</div>` : '<div>No required streams</div>'}
-              ${m.optional_streams.length > 0 ? `<div style="margin-top:2px;">Optional: ${m.optional_streams.join(', ')}</div>` : ''}
+              ${m.optional_streams.length > 0 ? `<div style="margin-top:2px;">Optional: ${m.optional_streams.map(s => escHtml(s)).join(', ')}</div>` : ''}
             </div>
             ${findingsCount !== null ? `<div style="font-size:12px;margin-top:6px;color:var(--text-sec);">Findings: <strong style="color:var(--text);">${findingsCount}</strong>${durationMs !== null ? ` · ${durationMs.toFixed(0)}ms` : ''}</div>` : ''}
-            ${skipReason ? `<div style="font-size:12px;margin-top:4px;color:var(--amber);">Skip reason: ${skipReason}</div>` : ''}
-            ${blockReason ? `<div style="font-size:12px;margin-top:4px;color:var(--red);">Block reason: ${blockReason}</div>` : ''}
+            ${skipReason ? `<div style="font-size:12px;margin-top:4px;color:var(--amber);">Skip reason: ${escHtml(skipReason)}</div>` : ''}
+            ${blockReason ? `<div style="font-size:12px;margin-top:4px;color:var(--red);">Block reason: ${escHtml(blockReason)}</div>` : ''}
             <div style="font-size:12px;color:var(--text-dim,#555);margin-top:6px;">
-              ${m.plugin_id} · contract v${m.minimum_contract_version}
+              ${escHtml(m.plugin_id)} · contract v${m.minimum_contract_version}
               ${m.trust_verified !== undefined ? (m.trust_verified ? ' · <span style="color:var(--green);">&#10003; Verified</span>' : ' · <span style="color:var(--amber);">&#9888; Unverified</span>') : ''}
-              ${m.computed_fingerprint ? ` · <span style="color:var(--text-sec);">${m.computed_fingerprint.substring(0,16)}</span>` : ''}
+              ${m.computed_fingerprint ? ` · <span style="color:var(--text-sec);">${escHtml(m.computed_fingerprint.substring(0,16))}</span>` : ''}
             </div>
           </div>`;
       }).join('')}
@@ -4557,7 +4557,7 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;">
             ${d.stream_coverage.map(s => `
               <div style="font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--card-border);display:flex;justify-content:space-between;align-items:center;">
-                <span>${s.stream_name}</span>
+                <span>${escHtml(s.stream_name)}</span>
                 ${s.present
                   ? `<span style="color:var(--green);">✓ ${s.row_count} rows</span>`
                   : `<span style="color:var(--text-dim,#666);">—</span>`}
@@ -4569,7 +4569,7 @@
     const listSection = (title, items, color) => items && items.length > 0 ? `
       <div style="margin-top:16px;">
         <div style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">${title}</div>
-        ${items.map(m => `<div style="font-size:12px;padding:6px 10px;border-radius:6px;background:var(--card);border-left:3px solid ${color};margin-bottom:4px;">${m}</div>`).join('')}
+        ${items.map(m => `<div style="font-size:12px;padding:6px 10px;border-radius:6px;background:var(--card);border-left:3px solid ${color};margin-bottom:4px;">${escHtml(m)}</div>`).join('')}
       </div>` : '';
 
     // Stream coverage table with completeness/continuity/corruption
@@ -4580,7 +4580,7 @@
         const continuity = s.continuity != null ? Math.round(s.continuity * 100) : (s.present ? 100 : 0);
         const corrupt = s.corruption_detected ? '<span style="color:var(--red);font-weight:600;">YES</span>' : '<span style="color:var(--green);">No</span>';
         return `<tr style="border-bottom:1px solid var(--card-border);">
-          <td style="padding:6px 10px;font-size:12px;">${s.stream_name}</td>
+          <td style="padding:6px 10px;font-size:12px;">${escHtml(s.stream_name)}</td>
           <td style="padding:6px 10px;font-size:12px;text-align:center;">${s.present ? `<span style="color:var(--green);">✓</span> ${s.row_count} rows` : '<span style="color:var(--text-sec);">—</span>'}</td>
           <td style="padding:6px 10px;font-size:12px;text-align:center;">${completeness}%</td>
           <td style="padding:6px 10px;font-size:12px;text-align:center;">${continuity}%</td>
@@ -4670,18 +4670,18 @@
         <div class="card" style="padding:16px;margin-bottom:10px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
             <div>
-              <div style="font-size:14px;font-weight:600;">${ev.filename}</div>
-              <div style="font-size:12px;color:var(--text-sec);">${ev.evidence_id} · ${size}</div>
+              <div style="font-size:14px;font-weight:600;">${escHtml(ev.filename)}</div>
+              <div style="font-size:12px;color:var(--text-sec);">${escHtml(ev.evidence_id)} · ${size}</div>
             </div>
             ${ev.immutable ? '<span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:10px;background:rgba(110,204,114,0.12);color:var(--green);border:1px solid var(--green);">IMMUTABLE</span>' : '<span style="font-size:12px;padding:2px 10px;border-radius:10px;background:var(--red-glow);color:var(--red);border:1px solid var(--red);">MUTABLE</span>'}
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
-            <div style="color:var(--text-sec);">SHA-256: <span title="${ev.sha256||''}" style="color:var(--text);cursor:help;">${sha256Short}</span></div>
-            <div style="color:var(--text-sec);">SHA-512: <span title="${ev.sha512||''}" style="color:var(--text);cursor:help;">${sha512Short}</span></div>
+            <div style="color:var(--text-sec);">SHA-256: <span title="${escAttr(ev.sha256||'')}" style="color:var(--text);cursor:help;">${escHtml(sha256Short)}</span></div>
+            <div style="color:var(--text-sec);">SHA-512: <span title="${escAttr(ev.sha512||'')}" style="color:var(--text);cursor:help;">${escHtml(sha512Short)}</span></div>
             <div style="color:var(--text-sec);">Acquired: <span style="color:var(--text);">${date}</span></div>
-            <div style="color:var(--text-sec);">Source: <span style="color:var(--text);">${ev.source_acquisition_mode}</span></div>
-            <div style="color:var(--text-sec);">Parser: <span style="color:var(--text);">${parserEligible}</span></div>
-            <div style="color:var(--text-sec);">Content type: <span style="color:var(--text);">${ev.content_type || 'application/octet-stream'}</span></div>
+            <div style="color:var(--text-sec);">Source: <span style="color:var(--text);">${escHtml(ev.source_acquisition_mode)}</span></div>
+            <div style="color:var(--text-sec);">Parser: <span style="color:var(--text);">${escHtml(parserEligible)}</span></div>
+            <div style="color:var(--text-sec);">Content type: <span style="color:var(--text);">${escHtml(ev.content_type || 'application/octet-stream')}</span></div>
           </div>
         </div>`;
     }).join('');
@@ -4804,7 +4804,7 @@
         </div>` : ''}
       <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">
         ${passes.length} checks passed · ${summary.plugins_run || 0} plugins · ${summary.hypotheses_count || 0} hypotheses
-        · Run ID: ${data.run_id || 'unknown'}${data.evidence_id ? ` · Evidence: ${data.evidence_id}` : ''}
+        · Run ID: ${escHtml(data.run_id || 'unknown')}${data.evidence_id ? ` · Evidence: ${escHtml(data.evidence_id)}` : ''}
       </div>
       <div style="margin-top:16px;">
         <button class="ghost-btn" onclick="viewFullAnalysis(${JSON.stringify(data).replace(/"/g, '&quot;')})">View Full Analysis →</button>
@@ -4839,25 +4839,25 @@
         <div style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Evidence References</div>
         ${refs.map(r => `
           <div style="font-size:12px;color:var(--text-sec);display:flex;gap:8px;align-items:baseline;margin-bottom:2px;">
-            <span style="font-weight:600;">${r.evidence_id}</span>
-            ${r.stream_name ? `<span>· ${r.stream_name}</span>` : ''}
+            <span style="font-weight:600;">${escHtml(r.evidence_id)}</span>
+            ${r.stream_name ? `<span>· ${escHtml(r.stream_name)}</span>` : ''}
             ${r.time_range_start != null ? `<span>· T+${r.time_range_start.toFixed(1)}s to T+${(r.time_range_end||r.time_range_start).toFixed(1)}s</span>` : ''}
           </div>
-          ${r.support_summary ? `<div style="font-size:12px;color:var(--text-sec);margin-bottom:4px;font-style:italic;">"${r.support_summary.slice(0,150)}${r.support_summary.length>150?'...':''}"</div>` : ''}`).join('')}
+          ${r.support_summary ? `<div style="font-size:12px;color:var(--text-sec);margin-bottom:4px;font-style:italic;">"${escHtml(r.support_summary.slice(0,150))}${r.support_summary.length>150?'...':''}"</div>` : ''}`).join('')}
       </div>` : '';
 
     const confPct = f.confidence != null ? Math.round(f.confidence * 100) : null;
     const confBand = f.confidence_band || (confPct != null ? confBandLabel(f.confidence) : '');
     const confStr = confPct != null ? `${confPct}% (${confBand})` : '';
 
-    const pluginInfo = f.plugin_id ? `from ${f.plugin_id}${f.plugin_version ? ' v'+f.plugin_version : ''}` : '';
-    const tState = f.trust_state ? ` (${f.trust_state.replace(/_/g,' ')})` : '';
+    const pluginInfo = f.plugin_id ? `from ${escHtml(f.plugin_id)}${f.plugin_version ? ' v'+escHtml(f.plugin_version) : ''}` : '';
+    const tState = f.trust_state ? ` (${escHtml(f.trust_state.replace(/_/g,' '))})` : '';
     const timeRange = f.start_time != null ? `T+${f.start_time.toFixed(1)}s${f.end_time != null ? ' to T+'+f.end_time.toFixed(1)+'s' : ''}` : '';
 
     // Supporting metrics (collapsed by default)
     const metrics = f.supporting_metrics || {};
     const metricsKeys = Object.keys(metrics);
-    const metricsId = 'metrics-' + (f.finding_id || Math.random().toString(36).slice(2));
+    const metricsId = 'metrics-' + escAttr(f.finding_id || Math.random().toString(36).slice(2));
     const metricsHtml = metricsKeys.length > 0 ? `
       <div style="margin-top:8px;">
         <button onclick="var el=document.getElementById('${metricsId}');el.style.display=el.style.display==='none'?'':'none';" style="font-size:12px;background:none;border:none;color:var(--text-sec);cursor:pointer;padding:0;text-decoration:underline;">Supporting metrics (${metricsKeys.length})</button>
@@ -4879,28 +4879,28 @@
     const fid = f.finding_id || '';
     const jumpHtml = `
       <div style="margin-top:8px;display:flex;gap:8px;">
-        ${f.start_time != null ? `<button onclick="jumpToTimeline('${fid}',${f.start_time})" style="font-size:12px;padding:3px 10px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Timeline</button>` : ''}
-        ${f.start_time != null || (refs.length > 0 && refs[0].stream_name) ? `<button onclick="jumpToCharts('${fid}',${f.start_time||0},${f.end_time||0},'${refs.length>0&&refs[0].stream_name?refs[0].stream_name:''}')" style="font-size:12px;padding:3px 10px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Charts</button>` : ''}
+        ${f.start_time != null ? `<button onclick="jumpToTimeline('${escAttr(fid)}',${f.start_time})" style="font-size:12px;padding:3px 10px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Timeline</button>` : ''}
+        ${f.start_time != null || (refs.length > 0 && refs[0].stream_name) ? `<button onclick="jumpToCharts('${escAttr(fid)}',${f.start_time||0},${f.end_time||0},'${refs.length>0&&refs[0].stream_name?escAttr(refs[0].stream_name):''}')" style="font-size:12px;padding:3px 10px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Charts</button>` : ''}
       </div>`;
 
     return `
-      <div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:14px;margin-bottom:8px;" id="finding-card-${fid}">
+      <div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:14px;margin-bottom:8px;" id="finding-card-${escAttr(fid)}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:12px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:8px;background:${color};color:#fff;">${sev}</span>
-            <span style="font-size:14px;font-weight:600;color:${color};">${f.title}</span>
+            <span style="font-size:14px;font-weight:600;color:${color};">${escHtml(f.title)}</span>
           </div>
           ${confStr ? `<span style="font-size:12px;font-weight:600;color:${color};">${confStr}</span>` : ''}
         </div>
         ${pluginInfo ? `<div style="font-size:12px;color:var(--text-sec);margin-top:4px;">${pluginInfo}${tState}</div>` : ''}
-        <div style="font-size:13px;color:var(--text);margin-top:6px;line-height:1.5;">${f.description}</div>
-        ${f.phase ? `<div style="font-size:12px;color:var(--text-sec);margin-top:4px;">Phase: ${f.phase}</div>` : ''}
+        <div style="font-size:13px;color:var(--text);margin-top:6px;line-height:1.5;">${escHtml(f.description)}</div>
+        ${f.phase ? `<div style="font-size:12px;color:var(--text-sec);margin-top:4px;">Phase: ${escHtml(f.phase)}</div>` : ''}
         ${timeRange ? `<div style="font-size:12px;color:var(--text-sec);margin-top:2px;">Time: ${timeRange}</div>` : ''}
         ${refHtml}
         ${metricsHtml}
         ${contraHtml}
         ${jumpHtml}
-        <div style="font-size:12px;color:var(--text-dim,#555);margin-top:6px;">${fid}${f.confidence_scope ? ' · scope: '+f.confidence_scope : ''}</div>
+        <div style="font-size:12px;color:var(--text-dim,#555);margin-top:6px;">${escHtml(fid)}${f.confidence_scope ? ' · scope: '+escHtml(f.confidence_scope) : ''}</div>
       </div>`;
   }
 
@@ -4965,14 +4965,14 @@
       const active = filter === sev;
       const count = sev === 'all' ? findings.length : countBySev[sev] || 0;
       const color = sev === 'all' ? 'var(--text)' : sevColorMap(sev);
-      return `<button onclick="workspaceState.findingsFilter='${sev}';renderFindingsWorkspace(_allFindings,'${runId||''}','${evidenceId||''}')" style="font-size:12px;padding:4px 12px;border-radius:8px;border:1px solid ${active?color:'var(--card-border)'};background:${active?'rgba(255,255,255,0.05)':'none'};color:${active?color:'var(--text-sec)'};cursor:pointer;font-family:var(--font);font-weight:${active?'600':'400'};">${label} (${count})</button>`;
+      return `<button onclick="workspaceState.findingsFilter='${sev}';renderFindingsWorkspace(_allFindings,'${escAttr(runId||'')}','${escAttr(evidenceId||'')}');" style="font-size:12px;padding:4px 12px;border-radius:8px;border:1px solid ${active?color:'var(--card-border)'};background:${active?'rgba(255,255,255,0.05)':'none'};color:${active?color:'var(--text-sec)'};cursor:pointer;font-family:var(--font);font-weight:${active?'600':'400'};">${label} (${count})</button>`;
     };
 
     const _w = activeWording();
     const _analysisLabel = _w.analysis_label || 'Analysis';
     el.innerHTML = `
       <div style="margin-bottom:16px;">
-        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">${escHtml(_analysisLabel)} Findings — ${nonPass} finding(s)${runId ? ' from ' + runId : ''}</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">${escHtml(_analysisLabel)} Findings — ${nonPass} finding(s)${runId ? ' from ' + escHtml(runId) : ''}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           ${filterBtn('ALL', 'all')}
           ${filterBtn('CRITICAL', 'critical')}
@@ -4983,7 +4983,7 @@
       </div>
       ${filtered.map(f => renderForensicFindingCard(f)).join('')}
       <div style="font-size:12px;color:var(--text-muted);margin-top:12px;">
-        ${findings.length} total findings · Evidence: ${evidenceId||'—'}
+        ${findings.length} total findings · Evidence: ${escHtml(evidenceId||'—')}
       </div>`;
   }
 
@@ -5042,12 +5042,12 @@
             <div style="display:flex;align-items:baseline;gap:10px;">
               <span style="font-size:12px;font-weight:600;color:var(--text);min-width:60px;">T+${ev.time.toFixed(1)}s</span>
               <span style="font-size:14px;color:${sevColor};">${typeIcon(ev.type)}</span>
-              <span style="font-size:12px;font-weight:600;text-transform:uppercase;color:${sevColor};min-width:60px;">${ev.type}</span>
-              <span style="font-size:13px;color:var(--text);">${ev.label}</span>
-              ${ev.severity ? `<span style="font-size:12px;padding:1px 6px;border-radius:6px;background:${sevBgMap(ev.severity)};color:${sevColorMap(ev.severity)};">${ev.severity}</span>` : ''}
+              <span style="font-size:12px;font-weight:600;text-transform:uppercase;color:${sevColor};min-width:60px;">${escHtml(ev.type)}</span>
+              <span style="font-size:13px;color:var(--text);">${escHtml(ev.label)}</span>
+              ${ev.severity ? `<span style="font-size:12px;padding:1px 6px;border-radius:6px;background:${sevBgMap(ev.severity)};color:${sevColorMap(ev.severity)};">${escHtml(ev.severity)}</span>` : ''}
             </div>
-            ${ev.description ? `<div style="font-size:12px;color:var(--text-sec);margin-top:2px;margin-left:70px;">${ev.description}</div>` : ''}
-            ${ev.finding_id ? `<div style="margin-left:70px;margin-top:4px;"><button onclick="workspaceState.activeFindingId='${ev.finding_id}';switchWsTab('findings');" style="font-size:12px;padding:2px 8px;background:none;border:1px solid var(--card-border);border-radius:4px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Finding ${ev.finding_id}</button></div>` : ''}
+            ${ev.description ? `<div style="font-size:12px;color:var(--text-sec);margin-top:2px;margin-left:70px;">${escHtml(ev.description)}</div>` : ''}
+            ${ev.finding_id ? `<div style="margin-left:70px;margin-top:4px;"><button onclick="workspaceState.activeFindingId='${escAttr(ev.finding_id)}';switchWsTab('findings');" style="font-size:12px;padding:2px 8px;background:none;border:1px solid var(--card-border);border-radius:4px;color:var(--text-sec);cursor:pointer;font-family:var(--font);">&#8594; Finding ${escHtml(ev.finding_id)}</button></div>` : ''}
           </div>`;
         }).join('')}
       </div>`;
@@ -5277,8 +5277,8 @@
       return;
     }
     const opts = runs.map(r => {
-      const label = `${r.run_id} (${r.findings_count || 0}f)`;
-      return `<option value="${r.run_id}">${label}</option>`;
+      const label = `${escHtml(r.run_id)} (${r.findings_count || 0}f)`;
+      return `<option value="${escAttr(r.run_id)}">${label}</option>`;
     }).join('');
     a.innerHTML = opts;
     b.innerHTML = opts;
@@ -5322,7 +5322,7 @@
         <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Replay Verification</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <select id="replay-bundle-select" style="background:var(--bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:6px 10px;font-family:var(--font);font-size:13px;min-width:200px;">
-            ${exports.filter(e => e.filename.startsWith('bundle_')).map(e => `<option value="${e.filename}">${e.filename}</option>`).join('')}
+            ${exports.filter(e => e.filename.startsWith('bundle_')).map(e => `<option value="${escAttr(e.filename)}">${escHtml(e.filename)}</option>`).join('')}
             ${exports.filter(e => e.filename.startsWith('bundle_')).length === 0 ? '<option value="">No bundles available</option>' : ''}
           </select>
           <button onclick="verifyReplay('${caseId}')" style="padding:6px 16px;background:none;border:1px solid var(--card-border);border-radius:6px;font-family:var(--font);font-size:13px;color:var(--text);cursor:pointer;">Verify Replay</button>
@@ -5335,10 +5335,10 @@
           ${exports.map(ex => `
             <div class="card" style="padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
               <div>
-                <div style="font-size:13px;font-weight:600;">${ex.filename}</div>
+                <div style="font-size:13px;font-weight:600;">${escHtml(ex.filename)}</div>
                 <div style="font-size:12px;color:var(--text-sec);">${formatFileSize(ex.size_bytes)} · ${new Date(ex.created_at).toLocaleString()}</div>
               </div>
-              <a href="/api/cases/${caseId}/exports/files/${ex.filename}" target="_blank" style="font-size:12px;padding:4px 12px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);text-decoration:none;font-family:var(--font);">Download</a>
+              <a href="/api/cases/${escAttr(caseId)}/exports/files/${escAttr(ex.filename)}" target="_blank" style="font-size:12px;padding:4px 12px;background:none;border:1px solid var(--card-border);border-radius:6px;color:var(--text-sec);text-decoration:none;font-family:var(--font);">Download</a>
             </div>`).join('')}
         </div>` : '<div style="font-size:13px;color:var(--text-sec);padding:16px 0;">No exports yet. Click "Export Case Bundle" to create one.</div>'}`;
   }
@@ -5381,8 +5381,8 @@
       const skipped = Object.values(trust).filter(t => t === 'blocked').length;
       const tp = r.tuning_profile_id || r.tuning_profile || 'default';
       const replayBadge = r.is_replay ? ' [REPLAY]' : '';
-      const label = `${r.run_id}${replayBadge} — ${ts} — ${r.findings_count}f (${crit}c/${warn}w) — ${pluginsUsed}p${skipped?'/'+skipped+'skip':''} — ${tp}`;
-      return `<option value="${r.run_id}">${label}</option>`;
+      const label = `${escHtml(r.run_id)}${replayBadge} — ${ts} — ${r.findings_count}f (${crit}c/${warn}w) — ${pluginsUsed}p${skipped?'/'+skipped+'skip':''} — ${escHtml(tp)}`;
+      return `<option value="${escAttr(r.run_id)}">${label}</option>`;
     }).join('');
     sel.value = runs[runs.length - 1].run_id;
   }
@@ -5430,20 +5430,20 @@
     outEl.innerHTML = `
       <div class="card" style="padding:16px;border:1px solid ${color};">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div style="font-size:14px;font-weight:600;">Replay ${rec.replay_id}</div>
-          <span style="font-size:12px;padding:3px 10px;border-radius:20px;background:${color};color:#000;font-weight:600;">${rec.status.toUpperCase()}</span>
+          <div style="font-size:14px;font-weight:600;">Replay ${escHtml(rec.replay_id)}</div>
+          <span style="font-size:12px;padding:3px 10px;border-radius:20px;background:${color};color:#000;font-weight:600;">${escHtml(rec.status.toUpperCase())}</span>
         </div>
         <div style="font-size:13px;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
-          <div><span style="color:var(--text-sec);">Engine:</span> ${rec.original_engine_version || '?'} → ${rec.replay_engine_version || '?'}</div>
-          <div><span style="color:var(--text-sec);">Parser:</span> ${rec.original_parser_version || '?'} → ${rec.replay_parser_version || '?'}</div>
-          <div><span style="color:var(--text-sec);">Tuning:</span> ${rec.original_tuning_profile} → ${rec.replay_tuning_profile}</div>
-          <div><span style="color:var(--text-sec);">Source run:</span> ${rec.source_run_id}</div>
+          <div><span style="color:var(--text-sec);">Engine:</span> ${escHtml(rec.original_engine_version || '?')} → ${escHtml(rec.replay_engine_version || '?')}</div>
+          <div><span style="color:var(--text-sec);">Parser:</span> ${escHtml(rec.original_parser_version || '?')} → ${escHtml(rec.replay_parser_version || '?')}</div>
+          <div><span style="color:var(--text-sec);">Tuning:</span> ${escHtml(rec.original_tuning_profile)} → ${escHtml(rec.replay_tuning_profile)}</div>
+          <div><span style="color:var(--text-sec);">Source run:</span> ${escHtml(rec.source_run_id)}</div>
         </div>
         <div style="font-size:13px;margin-bottom:6px;"><b>Findings diff:</b> +${(diff.findings_added||[]).length} added, -${(diff.findings_removed||[]).length} removed, ${(diff.findings_changed||[]).length} changed</div>
         <div style="font-size:13px;margin-bottom:6px;"><b>Hypotheses:</b> +${diff.hypotheses_added||0} / -${diff.hypotheses_removed||0}</div>
-        <div style="font-size:13px;margin-bottom:6px;"><b>Plugin changes:</b> ${pluginDiffs}</div>
-        <div style="font-size:13px;margin-bottom:6px;"><b>Drift categories:</b> ${drift}</div>
-        ${rec.notes ? `<div style="font-size:12px;color:var(--text-sec);margin-top:8px;">${rec.notes}</div>` : ''}
+        <div style="font-size:13px;margin-bottom:6px;"><b>Plugin changes:</b> ${escHtml(pluginDiffs)}</div>
+        <div style="font-size:13px;margin-bottom:6px;"><b>Drift categories:</b> ${escHtml(drift)}</div>
+        ${rec.notes ? `<div style="font-size:12px;color:var(--text-sec);margin-top:8px;">${escHtml(rec.notes)}</div>` : ''}
       </div>`;
   }
 
@@ -5486,21 +5486,21 @@
     outEl.innerHTML = `
       <div class="card" style="padding:16px;">
         <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Run Comparison</div>
-        <div style="font-size:13px;margin-bottom:8px;">${cmp.summary || 'No differences.'}</div>
+        <div style="font-size:13px;margin-bottom:8px;">${escHtml(cmp.summary || 'No differences.')}</div>
         ${fd.length ? `
           <div style="margin-top:10px;">
             <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Finding changes (${fd.length})</div>
-            ${fd.map(f => `<div style="font-size:12px;padding:3px 0;">${f.change_type}: ${f.finding_id}</div>`).join('')}
+            ${fd.map(f => `<div style="font-size:12px;padding:3px 0;">${escHtml(f.change_type)}: ${escHtml(f.finding_id)}</div>`).join('')}
           </div>` : ''}
         ${pd.length ? `
           <div style="margin-top:10px;">
             <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Plugin changes (${pd.length})</div>
-            ${pd.map(p => `<div style="font-size:12px;padding:3px 0;">${p.plugin_id}: ${p.change} (${p.original_version || '—'} → ${p.replay_version || '—'})</div>`).join('')}
+            ${pd.map(p => `<div style="font-size:12px;padding:3px 0;">${escHtml(p.plugin_id)}: ${escHtml(p.change)} (${escHtml(p.original_version || '—')} → ${escHtml(p.replay_version || '—')})</div>`).join('')}
           </div>` : ''}
         ${hd.length ? `
           <div style="margin-top:10px;">
             <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Hypothesis changes (${hd.length})</div>
-            ${hd.map(h => `<div style="font-size:12px;padding:3px 0;">${h.change}: ${h.theme}</div>`).join('')}
+            ${hd.map(h => `<div style="font-size:12px;padding:3px 0;">${escHtml(h.change)}: ${escHtml(h.theme)}</div>`).join('')}
           </div>` : ''}
         ${cmp.tuning_profile_changed ? '<div style="font-size:12px;color:#f59e0b;margin-top:8px;">Tuning profile changed between runs</div>' : ''}
       </div>`;
@@ -5540,10 +5540,10 @@
           return `
             <div style="padding:8px;border:1px solid var(--card-border);border-radius:6px;margin-bottom:6px;">
               <div style="display:flex;justify-content:space-between;font-size:13px;">
-                <span><b>${r.corpus_id}</b> <span style="color:var(--text-sec);">(${r.category})</span></span>
+                <span><b>${escHtml(r.corpus_id)}</b> <span style="color:var(--text-sec);">(${escHtml(r.category)})</span></span>
                 <span style="color:${color};font-weight:600;">${badge}</span>
               </div>
-              ${(r.failures && r.failures.length) ? `<div style="font-size:12px;color:var(--red);margin-top:4px;">${r.failures.join('; ')}</div>` : ''}
+              ${(r.failures && r.failures.length) ? `<div style="font-size:12px;color:var(--red);margin-top:4px;">${r.failures.map(f => escHtml(f)).join('; ')}</div>` : ''}
             </div>`;
         }).join('')}
       </div>`;
@@ -5604,9 +5604,9 @@
         <div class="card" style="padding:16px;">
           <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Anomaly Report</div>
           <div style="font-size:13px;margin-bottom:8px;">Findings (WARNING+): ${report.findings.length}</div>
-          ${report.findings.map(f => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--card-border);"><span style="color:${f.severity==='critical'?'var(--red)':'var(--amber)'};font-weight:600;">${f.severity}</span> ${f.title || ''}</div>`).join('')}
+          ${report.findings.map(f => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--card-border);"><span style="color:${f.severity==='critical'?'var(--red)':'var(--amber)'};font-weight:600;">${escHtml(f.severity)}</span> ${escHtml(f.title || '')}</div>`).join('')}
           <div style="font-size:13px;margin-top:12px;margin-bottom:8px;">Hypotheses (conf >= 0.5): ${report.hypotheses.length}</div>
-          ${report.hypotheses.map(h => `<div style="font-size:12px;padding:4px 0;">${h.statement || h.title || ''} (${((h.confidence||0)*100).toFixed(0)}%)</div>`).join('')}
+          ${report.hypotheses.map(h => `<div style="font-size:12px;padding:4px 0;">${escHtml(h.statement || h.title || '')} (${((h.confidence||0)*100).toFixed(0)}%)</div>`).join('')}
         </div>`;
     } else if (reportType === 'crash') {
       el.innerHTML = `
@@ -5617,7 +5617,7 @@
           </div>
           ${report.crash_findings.length > 0 ? `
             <div style="font-size:13px;margin-bottom:4px;">Crash Findings (${report.crash_findings.length}):</div>
-            ${report.crash_findings.map(f => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--card-border);">${f.title || ''} — ${f.description || ''}</div>`).join('')}
+            ${report.crash_findings.map(f => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--card-border);">${escHtml(f.title || '')} — ${escHtml(f.description || '')}</div>`).join('')}
           ` : '<div style="font-size:13px;color:var(--text-sec);">No crash findings.</div>'}
         </div>`;
     }
@@ -6560,7 +6560,7 @@
   // Default to Welcome tab on load (v11 Strategy Sprint)
   switchTab('welcome');
 </script>
-<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+<script src="/static/uPlot.iife.min.js"></script>
 <script src="/static/cockpit.js"></script>
 </body>
 </html>

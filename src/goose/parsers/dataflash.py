@@ -11,8 +11,11 @@ data lines. The binary format uses 0xA3 0x95 framing per message.
 
 from __future__ import annotations
 
+import logging
 import struct
 import time
+
+logger = logging.getLogger(__name__)
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -506,8 +509,8 @@ def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
                     "columns": columns,
                     "size": size,
                 }
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("FMT record parse error at offset %d: %s", i, exc)
             i += 86
 
         elif msg_type in fmt_defs:
@@ -535,7 +538,8 @@ def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
                 row = {cols[j]: decoded[j] for j in range(min(len(cols), len(decoded)))}
                 records[desc["name"]].append(row)
                 i += size
-            except Exception:
+            except Exception as exc:
+                logger.debug("Binary record parse error at offset %d (type %d): %s", i, msg_type, exc)
                 i += 1
         else:
             i += 1
@@ -606,7 +610,8 @@ class DataFlashParser(BaseParser):
             # Try decoding as text
             try:
                 raw_text = raw_bytes.decode("utf-8", errors="replace")
-            except Exception:
+            except (UnicodeDecodeError, ValueError) as exc:
+                logger.debug("Text decode failed for DataFlash log: %s", exc)
                 raw_text = ""
             # Confirm it's actually DataFlash text by looking for FMT lines
             if "FMT" not in raw_text[:4096]:

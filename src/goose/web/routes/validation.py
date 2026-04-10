@@ -78,7 +78,7 @@ async def run_validation_endpoint() -> JSONResponse:
             encoding="utf-8",
         )
     except Exception:
-        logger.warning("Failed to persist validation result")
+        logger.warning("Failed to persist validation result", exc_info=True)
 
     return JSONResponse({
         "ok": True,

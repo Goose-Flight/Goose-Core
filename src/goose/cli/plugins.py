@@ -28,14 +28,16 @@ def _safe_load_plugins() -> list[Plugin]:
         if isinstance(eps, dict)
         else eps.select(group="goose.plugins")
     )
+    import logging
+    _log = logging.getLogger(__name__)
     loaded: list[Plugin] = []
     for ep in group:
         try:
             cls = ep.load()
             if isinstance(cls, type) and issubclass(cls, Plugin):
                 loaded.append(cls())
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.warning("Failed to load plugin entry point '%s': %s", ep.name, exc)
     return loaded
 
 

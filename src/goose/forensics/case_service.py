@@ -132,8 +132,8 @@ class CaseService:
                 continue
             try:
                 cases.append(Case.from_json(case_json.read_text(encoding="utf-8")))
-            except Exception:
-                pass  # corrupt case dir — skip silently, log later
+            except Exception as exc:
+                logger.warning("Skipping corrupt case dir %s: %s", case_dir.name, exc)
         return sorted(cases, key=lambda c: c.created_at, reverse=True)
 
     def save_case(self, case: Case) -> None:
@@ -331,8 +331,8 @@ class CaseService:
             if line:
                 try:
                     entries.append(AuditEntry.from_dict(json.loads(line)))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Malformed audit entry in %s: %s", audit_path, exc)
         return entries
 
     def case_dir(self, case_id: str) -> Path:

@@ -17,11 +17,14 @@ on every call.  If you want to avoid duplicates for the same run pair, call
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from goose.forensics.replay import FindingDifference, _diff_findings
 
@@ -509,7 +512,8 @@ def list_comparisons(case_dir: Path) -> list[dict[str, Any]]:
         entries: list[dict[str, Any]] = data.get("comparisons", [])
         # Sort newest first
         return sorted(entries, key=lambda e: e.get("compared_at", ""), reverse=True)
-    except Exception:
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Corrupt comparison index at %s: %s", index_path, exc)
         return []
 
 
@@ -525,7 +529,8 @@ def load_comparison(case_dir: Path, comparison_id: str) -> RunComparison | None:
     try:
         data = json.loads(comp_path.read_text(encoding="utf-8"))
         return RunComparison.from_dict(data)
-    except Exception:
+    except (json.JSONDecodeError, OSError, KeyError, TypeError) as exc:
+        logger.warning("Cannot load comparison %s: %s", comparison_id, exc)
         return None
 
 
@@ -559,7 +564,8 @@ def _upsert_index(comp_dir: Path, comparison: RunComparison) -> None:
         try:
             data = json.loads(index_path.read_text(encoding="utf-8"))
             entries = data.get("comparisons", [])
-        except Exception:
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Corrupt comparison index at %s (will overwrite): %s", index_path, exc)
             entries = []
 
     summary_record = {

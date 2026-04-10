@@ -40,6 +40,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["exports"])
 
 
+def _load_json_file(path: Any, label: str = "") -> Any:
+    """Load JSON from path, returning None and logging on any error."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        logger.warning("Corrupt JSON in %s (%s): %s", path, label, exc)
+        return None
+    except OSError as exc:
+        logger.warning("Cannot read %s (%s): %s", path, label, exc)
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Request models
 # ---------------------------------------------------------------------------
@@ -165,73 +177,34 @@ async def create_export_bundle(
 
     # Include evidence manifest
     manifest_path = case_dir / "manifests" / "evidence_manifest.json"
-    if manifest_path.exists():
-        try:
-            bundle["evidence_manifest"] = json.loads(manifest_path.read_text(encoding="utf-8"))
-        except Exception:
-            bundle["evidence_manifest"] = [_serialize_evidence(ev) for ev in case.evidence_items]
-    else:
-        bundle["evidence_manifest"] = [_serialize_evidence(ev) for ev in case.evidence_items]
+    bundle["evidence_manifest"] = (
+        _load_json_file(manifest_path, "evidence_manifest") if manifest_path.exists()
+        else None
+    ) or [_serialize_evidence(ev) for ev in case.evidence_items]
 
     # Include parse diagnostics
     pd_parse_path = case_dir / "parsed" / "parse_diagnostics.json"
-    if pd_parse_path.exists():
-        try:
-            bundle["parse_diagnostics"] = json.loads(pd_parse_path.read_text(encoding="utf-8"))
-        except Exception:
-            bundle["parse_diagnostics"] = None
-    else:
-        bundle["parse_diagnostics"] = None
+    bundle["parse_diagnostics"] = _load_json_file(pd_parse_path, "parse_diagnostics") if pd_parse_path.exists() else None
 
     # Include provenance
     prov_path = case_dir / "parsed" / "provenance.json"
-    if prov_path.exists():
-        try:
-            bundle["provenance"] = json.loads(prov_path.read_text(encoding="utf-8"))
-        except Exception:
-            bundle["provenance"] = None
-    else:
-        bundle["provenance"] = None
+    bundle["provenance"] = _load_json_file(prov_path, "provenance") if prov_path.exists() else None
 
     # Include findings
     findings_path = case_dir / "analysis" / "findings.json"
-    if findings_path.exists():
-        try:
-            bundle["findings"] = json.loads(findings_path.read_text(encoding="utf-8"))
-        except Exception:
-            bundle["findings"] = None
-    else:
-        bundle["findings"] = None
+    bundle["findings"] = _load_json_file(findings_path, "findings") if findings_path.exists() else None
 
     # Include hypotheses
     hyp_path = case_dir / "analysis" / "hypotheses.json"
-    if hyp_path.exists():
-        try:
-            bundle["hypotheses"] = json.loads(hyp_path.read_text(encoding="utf-8"))
-        except Exception:
-            bundle["hypotheses"] = None
-    else:
-        bundle["hypotheses"] = None
+    bundle["hypotheses"] = _load_json_file(hyp_path, "hypotheses") if hyp_path.exists() else None
 
     # Include signal quality
     sq_path = case_dir / "analysis" / "signal_quality.json"
-    if sq_path.exists():
-        try:
-            bundle["signal_quality"] = json.loads(sq_path.read_text(encoding="utf-8"))
-        except Exception:
-            bundle["signal_quality"] = None
-    else:
-        bundle["signal_quality"] = None
+    bundle["signal_quality"] = _load_json_file(sq_path, "signal_quality") if sq_path.exists() else None
 
     # Include plugin diagnostics
     pd_path = case_dir / "analysis" / "plugin_diagnostics.json"
-    if pd_path.exists():
-        try:
-            bundle["plugin_diagnostics"] = json.loads(pd_path.read_text(encoding="utf-8"))
-        except Exception:
-            bundle["plugin_diagnostics"] = None
-    else:
-        bundle["plugin_diagnostics"] = None
+    bundle["plugin_diagnostics"] = _load_json_file(pd_path, "plugin_diagnostics") if pd_path.exists() else None
 
     # Build replay_metadata
     parser_name = ""
@@ -473,52 +446,42 @@ async def mission_summary_report(case_id: str) -> JSONResponse:
     findings: list[dict[str, Any]] = []
     findings_path = case_dir / "analysis" / "findings.json"
     if findings_path.exists():
-        try:
-            bundle = json.loads(findings_path.read_text(encoding="utf-8"))
-            findings = bundle.get("findings", [])
-        except Exception:
-            pass
+        _f = _load_json_file(findings_path, "findings")
+        if _f:
+            findings = _f.get("findings", [])
 
     # Load hypotheses
     hypotheses: list[dict[str, Any]] = []
     hyp_path = case_dir / "analysis" / "hypotheses.json"
     if hyp_path.exists():
-        try:
-            bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
-            hypotheses = bundle.get("hypotheses", [])
-        except Exception:
-            pass
+        _h = _load_json_file(hyp_path, "hypotheses")
+        if _h:
+            hypotheses = _h.get("hypotheses", [])
 
     # Load signal quality
     sq_summary: dict[str, Any] = {}
     sq_path = case_dir / "analysis" / "signal_quality.json"
     if sq_path.exists():
-        try:
-            sq_bundle = json.loads(sq_path.read_text(encoding="utf-8"))
-            for stream in sq_bundle.get("streams", []):
+        _sq = _load_json_file(sq_path, "signal_quality")
+        if _sq:
+            for stream in _sq.get("streams", []):
                 sq_summary[stream.get("stream_name", "")] = stream.get("reliability_estimate", None)
-        except Exception:
-            pass
 
     # Load provenance for duration
     flight_duration = None
     prov_path = case_dir / "parsed" / "provenance.json"
     if prov_path.exists():
-        try:
-            prov = json.loads(prov_path.read_text(encoding="utf-8"))
-            flight_duration = prov.get("flight_duration_sec")
-        except Exception:
-            pass
+        _prov = _load_json_file(prov_path, "provenance")
+        if _prov:
+            flight_duration = _prov.get("flight_duration_sec")
 
     # Load parser confidence
     parser_confidence = None
     diag_path = case_dir / "parsed" / "parse_diagnostics.json"
     if diag_path.exists():
-        try:
-            diag = json.loads(diag_path.read_text(encoding="utf-8"))
-            parser_confidence = diag.get("parser_confidence")
-        except Exception:
-            pass
+        _diag = _load_json_file(diag_path, "parse_diagnostics")
+        if _diag:
+            parser_confidence = _diag.get("parser_confidence")
 
     # Compute severity counts
     critical = sum(1 for f in findings if f.get("severity") == "critical")

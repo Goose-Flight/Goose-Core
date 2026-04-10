@@ -25,7 +25,12 @@ def fingerprint_plugin(plugin_instance: Any) -> str:
     try:
         source = inspect.getsource(type(plugin_instance))
         return hashlib.sha256(source.encode("utf-8")).hexdigest()
-    except Exception:
+    except (OSError, TypeError) as exc:
+        import logging
+        logging.getLogger(__name__).debug(
+            "Cannot fingerprint plugin %s (source unavailable): %s",
+            type(plugin_instance).__name__, exc,
+        )
         return ""
 
 

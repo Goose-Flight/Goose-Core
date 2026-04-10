@@ -1,5 +1,6 @@
 """Structured timeline model and builders.
 
+
 v11 Strategy Sprint — promote the case timeline from an ad-hoc list of
 finding timestamps into a formally typed event stream. Timeline events may
 come from: parser output (flight phases, mode changes, arming events),
@@ -15,10 +16,13 @@ Design rules:
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from goose.core.flight import Flight
@@ -501,7 +505,8 @@ def _extract_ekf_innovation_spikes(ekf: Any) -> list[TimelineEvent]:
                     severity="warning",
                     notes=f"EKF innovation spike on '{col}' (>{_EKF_INNOVATION_THRESHOLD}) for {t_end - t_start:.1f}s",
                 ))
-        except Exception:
+        except Exception as exc:
+            logger.warning("EKF innovation spike detection failed on column '%s': %s", col, exc)
             continue
     return events
 

@@ -368,11 +368,6 @@ def _validate_single_case(
 
     # Generate hypotheses (count only)
     hypotheses_count = 0
-    try:
-        from goose.forensics.lifting import generate_hypotheses  # noqa: F401
-        hypotheses_count = 0  # simplified - count from plugins above
-    except Exception:
-        pass
 
     observed = ObservedOutcome(
         corpus_id=cc.corpus_id,

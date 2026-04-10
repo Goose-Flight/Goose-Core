@@ -100,7 +100,13 @@ def _load_json(path: Path) -> Any:
         return None
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        import logging
+        logging.getLogger(__name__).warning("Corrupt JSON at %s: %s", path, exc)
+        return None
+    except OSError as exc:
+        import logging
+        logging.getLogger(__name__).warning("Cannot read %s: %s", path, exc)
         return None
 
 

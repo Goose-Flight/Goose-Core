@@ -244,7 +244,57 @@ CREATE TABLE IF NOT EXISTS analyzed_logs (
     airspeed_min         REAL,
     airspeed_std         REAL,
     -- ── Topic inventory ───────────────────────────────────────────────────────
-    topics_json          TEXT    -- JSON array of all ULog topic names present in this log
+    topics_json          TEXT,   -- JSON array of all ULog topic names present in this log
+    -- ── Failure detector (FMU's own fault detection) ──────────────────────────
+    fd_roll_frac         REAL,   -- fraction of flight with roll failure flag set
+    fd_pitch_frac        REAL,   -- fraction of flight with pitch failure flag set
+    fd_battery_event     INTEGER,-- battery failure ever detected
+    fd_imbalanced_prop   INTEGER,-- imbalanced prop ever detected
+    fd_motor_failure     INTEGER,-- motor failure ever detected (failure_detector)
+    -- ── Land detection ────────────────────────────────────────────────────────
+    freefall_detected    INTEGER,-- freefall ever detected during flight
+    ground_contact_frac  REAL,   -- when ground contact first detected (0-1 through flight)
+    land_detected_frac   REAL,   -- when landing first detected (early = normal, late = crash)
+    -- ── Failsafe flags (what actually triggered failsafes) ────────────────────
+    fs_rc_lost           INTEGER,-- manual_control_signal_lost ever set
+    fs_battery_warning   INTEGER,-- battery_warning ever set
+    fs_battery_unhealthy INTEGER,-- battery_unhealthy ever set
+    fs_critical_failure  INTEGER,-- fd_critical_failure ever set
+    fs_motor_failure     INTEGER,-- fd_motor_failure flag in failsafe_flags
+    fs_imbalanced_prop   INTEGER,-- fd_imbalanced_prop flag in failsafe_flags
+    -- ── EKF health (estimator_status_flags) ───────────────────────────────────
+    ekf_reject_hor_pos   INTEGER,-- EKF ever rejected horizontal position
+    ekf_reject_vel       INTEGER,-- EKF ever rejected velocity
+    ekf_reject_yaw       INTEGER,-- EKF ever rejected heading
+    ekf_mag_fault        INTEGER,-- magnetometer fault detected
+    ekf_dead_reckoning   INTEGER,-- switched to inertial dead reckoning (GPS lost)
+    -- ── EKF innovation test ratios (>1.0 = sensor rejected) ──────────────────
+    ekf_innov_gps_hpos_max REAL, -- max GPS horizontal position test ratio
+    ekf_innov_gps_hvel_max REAL, -- max GPS horizontal velocity test ratio
+    ekf_innov_heading_max  REAL, -- max heading test ratio
+    ekf_innov_baro_max     REAL, -- max baro altitude test ratio
+    -- ── Hover thrust estimate (prop/motor health) ─────────────────────────────
+    hover_thrust_mean    REAL,   -- mean hover thrust (normal ~0.35-0.55; high = damage)
+    hover_thrust_max     REAL,   -- peak hover thrust
+    hover_thrust_var_max REAL,   -- max variance (high = unstable hover)
+    -- ── IMU health ────────────────────────────────────────────────────────────
+    imu_accel_clip_total INTEGER,-- total accelerometer clipping events (saturation)
+    imu_gyro_clip_total  INTEGER,-- total gyro clipping events
+    imu_vib_accel_max    REAL,   -- max accel vibration metric
+    imu_vib_gyro_max     REAL,   -- max gyro vibration metric
+    imu_accel_err_total  INTEGER,-- total accel error count
+    imu_gyro_err_total   INTEGER,-- total gyro error count
+    -- ── Control allocator (motor mixing) ──────────────────────────────────────
+    ctrl_unalloc_thrust_frac REAL,  -- fraction of flight with unallocated thrust
+    ctrl_unalloc_torque_frac REAL,  -- fraction of flight with unallocated torque
+    ctrl_motor_failure_mask  INTEGER,-- motor failure mask ever set (which motors failed)
+    -- ── System power ──────────────────────────────────────────────────────────
+    sys_5v_min           REAL,   -- minimum 5V rail voltage (sag = avionics stress)
+    sys_5v_oc            INTEGER,-- overcurrent on 5V rail ever detected
+    -- ── Rate controller integrator wind-up ────────────────────────────────────
+    rate_integ_roll_max  REAL,   -- max roll rate integrator (high = controller struggling)
+    rate_integ_pitch_max REAL,   -- max pitch rate integrator
+    rate_integ_yaw_max   REAL    -- max yaw rate integrator
 );
 
 CREATE INDEX IF NOT EXISTS idx_analyzed_at     ON analyzed_logs (analyzed_at);
@@ -322,6 +372,33 @@ _MIGRATION_COLUMNS = [
     "airspeed_max REAL", "airspeed_min REAL", "airspeed_std REAL",
     # Topic inventory
     "topics_json TEXT",
+    # Failure detector
+    "fd_roll_frac REAL", "fd_pitch_frac REAL",
+    "fd_battery_event INTEGER", "fd_imbalanced_prop INTEGER", "fd_motor_failure INTEGER",
+    # Land detection
+    "freefall_detected INTEGER", "ground_contact_frac REAL", "land_detected_frac REAL",
+    # Failsafe flags
+    "fs_rc_lost INTEGER", "fs_battery_warning INTEGER", "fs_battery_unhealthy INTEGER",
+    "fs_critical_failure INTEGER", "fs_motor_failure INTEGER", "fs_imbalanced_prop INTEGER",
+    # EKF health flags
+    "ekf_reject_hor_pos INTEGER", "ekf_reject_vel INTEGER", "ekf_reject_yaw INTEGER",
+    "ekf_mag_fault INTEGER", "ekf_dead_reckoning INTEGER",
+    # EKF innovation test ratios
+    "ekf_innov_gps_hpos_max REAL", "ekf_innov_gps_hvel_max REAL",
+    "ekf_innov_heading_max REAL", "ekf_innov_baro_max REAL",
+    # Hover thrust
+    "hover_thrust_mean REAL", "hover_thrust_max REAL", "hover_thrust_var_max REAL",
+    # IMU health
+    "imu_accel_clip_total INTEGER", "imu_gyro_clip_total INTEGER",
+    "imu_vib_accel_max REAL", "imu_vib_gyro_max REAL",
+    "imu_accel_err_total INTEGER", "imu_gyro_err_total INTEGER",
+    # Control allocator
+    "ctrl_unalloc_thrust_frac REAL", "ctrl_unalloc_torque_frac REAL",
+    "ctrl_motor_failure_mask INTEGER",
+    # System power
+    "sys_5v_min REAL", "sys_5v_oc INTEGER",
+    # Rate integrator
+    "rate_integ_roll_max REAL", "rate_integ_pitch_max REAL", "rate_integ_yaw_max REAL",
 ]
 
 # ---------------------------------------------------------------------------
@@ -837,6 +914,222 @@ def _extract_features(flight) -> dict:
     return f
 
 
+def _extract_advanced_features(log_path: str) -> dict:
+    """Extract features from ULog topics not exposed by the Flight model.
+
+    Uses pyulog directly to access: failure_detector_status,
+    vehicle_land_detected, failsafe_flags, estimator_status_flags,
+    estimator_innovation_test_ratios, hover_thrust_estimate,
+    vehicle_imu_status, control_allocator_status, system_power,
+    rate_ctrl_status.
+    """
+    f: dict = {}
+    try:
+        from pyulog import ULog
+        import numpy as np
+        ulog = ULog(log_path, message_name_filter_list=None, disable_str_exceptions=True)
+        data_map = {msg.name: msg.data for msg in ulog.data_list}
+    except Exception:
+        return f
+
+    def _arr(topic: str, field: str):
+        d = data_map.get(topic)
+        if d is None:
+            return None
+        return d.get(field)
+
+    # ── failure_detector_status ───────────────────────────────────────────────
+    try:
+        fd_roll  = _arr("failure_detector_status", "fd_roll")
+        fd_pitch = _arr("failure_detector_status", "fd_pitch")
+        fd_batt  = _arr("failure_detector_status", "fd_battery")
+        fd_imbal = _arr("failure_detector_status", "fd_imbalanced_prop")
+        fd_motor = _arr("failure_detector_status", "fd_motor")
+        if fd_roll is not None and len(fd_roll) > 0:
+            f["fd_roll_frac"]  = _safe_float(float(np.mean(fd_roll.astype(bool))))
+        if fd_pitch is not None and len(fd_pitch) > 0:
+            f["fd_pitch_frac"] = _safe_float(float(np.mean(fd_pitch.astype(bool))))
+        if fd_batt  is not None and len(fd_batt)  > 0:
+            f["fd_battery_event"]   = int(bool(fd_batt.any()))
+        if fd_imbal is not None and len(fd_imbal) > 0:
+            f["fd_imbalanced_prop"] = int(bool(fd_imbal.any()))
+        if fd_motor is not None and len(fd_motor) > 0:
+            f["fd_motor_failure"]   = int(bool(fd_motor.any()))
+    except Exception:
+        pass
+
+    # ── vehicle_land_detected ─────────────────────────────────────────────────
+    try:
+        ff = _arr("vehicle_land_detected", "freefall")
+        gc = _arr("vehicle_land_detected", "ground_contact")
+        ld = _arr("vehicle_land_detected", "landed")
+        if ff is not None and len(ff) > 0:
+            f["freefall_detected"] = int(bool(ff.any()))
+        if gc is not None and len(gc) > 0:
+            gc_bool = gc.astype(bool)
+            idx = int(np.argmax(gc_bool))
+            if gc_bool[idx]:
+                f["ground_contact_frac"] = _safe_float(idx / len(gc_bool))
+        if ld is not None and len(ld) > 0:
+            ld_bool = ld.astype(bool)
+            idx = int(np.argmax(ld_bool))
+            if ld_bool[idx]:
+                f["land_detected_frac"] = _safe_float(idx / len(ld_bool))
+    except Exception:
+        pass
+
+    # ── failsafe_flags ────────────────────────────────────────────────────────
+    try:
+        fs_d = data_map.get("failsafe_flags")
+        if fs_d:
+            for src, dst in [
+                ("manual_control_signal_lost", "fs_rc_lost"),
+                ("battery_warning",            "fs_battery_warning"),
+                ("battery_unhealthy",          "fs_battery_unhealthy"),
+                ("fd_critical_failure",        "fs_critical_failure"),
+                ("fd_motor_failure",           "fs_motor_failure"),
+                ("fd_imbalanced_prop",         "fs_imbalanced_prop"),
+            ]:
+                v = fs_d.get(src)
+                if v is not None and len(v) > 0:
+                    f[dst] = int(bool(v.any()))
+    except Exception:
+        pass
+
+    # ── estimator_status_flags ────────────────────────────────────────────────
+    try:
+        esf = data_map.get("estimator_status_flags")
+        if esf:
+            for src, dst in [
+                ("reject_hor_pos",             "ekf_reject_hor_pos"),
+                ("reject_ver_vel",             "ekf_reject_vel"),
+                ("reject_yaw",                 "ekf_reject_yaw"),
+                ("cs_mag_fault",               "ekf_mag_fault"),
+                ("cs_inertial_dead_reckoning", "ekf_dead_reckoning"),
+            ]:
+                v = esf.get(src)
+                if v is not None and len(v) > 0:
+                    f[dst] = int(bool(v.any()))
+    except Exception:
+        pass
+
+    # ── estimator_innovation_test_ratios ──────────────────────────────────────
+    try:
+        eitr = data_map.get("estimator_innovation_test_ratios")
+        if eitr:
+            for src, dst in [
+                ("gps_hpos[0]", "ekf_innov_gps_hpos_max"),
+                ("gps_hvel[0]", "ekf_innov_gps_hvel_max"),
+                ("heading",     "ekf_innov_heading_max"),
+                ("baro_vpos",   "ekf_innov_baro_max"),
+            ]:
+                v = eitr.get(src)
+                if v is not None and len(v) > 0:
+                    f[dst] = _safe_float(float(np.nanmax(np.abs(v))))
+    except Exception:
+        pass
+
+    # ── hover_thrust_estimate ─────────────────────────────────────────────────
+    try:
+        hte = data_map.get("hover_thrust_estimate")
+        if hte:
+            ht    = hte.get("hover_thrust")
+            htv   = hte.get("hover_thrust_var")
+            valid = hte.get("valid")
+            if ht is not None and len(ht) > 0:
+                ht_use = ht[valid.astype(bool)] if (valid is not None and len(valid) == len(ht)) else ht
+                if len(ht_use) > 0:
+                    f["hover_thrust_mean"] = _safe_float(float(np.mean(ht_use)))
+                    f["hover_thrust_max"]  = _safe_float(float(np.max(ht_use)))
+            if htv is not None and len(htv) > 0:
+                f["hover_thrust_var_max"] = _safe_float(float(np.max(htv)))
+    except Exception:
+        pass
+
+    # ── vehicle_imu_status ────────────────────────────────────────────────────
+    try:
+        imu_s = data_map.get("vehicle_imu_status")
+        if imu_s:
+            # clipping counters are cumulative — take last value and sum across axes
+            accel_clip = 0
+            gyro_clip  = 0
+            for i in range(3):
+                v = imu_s.get(f"accel_clipping[{i}]")
+                if v is not None and len(v) > 0:
+                    accel_clip += int(v[-1])
+                v = imu_s.get(f"gyro_clipping[{i}]")
+                if v is not None and len(v) > 0:
+                    gyro_clip += int(v[-1])
+            f["imu_accel_clip_total"] = accel_clip
+            f["imu_gyro_clip_total"]  = gyro_clip
+            avm = imu_s.get("accel_vibration_metric")
+            gvm = imu_s.get("gyro_vibration_metric")
+            if avm is not None and len(avm) > 0:
+                f["imu_vib_accel_max"] = _safe_float(float(np.max(avm)))
+            if gvm is not None and len(gvm) > 0:
+                f["imu_vib_gyro_max"]  = _safe_float(float(np.max(gvm)))
+            aec = imu_s.get("accel_error_count")
+            gec = imu_s.get("gyro_error_count")
+            if aec is not None and len(aec) > 0:
+                f["imu_accel_err_total"] = _safe_int(int(aec[-1]))
+            if gec is not None and len(gec) > 0:
+                f["imu_gyro_err_total"]  = _safe_int(int(gec[-1]))
+    except Exception:
+        pass
+
+    # ── control_allocator_status ──────────────────────────────────────────────
+    try:
+        ca_s = data_map.get("control_allocator_status")
+        if ca_s:
+            ut  = ca_s.get("unallocated_thrust[0]")
+            utq = ca_s.get("unallocated_torque[0]")
+            mfm = ca_s.get("handled_motor_failure_mask")
+            if ut is not None and len(ut) > 0:
+                f["ctrl_unalloc_thrust_frac"] = _safe_float(float(np.mean(np.abs(ut) > 0.01)))
+            if utq is not None and len(utq) > 0:
+                f["ctrl_unalloc_torque_frac"] = _safe_float(float(np.mean(np.abs(utq) > 0.01)))
+            if mfm is not None and len(mfm) > 0:
+                f["ctrl_motor_failure_mask"] = _safe_int(int(mfm[-1]))
+    except Exception:
+        pass
+
+    # ── system_power ──────────────────────────────────────────────────────────
+    try:
+        sp = data_map.get("system_power")
+        if sp:
+            v5  = sp.get("voltage5v_v")
+            poc = sp.get("periph_5v_oc")
+            hoc = sp.get("hipower_5v_oc")
+            if v5 is not None and len(v5) > 0:
+                f["sys_5v_min"] = _safe_float(float(np.min(v5)))
+            oc = False
+            if poc is not None and len(poc) > 0:
+                oc = oc or bool(poc.any())
+            if hoc is not None and len(hoc) > 0:
+                oc = oc or bool(hoc.any())
+            if poc is not None or hoc is not None:
+                f["sys_5v_oc"] = int(oc)
+    except Exception:
+        pass
+
+    # ── rate_ctrl_status (integrator wind-up) ────────────────────────────────
+    try:
+        rcs = data_map.get("rate_ctrl_status")
+        if rcs:
+            for field, dst in [
+                ("rollspeed_integ",  "rate_integ_roll_max"),
+                ("pitchspeed_integ", "rate_integ_pitch_max"),
+                ("yawspeed_integ",   "rate_integ_yaw_max"),
+            ]:
+                v = rcs.get(field)
+                if v is not None and len(v) > 0:
+                    f[dst] = _safe_float(float(np.max(np.abs(v))))
+    except Exception:
+        pass
+
+    return f
+
+
 def _analyze(log_path: str, entry: dict) -> dict:
     """Parse + analyze one log. Returns result dict for DB insertion."""
     # Build null_features from _MIGRATION_COLUMNS so it stays in sync automatically
@@ -933,8 +1226,14 @@ def _analyze(log_path: str, entry: dict) -> dict:
         # Extract raw telemetry features
         try:
             result.update(_extract_features(flight))
-        except Exception as feat_exc:
+        except Exception:
             pass  # features are best-effort; don't fail the whole record
+
+        # Extract advanced features directly from ULog (topics not in Flight model)
+        try:
+            result.update(_extract_advanced_features(log_path))
+        except Exception:
+            pass
 
         # Run plugins
         plugins = load_plugins()

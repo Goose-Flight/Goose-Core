@@ -1020,6 +1020,84 @@ def _handle_signal(sig, frame):
     _shutdown = True
 
 
+def _run_checkpoint_analysis(conn: sqlite3.Connection, db_path: Path) -> None:
+    """Run quick inline analysis at every 100-log checkpoint."""
+    try:
+        import pandas as pd
+        import numpy as np
+
+        df = pd.read_sql("SELECT * FROM analyzed_logs WHERE ok=1", conn)
+        n = len(df)
+
+        # ── Crash summary ─────────────────────────────────────────────────────
+        crashed = df["crashed"].fillna(0).astype(int)
+        conf_hi  = (df["crash_confidence"] >= 0.80).sum()
+        conf_med = ((df["crash_confidence"] >= 0.60) & (df["crash_confidence"] < 0.80)).sum()
+        print(f"  Crashes : {crashed.sum()} total  "
+              f"(high-confidence: {conf_hi}  medium: {conf_med})")
+
+        # ── Score distribution ────────────────────────────────────────────────
+        scores = df["score"].dropna()
+        if len(scores):
+            print(f"  Scores  : mean={scores.mean():.0f}  "
+                  f"p25={np.percentile(scores,25):.0f}  "
+                  f"p75={np.percentile(scores,75):.0f}  "
+                  f"min={scores.min():.0f}  max={scores.max():.0f}")
+
+        # ── Tracking error stats (where available) ────────────────────────────
+        for col, label in [("rate_roll_err_rms", "Rate roll err RMS"),
+                           ("att_roll_err_rms",  "Att  roll err RMS"),
+                           ("vel_err_horiz_rms", "Vel  horiz err RMS"),
+                           ("pos_err_horiz_rms", "Pos  horiz err RMS")]:
+            if col in df.columns:
+                vals = df[col].dropna()
+                if len(vals) >= 10:
+                    print(f"  {label}: n={len(vals)}  "
+                          f"mean={vals.mean():.3f}  "
+                          f"p50={np.percentile(vals,50):.3f}  "
+                          f"p95={np.percentile(vals,95):.3f}")
+
+        # ── Signal coverage ───────────────────────────────────────────────────
+        sig_cols = ["has_attitude","has_motors","has_gps","has_battery",
+                    "has_vibration","has_ekf","has_rc"]
+        cov = {c: int(df[c].fillna(0).sum()) for c in sig_cols if c in df.columns}
+        cov_str = "  ".join(f"{c.replace('has_','')}: {v}/{n}" for c, v in cov.items())
+        print(f"  Signals : {cov_str}")
+
+        # ── Hardware breakdown ────────────────────────────────────────────────
+        if "hardware" in df.columns:
+            hw_counts = df["hardware"].value_counts().head(5)
+            hw_str = "  ".join(f"{hw}:{cnt}" for hw, cnt in hw_counts.items())
+            print(f"  Hardware: {hw_str}")
+
+        # ── Anomaly quick-scan (Isolation Forest if sklearn available) ────────
+        try:
+            from sklearn.ensemble import IsolationForest
+            feat_cols = [c for c in ["max_roll_deg","motor_imbalance","peak_g_last20pct",
+                                      "rate_roll_err_rms","batt_drop_v","motor_sat_frac"]
+                         if c in df.columns]
+            X = df[feat_cols].fillna(-1)
+            if len(X) >= 30 and len(feat_cols) >= 3:
+                iso = IsolationForest(n_estimators=100, contamination=0.05,
+                                      random_state=42, n_jobs=-1)
+                scores_iso = -iso.fit_predict(X)  # 1=anomaly, -1=normal -> flip to 1=normal
+                n_anomalies = int((scores_iso == 1).sum())
+                print(f"  Anomalies (IsoForest): {n_anomalies}/{n} flagged as unusual")
+        except Exception:
+            pass
+
+        # ── Percentile file update ────────────────────────────────────────────
+        try:
+            from scripts.ml_percentiles import compute
+            pct_path = db_path.parent / "fleet_percentiles.json"
+            compute(db_path, min_count=50, out_path=pct_path)
+        except Exception:
+            pass
+
+    except Exception as exc:
+        print(f"  [checkpoint error] {exc}")
+
+
 def stream_analyze(
     limit: int,
     resume: bool,
@@ -1127,6 +1205,15 @@ def stream_analyze(
 
             elapsed = time.time() - t0
             rate = processed / elapsed * 60
+
+            # ── Checkpoint analysis every 100 logs ────────────────────────────
+            total_in_db = conn.execute("SELECT COUNT(*) FROM analyzed_logs WHERE ok=1").fetchone()[0]
+            if total_in_db > 0 and total_in_db % 100 == 0:
+                print(f"\n{'='*60}")
+                print(f"  CHECKPOINT at {total_in_db} logs")
+                print(f"{'='*60}")
+                _run_checkpoint_analysis(conn, db_path)
+                print(f"{'='*60}\n")
 
             if result["ok"]:
                 conf = result.get("crash_confidence") or 0.0

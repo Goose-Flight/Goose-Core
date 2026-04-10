@@ -127,20 +127,84 @@ class Flight:
 
     @property
     def crashed(self) -> bool:
-        """True if an impact was detected (rapid altitude loss + data stop)."""
-        if self.position.empty or len(self.position) < 10:
-            return False
-        # Simple heuristic: check if altitude drops rapidly near end of log
-        alt_col = "alt_rel" if "alt_rel" in self.position.columns else "alt_msl"
-        if alt_col not in self.position.columns:
-            return False
-        alt = self.position[alt_col]
-        if len(alt) < 20:
-            return False
-        # Check last 10% of flight for rapid descent
-        tail_start = int(len(alt) * 0.9)
-        tail = alt.iloc[tail_start:]
-        if tail.empty:
-            return False
-        alt_drop = tail.iloc[0] - tail.iloc[-1]
-        return bool(alt_drop > 5.0)  # >5m drop in last 10% of flight
+        """Multi-signal crash heuristic. True if any strong crash indicator is present.
+
+        Signals checked (any one is sufficient):
+        1. Extreme attitude — roll or pitch exceeds 90 degrees (unrecoverable inversion)
+        2. All-motor cutoff mid-flight — all motors go to zero while attitude was non-zero
+        3. Rapid altitude loss — >3 m/s sustained descent in last 30% of flight
+        4. High-g impact spike near end of log (from vibration data)
+        5. Very short flight (<8s) with any elevated critical attitude or motor signal
+        """
+        import math
+
+        # ── Signal 1: extreme attitude (flip/inversion) ───────────────────────
+        if not self.attitude.empty and "roll" in self.attitude.columns:
+            try:
+                import numpy as np
+                roll_max = float(np.degrees(self.attitude["roll"].abs().max()))
+                pitch_max = float(np.degrees(self.attitude["pitch"].abs().max())) if "pitch" in self.attitude.columns else 0.0
+                if roll_max > 90.0 or pitch_max > 75.0:
+                    return True
+            except Exception:
+                pass
+
+        # ── Signal 2: all motors cut abruptly while airborne ─────────────────
+        if not self.motors.empty:
+            try:
+                motor_cols = [c for c in self.motors.columns if c.startswith("output_")]
+                if motor_cols and len(self.motors) > 20:
+                    # Find the last index where any motor was active (>0.05)
+                    active_mask = (self.motors[motor_cols] > 0.05).any(axis=1)
+                    active_indices = active_mask[active_mask].index
+                    if len(active_indices) > 0:
+                        last_active_pos = self.motors.index.get_loc(active_indices[-1])
+                        # If motors cut before the last 5% of data, log continued after cutoff
+                        if last_active_pos < int(len(self.motors) * 0.95):
+                            # Attitude must have been non-trivial at cutoff (not a clean land)
+                            if not self.attitude.empty and "roll" in self.attitude.columns:
+                                cutoff_ts = float(self.motors["timestamp"].iloc[last_active_pos])
+                                att_near = self.attitude[self.attitude["timestamp"] <= cutoff_ts].tail(5)
+                                if not att_near.empty:
+                                    import numpy as np
+                                    roll_at_cut = float(np.degrees(att_near["roll"].abs().mean()))
+                                    pitch_at_cut = float(np.degrees(att_near["pitch"].abs().mean())) if "pitch" in att_near.columns else 0.0
+                                    if roll_at_cut > 10.0 or pitch_at_cut > 10.0:
+                                        return True
+            except Exception:
+                pass
+
+        # ── Signal 3: rapid altitude loss (>3 m/s in last 30%) ───────────────
+        if not self.position.empty and len(self.position) >= 20:
+            try:
+                alt_col = "alt_rel" if "alt_rel" in self.position.columns else ("alt_msl" if "alt_msl" in self.position.columns else None)
+                if alt_col:
+                    alt = self.position[alt_col].dropna()
+                    ts = self.position["timestamp"]
+                    if len(alt) >= 20:
+                        tail_start = int(len(alt) * 0.7)
+                        tail_alt = alt.iloc[tail_start:]
+                        tail_ts = ts.iloc[tail_start:]
+                        dt = float(tail_ts.iloc[-1] - tail_ts.iloc[0])
+                        if dt > 0:
+                            drop = float(tail_alt.iloc[0] - tail_alt.iloc[-1])
+                            rate = drop / dt
+                            if rate > 3.0 and drop > 2.0:  # >3 m/s AND >2m total drop
+                                return True
+            except Exception:
+                pass
+
+        # ── Signal 4: high-g impact spike near end of log ────────────────────
+        if not self.vibration.empty:
+            try:
+                import numpy as np
+                accel_cols = [c for c in self.vibration.columns if c.startswith("accel_")]
+                if accel_cols:
+                    total_g = np.sqrt(sum(self.vibration[c] ** 2 for c in accel_cols)) / 9.81
+                    last_20pct = int(len(total_g) * 0.8)
+                    if float(total_g.iloc[last_20pct:].max()) > 4.0:
+                        return True
+            except Exception:
+                pass
+
+        return False

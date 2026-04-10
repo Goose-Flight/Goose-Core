@@ -651,7 +651,34 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+      cursor: default;
     }
+
+    .chart-section[draggable="true"] { cursor: grab; }
+    .chart-section[draggable="true"]:active { cursor: grabbing; }
+
+    .chart-section.drag-over {
+      outline: 2px dashed var(--green);
+      outline-offset: 4px;
+      border-radius: var(--radius);
+    }
+
+    .chart-section.dragging {
+      opacity: 0.4;
+    }
+
+    .drag-handle {
+      display: inline-flex;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 16px;
+      line-height: 1;
+      cursor: grab;
+      user-select: none;
+      padding: 0 2px;
+      transition: color 0.15s;
+    }
+    .drag-handle:hover { color: var(--green); }
 
     .chart-section-header {
       font-size: 16px;
@@ -2167,8 +2194,8 @@
       <div class="chart-section-header" style="margin-top:8px;">Flight Data</div>
 
       <!-- ALTITUDE & POSITION -->
-      <div class="chart-section" id="chart-section-altitude">
-        <div class="chart-section-header">Altitude &amp; Position</div>
+      <div class="chart-section" id="chart-section-altitude" draggable="true" data-panel="altitude">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Altitude &amp; Position</div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Altitude</span>
@@ -2178,8 +2205,8 @@
       </div>
 
       <!-- POWER SYSTEM -->
-      <div class="chart-section" id="chart-section-battery">
-        <div class="chart-section-header">Power System</div>
+      <div class="chart-section" id="chart-section-battery" draggable="true" data-panel="battery">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Power System</div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Battery</span>
@@ -2189,8 +2216,8 @@
       </div>
 
       <!-- MOTOR OUTPUTS -->
-      <div class="chart-section" id="chart-section-motors">
-        <div class="chart-section-header">Motor Outputs</div>
+      <div class="chart-section" id="chart-section-motors" draggable="true" data-panel="motors">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Motor Outputs</div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Motor Outputs</span>
@@ -2200,8 +2227,8 @@
       </div>
 
       <!-- FLIGHT DYNAMICS -->
-      <div class="chart-section" id="chart-section-attitude">
-        <div class="chart-section-header">Flight Dynamics</div>
+      <div class="chart-section" id="chart-section-attitude" draggable="true" data-panel="attitude">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Flight Dynamics</div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Attitude</span>
@@ -2211,8 +2238,8 @@
       </div>
 
       <!-- VIBRATION -->
-      <div class="chart-section" id="chart-section-vibration">
-        <div class="chart-section-header">Vibration</div>
+      <div class="chart-section" id="chart-section-vibration" draggable="true" data-panel="vibration">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Vibration</div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Vibration</span>
@@ -2222,8 +2249,8 @@
       </div>
 
       <!-- NAVIGATION -->
-      <div class="chart-section" id="chart-section-nav">
-        <div class="chart-section-header">Navigation</div>
+      <div class="chart-section" id="chart-section-nav" draggable="true" data-panel="nav">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Navigation</div>
         <div class="nav-charts-grid">
           <div class="chart-container">
             <div class="chart-header">
@@ -2543,6 +2570,94 @@
     });
   })();
 
+  /* ── Chart panel drag-and-drop reordering ───────────────────── */
+  (function() {
+    var STORAGE_KEY = 'goose-chart-order';
+    var PANEL_IDS = ['altitude','battery','motors','attitude','vibration','nav'];
+    var _dragging = null;
+
+    function getContainer() {
+      var el = document.querySelector('#chart-section-altitude');
+      return el ? el.parentNode : null;
+    }
+
+    function saveOrder() {
+      var container = getContainer();
+      if (!container) return;
+      var order = Array.from(container.querySelectorAll('.chart-section[data-panel]'))
+        .map(function(el) { return el.dataset.panel; });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+    }
+
+    function restoreOrder() {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+      var order;
+      try { order = JSON.parse(saved); } catch(e) { return; }
+      if (!Array.isArray(order)) return;
+      var container = getContainer();
+      if (!container) return;
+      order.forEach(function(panelId) {
+        var el = document.getElementById('chart-section-' + panelId);
+        if (el && el.parentNode === container) container.appendChild(el);
+      });
+    }
+
+    function initDragDrop() {
+      var panels = document.querySelectorAll('.chart-section[draggable="true"]');
+      panels.forEach(function(panel) {
+        panel.addEventListener('dragstart', function(e) {
+          _dragging = panel;
+          panel.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', panel.id);
+        });
+        panel.addEventListener('dragend', function() {
+          panel.classList.remove('dragging');
+          document.querySelectorAll('.chart-section.drag-over')
+            .forEach(function(el) { el.classList.remove('drag-over'); });
+          _dragging = null;
+          saveOrder();
+        });
+        panel.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (_dragging && _dragging !== panel) {
+            panel.classList.add('drag-over');
+          }
+        });
+        panel.addEventListener('dragleave', function() {
+          panel.classList.remove('drag-over');
+        });
+        panel.addEventListener('drop', function(e) {
+          e.preventDefault();
+          panel.classList.remove('drag-over');
+          if (!_dragging || _dragging === panel) return;
+          var container = panel.parentNode;
+          var panels = Array.from(container.querySelectorAll('.chart-section[data-panel]'));
+          var fromIdx = panels.indexOf(_dragging);
+          var toIdx   = panels.indexOf(panel);
+          if (fromIdx < toIdx) {
+            container.insertBefore(_dragging, panel.nextSibling);
+          } else {
+            container.insertBefore(_dragging, panel);
+          }
+        });
+      });
+
+      // Restore saved order on init (after DOM is ready)
+      restoreOrder();
+    }
+
+    // Wire up after results are rendered
+    window._initChartDragDrop = initDragDrop;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Also restore order immediately for cases where panels are already in DOM
+      restoreOrder();
+    });
+  })();
+
   /* ════════════════════════════════════════════════════════════
      Tab navigation
   ════════════════════════════════════════════════════════════ */
@@ -2700,6 +2815,9 @@
 
       document.getElementById('loading-view').style.display  = 'none';
       document.getElementById('results-view').style.display  = '';
+
+      // Init chart panel drag-drop (re-run after each analysis to re-attach handlers)
+      if (window._initChartDragDrop) window._initChartDragDrop();
 
       const crashed = !!(data.metadata && data.metadata.crashed);
       document.getElementById('tab-crash').style.display = crashed ? '' : 'none';

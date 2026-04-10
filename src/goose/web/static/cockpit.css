@@ -108,29 +108,57 @@
 
 .timeline-slider-wrap {
   position: relative;
-  height: 8px;
-  cursor: crosshair;
+  height: 28px;
+  cursor: col-resize;
+  padding: 9px 0;
 }
 
 .timeline-slider-track {
   position: absolute;
-  top: 3px;
+  top: 12px;
   left: 0;
   right: 0;
-  height: 2px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 1px;
+  height: 4px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+}
+
+/* Filled progress portion */
+.timeline-slider-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  opacity: 0.35;
+  width: 0%;
 }
 
 .timeline-slider-cursor {
   position: absolute;
-  top: 0;
-  width: 2px;
-  height: 8px;
+  top: 4px;
+  width: 3px;
+  height: 20px;
   background: var(--green);
-  border-radius: 1px;
+  border-radius: 2px;
   pointer-events: none;
-  transition: left 0.05s;
+  transition: left 0.04s;
+  box-shadow: 0 0 8px var(--green);
+  transform: translateX(-50%);
+}
+
+/* Diamond grab handle on the cursor */
+.timeline-slider-cursor::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 9px;
+  height: 9px;
+  background: var(--green);
+  border-radius: 2px;
   box-shadow: 0 0 6px var(--green);
 }
 
@@ -1026,14 +1054,14 @@
   border-top: 2px solid var(--green);
 }
 
-/* Secondary (all other available) tabs are dimmer */
+/* Secondary tabs (all available streams) — readable but clearly non-featured */
 .qa-chart-tab.secondary {
   font-weight: 500;
-  opacity: 0.55;
+  opacity: 0.80;
   font-size: 10px;
 }
-.qa-chart-tab.secondary:hover { opacity: 0.85; }
-.qa-chart-tab.secondary.active { opacity: 1; color: var(--text-sec); }
+.qa-chart-tab.secondary:hover { opacity: 1; color: var(--text); }
+.qa-chart-tab.secondary.active { opacity: 1; color: var(--green); }
 
 /* ══ Full Chart Grid (all streams) ══════════════════════ */
 .qa-all-charts-grid {

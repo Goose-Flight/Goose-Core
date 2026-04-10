@@ -100,6 +100,25 @@
       gap: 20px;
     }
 
+    /* ── Clean theme header overrides ───────────────────────── */
+    html.theme-clean header {
+      background: rgba(244,245,247,0.96);
+      border-bottom-color: rgba(0,0,0,0.1);
+    }
+    html.theme-clean .logo-text { color: #1A1C1E; }
+    html.theme-clean .nav-tab {
+      color: rgba(26,28,30,0.6);
+    }
+    html.theme-clean .nav-tab:hover {
+      color: #1A1C1E;
+      background: rgba(0,0,0,0.06);
+    }
+    html.theme-clean .nav-tab.active {
+      color: var(--green);
+      background: var(--green-glow);
+    }
+    html.theme-clean #theme-toggle-btn { color: rgba(26,28,30,0.7); }
+
     .logo-group {
       display: flex;
       align-items: center;
@@ -1969,6 +1988,15 @@
       <div class="qa-timeline-events" id="qa-timeline-events"></div>
     </div>
 
+    <!-- ── Jumbo overview chart ──────────────────────── -->
+    <div id="qa-overview-card" class="qa-chart-main" style="display:none;margin-bottom:12px;">
+      <div class="qa-chart-main-header" style="padding-bottom:4px;">
+        <span class="qa-chart-main-title">FLIGHT OVERVIEW — KEY SIGNALS (normalized 0–100)</span>
+        <span style="font-size:11px;color:var(--text-muted);">All signals normalized to their own range · hover to compare · spikes = anomalies</span>
+      </div>
+      <div id="qa-overview-chart-body"></div>
+    </div>
+
     <!-- ── Main chart (full width) ───────────────────── -->
     <div class="qa-chart-main" id="qa-chart-main" style="margin-bottom:12px;">
       <div class="qa-chart-tab-bar" id="qa-chart-tab-bar"></div>
@@ -2134,8 +2162,10 @@
           <span class="timeline-cursor-time" id="inline-cursor-time">--</span>
         </div>
         <div class="timeline-modes-bar" id="inline-modes-bar"></div>
-        <div class="timeline-slider-wrap">
-          <div class="timeline-slider-track"></div>
+        <div class="timeline-slider-wrap" id="inline-slider-wrap">
+          <div class="timeline-slider-track">
+            <div class="timeline-slider-fill" id="inline-slider-fill"></div>
+          </div>
           <div class="timeline-slider-cursor" id="inline-slider-cursor" style="left:0%"></div>
         </div>
         <div class="timeline-event-markers" id="inline-event-markers"></div>
@@ -3153,8 +3183,10 @@
     }
 
     // Wire up slider interaction
-    const sliderWrap = document.querySelector('#results-cockpit-timeline .timeline-slider-wrap');
+    const sliderWrap = document.getElementById('inline-slider-wrap') ||
+                       document.querySelector('#results-cockpit-timeline .timeline-slider-wrap');
     const cursorEl   = document.getElementById('inline-slider-cursor');
+    const fillEl     = document.getElementById('inline-slider-fill');
     const timeLabel  = document.getElementById('inline-cursor-time');
     if (sliderWrap && cursorEl) {
       let dragging = false;
@@ -3162,27 +3194,33 @@
         const rect = sliderWrap.getBoundingClientRect();
         const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         cursorEl.style.left = (pct * 100) + '%';
+        if (fillEl) fillEl.style.width = (pct * 100) + '%';
         const t = pct * duration;
         const m = Math.floor(t / 60);
         const s = Math.floor(t % 60);
         if (timeLabel) timeLabel.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
-        // Move map position marker
         updateMapPosition(t);
-        // Sync all inline charts and gauges to this timestamp
         syncInlineCharts(t);
         syncGauges(t);
       }
+      // Dragging: start on mousedown, follow on mousemove, LOCK on mouseup or mouseleave
       sliderWrap.addEventListener('mousedown', e => { dragging = true; updateSlider(e); });
       sliderWrap.addEventListener('click', updateSlider);
       document.addEventListener('mousemove', e => { if (dragging) updateSlider(e); });
-      document.addEventListener('mouseup', () => { dragging = false; });
+      document.addEventListener('mouseup', () => {
+        if (dragging) { dragging = false; /* position stays locked — no reset */ }
+      });
+      // If mouse leaves the window while dragging, lock position immediately
+      document.addEventListener('mouseleave', () => { dragging = false; });
+
       // Also make modes bar clickable
       if (modesBar) {
-        modesBar.style.cursor = 'crosshair';
+        modesBar.style.cursor = 'col-resize';
         modesBar.addEventListener('click', e => {
           const rect = modesBar.getBoundingClientRect();
           const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
           cursorEl.style.left = (pct * 100) + '%';
+          if (fillEl) fillEl.style.width = (pct * 100) + '%';
           const t = pct * duration;
           const m2 = Math.floor(t / 60);
           const s2 = Math.floor(t % 60);
@@ -6133,6 +6171,90 @@
     return 'var(--red)';
   }
 
+  // ── Jumbo overview chart — all key signals normalized 0-100 ──────
+  function _buildOverviewChart(container, ts, W) {
+    // Nearest-neighbor interpolation to a target timestamp array
+    function interpTo(srcTs, srcVals, dstTs) {
+      if (!srcTs || !srcVals || !srcTs.length) return dstTs.map(() => null);
+      const out = new Array(dstTs.length);
+      let j = 0;
+      for (let i = 0; i < dstTs.length; i++) {
+        while (j < srcTs.length - 1 && srcTs[j + 1] <= dstTs[i]) j++;
+        out[i] = srcVals[j];
+      }
+      return out;
+    }
+    // Normalize array to 0–100, return [normalized, lo, hi]
+    function norm(arr) {
+      if (!arr || !arr.length) return [null, null, null];
+      const valid = arr.filter(v => v != null && isFinite(v));
+      if (valid.length < 2) return [null, null, null];
+      const lo = Math.min(...valid), hi = Math.max(...valid);
+      if (hi - lo < 1e-6) return [arr.map(v => v == null ? null : 50), lo, hi];
+      return [arr.map(v => v == null ? null : (v - lo) / (hi - lo) * 100), lo, hi];
+    }
+    function fmt(v) { return v == null ? '?' : (Math.abs(v) >= 1000 ? v.toFixed(0) : v.toPrecision(3)); }
+
+    // Pick master timestamp array (densest/most complete)
+    const masterArr = [
+      ts.attitude && ts.attitude.timestamps,
+      ts.attitude_rate && ts.attitude_rate.timestamps,
+      ts.altitude && ts.altitude.timestamps,
+      ts.motors && ts.motors.timestamps,
+    ].filter(Boolean).reduce((best, cur) => (!best || cur.length > best.length) ? cur : best, null);
+    if (!masterArr || masterArr.length < 10) return null;
+
+    // Signal definitions: [label, srcTs, srcVals, color]
+    const motAvg = (() => {
+      if (!ts.motors) return null;
+      const mk = Object.keys(ts.motors).filter(k => k.startsWith('output_')).sort();
+      if (!mk.length) return null;
+      return ts.motors.timestamps.map((_, i) => {
+        const vs = mk.map(k => ts.motors[k][i]).filter(v => v != null);
+        return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
+      });
+    })();
+
+    const candidates = [
+      ['Alt',     ts.altitude?.timestamps,       ts.altitude?.alt_rel || ts.altitude?.alt_msl, '#6ECC72'],
+      ['Roll°',   ts.attitude?.timestamps,        ts.attitude?.roll,      '#E24B4A'],
+      ['Pitch°',  ts.attitude?.timestamps,        ts.attitude?.pitch,     '#A3C44A'],
+      ['Yaw°/s',  ts.attitude_rate?.timestamps,   ts.attitude_rate?.yaw,  '#5B9BD5'],
+      ['Batt V',  ts.battery?.timestamps,         ts.battery?.voltage,    '#EF9F27'],
+      ['Motors',  ts.motors?.timestamps,          motAvg,                  '#E8854A'],
+      ['VibZ',    ts.vibration?.timestamps,       ts.vibration?.accel_z,  '#D46A9F'],
+      ['GPSsat',  ts.gps?.timestamps,             ts.gps?.satellites,     '#5BC0BE'],
+      ['CPU%',    ts.cpu?.timestamps,             ts.cpu?.load,           '#A77BCA'],
+    ];
+
+    const data = [masterArr], series = [];
+    for (const [label, srcTs, srcVals, color] of candidates) {
+      if (!srcVals || !srcTs) continue;
+      const aligned = (srcTs === masterArr) ? srcVals : interpTo(srcTs, srcVals, masterArr);
+      const [n, lo, hi] = norm(aligned);
+      if (!n) continue;
+      data.push(n);
+      series.push({
+        label: `${label} [${fmt(lo)}–${fmt(hi)}]`,
+        stroke: color, width: 1.5, points: { show: false }, alpha: 0.9,
+      });
+    }
+    if (!series.length) return null;
+
+    const axStyle = { stroke: 'rgba(255,255,255,0.12)', grid: { stroke: 'rgba(255,255,255,0.04)', width: 1 }, ticks: { show: false }, font: '10px monospace' };
+    return new uPlot({
+      width: W, height: 220,
+      cursor: { sync: { key: 'qa-sync' }, show: true },
+      legend: { show: true },
+      scales: { x: { time: false }, y: { range: [0, 100] } },
+      axes: [
+        { ...axStyle, values: (u, vals) => vals.map(x => x == null ? '' : x >= 60 ? Math.floor(x / 60) + 'm' + String(Math.floor(x % 60)).padStart(2, '0') + 's' : x.toFixed(0) + 's') },
+        { ...axStyle, size: 44, values: (u, vals) => vals.map(x => x == null ? '' : Math.round(x) + '%') },
+      ],
+      series: [{ label: 'T' }, ...series],
+    }, data, container);
+  }
+
   // ── Unified chart builder ─────────────────────────────────────────
   // Returns a uPlot instance or null. mode: 'main' (full-width) or 'mini'
   function _buildQAChart(container, key, ts, opts) {
@@ -6503,22 +6625,47 @@
     const pathLine = new THREE.Line(pathGeom, new THREE.LineBasicMaterial({vertexColors:true, linewidth:2}));
     scene.add(pathLine);
 
-    // ── Setpoint path (orange dashed approximation) ───────────────
+    // ── Setpoint path (orange) ─────────────────────────────────────
     if (setpointPath && setpointPath.lat && setpointPath.lat.length >= 2) {
-      const slats = setpointPath.lat, slons = setpointPath.lon, salts = setpointPath.alt || [];
+      const slats = setpointPath.lat, slons = setpointPath.lon;
+      let salts = setpointPath.alt || [];
+      // If setpoint altitudes are all zero or missing, use actual path avg altitude
+      // (this happens when position_setpoint has no altitude — GPS waypoints only)
+      const avgAlt = pts.reduce((s,p)=>s+p.y, 0) / pts.length;
+      const altValid = salts.some(a => a != null && Math.abs(a) > 0.5);
+      if (!altValid) salts = slats.map(() => avgAlt);
+
+      // Check if this looks like sparse mission waypoints (< 1% of actual point count)
+      const isWaypoints = slats.length < Math.max(5, n * 0.01);
+
       const spts = slats.map((lat,i) => new THREE.Vector3(
         (slons[i] - avgLon) * metersPerLon,
-        (salts[i] || 0),
+        salts[i] != null ? salts[i] : avgAlt,
         -(lat - avgLat) * metersPerLat
       ));
-      // Dashed: sample every other segment
-      const dashPts = [];
-      for (let i = 0; i < spts.length - 1; i++) {
-        if (i % 2 === 0) { dashPts.push(spts[i], spts[i+1]); }
-      }
-      if (dashPts.length) {
-        const spGeom = new THREE.BufferGeometry().setFromPoints(dashPts);
-        scene.add(new THREE.LineSegments(spGeom, new THREE.LineBasicMaterial({color:0xEF9F27, opacity:0.7, transparent:true})));
+
+      if (isWaypoints) {
+        // Render as waypoint spheres + connecting line instead of path
+        const wpGeom = new THREE.SphereGeometry(maxDim * 0.025, 8, 6);
+        spts.forEach(p => {
+          const wp = new THREE.Mesh(wpGeom, new THREE.MeshStandardMaterial({color:0xEF9F27, opacity:0.85, transparent:true}));
+          wp.position.copy(p);
+          scene.add(wp);
+        });
+        if (spts.length >= 2) {
+          const wlGeom = new THREE.BufferGeometry().setFromPoints(spts);
+          scene.add(new THREE.Line(wlGeom, new THREE.LineBasicMaterial({color:0xEF9F27, opacity:0.4, transparent:true})));
+        }
+      } else {
+        // Full continuous setpoint path — dashed line
+        const dashPts = [];
+        for (let i = 0; i < spts.length - 1; i++) {
+          if (i % 2 === 0) { dashPts.push(spts[i], spts[i+1]); }
+        }
+        if (dashPts.length) {
+          const spGeom = new THREE.BufferGeometry().setFromPoints(dashPts);
+          scene.add(new THREE.LineSegments(spGeom, new THREE.LineBasicMaterial({color:0xEF9F27, opacity:0.7, transparent:true})));
+        }
       }
     }
 
@@ -6803,23 +6950,97 @@
       document.getElementById('qa-modes-used').innerHTML = modesUsed.map(m => `<span class="qa-mode-tag">${escHtml(m)}</span>`).join('');
     }
 
-    // ── Top Findings row ─────────────────────────────────────
-    const top3 = [...(data.findings||[])].sort((a,b)=>_sevSortKey(a)-_sevSortKey(b)).slice(0,3);
+    // ── Forensic Findings — full list with evidence ──────────
+    const allFindings = [...(data.findings||[])].sort((a,b)=>_sevSortKey(a)-_sevSortKey(b));
     const findingsRow = document.getElementById('qa-findings-row');
-    if (!top3.length) {
-      findingsRow.innerHTML = `<div class="qa-panel" style="flex:1;padding:14px 18px;"><div class="qa-panel-empty">No ${wording.findings.toLowerCase()} for this log</div></div>`;
+    if (!allFindings.length) {
+      findingsRow.innerHTML = `<div style="flex:1;padding:14px 18px;color:var(--text-muted);font-size:13px;">No ${wording.findings.toLowerCase()} for this log</div>`;
     } else {
-      findingsRow.innerHTML = top3.map((f,i) => {
-        const sev=f.severity||'info', desc=f.description||'';
-        const brief=desc.length>110?desc.slice(0,110)+'…':desc;
-        const tst=f.timestamp_start!=null?`<div class="qa-finding-ts">@ ${f.timestamp_start.toFixed(1)}s</div>`:'';
-        return `<div class="qa-finding-card sev-${escHtml(sev)}" onclick="this.classList.toggle('expanded')">
-          <div class="qa-finding-header"><span class="qa-sev-chip sev-${escHtml(sev)}" style="font-size:11px;padding:2px 7px;">${sev.toUpperCase()}</span><span class="qa-finding-plugin">${escHtml(f.plugin_name||'')}</span></div>
-          <div class="qa-finding-title">${escHtml(f.title||'Untitled')}</div>
-          <div class="qa-finding-desc">${escHtml(brief)}</div>${tst}
-          ${desc.length>110?`<div class="qa-finding-full-desc">${escHtml(desc)}</div>`:''}
-        </div>`;
-      }).join('');
+      const sevCounts = {critical:0,warning:0,info:0,pass:0};
+      allFindings.forEach(f => { sevCounts[f.severity||'info'] = (sevCounts[f.severity||'info']||0)+1; });
+      const sevColors = {critical:'var(--red)',warning:'var(--amber)',info:'var(--green)',pass:'var(--green-pass)'};
+
+      findingsRow.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:0;width:100%;';
+      findingsRow.innerHTML = `
+        <!-- Header bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px;border-bottom:1px solid var(--card-border);">
+          <span style="font-size:12px;font-weight:700;letter-spacing:0.05em;color:var(--text-sec);">FORENSIC ${wording.findings.toUpperCase()} &nbsp;<span style="color:var(--text-muted);font-weight:400;">${allFindings.length} total</span></span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${Object.entries(sevCounts).filter(([,n])=>n>0).map(([s,n])=>`<span style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid ${sevColors[s]||'var(--text-muted)'};color:${sevColors[s]||'var(--text-muted)'};font-weight:600;">${s.toUpperCase()} ${n}</span>`).join('')}
+          </div>
+        </div>
+        <!-- Finding cards -->
+        ${allFindings.map((f, idx) => {
+          const sev = f.severity||'info';
+          const sc = sevColors[sev]||'var(--text-muted)';
+          const score = f.score != null ? f.score : null;
+          const conf = f.confidence != null ? f.confidence : null;
+          const ts_start = f.timestamp_start != null ? f.timestamp_start : null;
+          const ts_end   = f.timestamp_end != null   ? f.timestamp_end   : null;
+          const plugin   = f.plugin_name || '';
+          const method   = f.method || '';
+          const evidence = f.evidence || {};
+          const evKeys   = Object.keys(evidence).filter(k => evidence[k] != null && evidence[k] !== '');
+          const desc     = f.description || '';
+          const recoms   = f.recommendations || [];
+          const signals  = f.signal_quality || null;
+
+          const scoreBar = score != null ? `
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+              <div style="flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;">
+                <div style="height:100%;width:${score}%;background:${sc};border-radius:2px;opacity:0.7;"></div>
+              </div>
+              <span style="font-size:11px;color:${sc};font-weight:700;min-width:32px;text-align:right;">Score ${score}</span>
+            </div>` : '';
+
+          const confBadge = conf != null ? `<span style="font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid rgba(255,255,255,0.1);color:var(--text-sec);">conf ${(conf*100).toFixed(0)}%</span>` : '';
+
+          const tsBadge = ts_start != null ? `<span style="font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid rgba(255,255,255,0.1);color:var(--text-sec);" onclick="event.stopPropagation();investigateFinding(${ts_start});" title="Jump to timestamp" style="cursor:pointer;">⏱ ${ts_start.toFixed(1)}s${ts_end!=null&&ts_end!==ts_start?' – '+ts_end.toFixed(1)+'s':''}</span>` : '';
+
+          const pluginBadge = plugin ? `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,0.04);color:var(--text-muted);">plugin: ${escHtml(plugin)}</span>` : '';
+          const methodBadge = method ? `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,0.04);color:var(--text-muted);">${escHtml(method)}</span>` : '';
+
+          const evTable = evKeys.length ? `
+            <div style="margin-top:8px;border:1px solid rgba(255,255,255,0.06);border-radius:6px;overflow:hidden;">
+              <div style="padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:0.05em;color:var(--text-muted);background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.05);">EVIDENCE</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0;">
+                ${evKeys.map(k => `
+                  <div style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,0.03);">
+                    <div style="font-size:10px;color:var(--text-muted);">${escHtml(k)}</div>
+                    <div style="font-size:12px;color:var(--text);font-weight:600;">${escHtml(String(evidence[k]))}</div>
+                  </div>`).join('')}
+              </div>
+            </div>` : '';
+
+          const recList = recoms.length ? `
+            <div style="margin-top:8px;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:4px;">RECOMMENDATIONS</div>
+              ${recoms.map(r => `<div style="font-size:12px;color:var(--text-sec);padding:2px 0 2px 12px;border-left:2px solid ${sc};">→ ${escHtml(r)}</div>`).join('')}
+            </div>` : '';
+
+          return `<div style="padding:12px 16px;border-bottom:1px solid var(--card-border);cursor:pointer;transition:background 0.15s;"
+                       onmouseenter="this.style.background='rgba(255,255,255,0.025)'"
+                       onmouseleave="this.style.background=''"
+                       onclick="this.querySelector('.qa-finding-detail').style.display=this.querySelector('.qa-finding-detail').style.display==='none'?'block':'none'">
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <span style="font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;border:1px solid ${sc};color:${sc};white-space:nowrap;flex-shrink:0;">${sev.toUpperCase()}</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:var(--text);">${escHtml(f.title||'Untitled')}</div>
+                <div style="font-size:12px;color:var(--text-sec);margin-top:3px;line-height:1.5;">${escHtml(desc)}</div>
+                ${scoreBar}
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+                  ${confBadge}${tsBadge}${pluginBadge}${methodBadge}
+                </div>
+              </div>
+              <span style="font-size:12px;color:var(--text-muted);flex-shrink:0;margin-top:2px;">▼</span>
+            </div>
+            <div class="qa-finding-detail" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.06);">
+              ${evTable}${recList}
+              ${ts_start!=null?`<button onclick="event.stopPropagation();investigateFinding(${ts_start});" style="margin-top:8px;font-size:11px;padding:4px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--card-border);border-radius:5px;color:var(--green);cursor:pointer;font-family:var(--font);">⏱ Jump to ${ts_start.toFixed(1)}s on timeline</button>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      `;
     }
 
     // ── Timeline ─────────────────────────────────────────────
@@ -6828,6 +7049,23 @@
     // ── Destroy old charts ────────────────────────────────────
     _qaCockpitCharts.forEach(c=>{ try{c.destroy();}catch(_){} });
     _qaCockpitCharts = [];
+
+    // ── Overview / jumbo chart ────────────────────────────────
+    const overviewCard = document.getElementById('qa-overview-card');
+    const overviewBody = document.getElementById('qa-overview-chart-body');
+    if (overviewCard && overviewBody) {
+      overviewBody.innerHTML = '';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const W = overviewBody.parentElement.clientWidth || Math.max(window.innerWidth - 60, 400);
+        const chart = _buildOverviewChart(overviewBody, ts, W - 8);
+        if (chart) {
+          _qaCockpitCharts.push(chart);
+          overviewCard.style.display = '';
+        } else {
+          overviewCard.style.display = 'none';
+        }
+      }));
+    }
 
     // Determine available chart keys
     const ALL_KEYS_ORDERED = Object.keys(QA_ALL_CHART_META);

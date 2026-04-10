@@ -1,5 +1,7 @@
 """Goose embedded web UI — FastAPI application factory."""
 
+from __future__ import annotations
+
 import logging
 import math
 import os
@@ -7,9 +9,11 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+import goose as _goose_pkg
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +68,97 @@ def _compute_overall_score(findings: list[Any]) -> int:
     return compute_overall_score(findings)
 
 
-def create_app():
+# ── Security middleware ────────────────────────────────────────────────────────
+
+_SECURITY_HEADERS = {
+    # Block clickjacking
+    "X-Frame-Options": "DENY",
+    # Prevent MIME sniffing of served files
+    "X-Content-Type-Options": "nosniff",
+    # Block cross-site scripting in legacy browsers
+    "X-XSS-Protection": "1; mode=block",
+    # Referrer policy — don't leak URLs to external sites
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    # Content Security Policy:
+    #   - Scripts: same origin only (+ inline needed for SPA)
+    #   - Styles: same origin only (+ inline needed for embedded CSS)
+    #   - No framing
+    #   - Fonts/images: same origin
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "frame-ancestors 'none'; "
+        "object-src 'none';"
+    ),
+}
+
+_CASE_ID_PATTERN = __import__("re").compile(r"^CASE-\d{4}-\d{6}$")
+
+
+def _validate_case_id(case_id: str) -> str:
+    """Raise 400 if case_id doesn't match expected format, else return it."""
+    if not _CASE_ID_PATTERN.match(case_id):
+        raise HTTPException(status_code=400, detail="Invalid case identifier format")
+    return case_id
+
+
+def create_app() -> FastAPI:
     """Create and return the FastAPI application."""
+    from goose.web.config import settings
+
     app = FastAPI(
         title="Goose Flight Analyzer",
         description="Drone flight log validation and crash analysis",
-        version="1.0.0",
+        version=_goose_pkg.__version__,
+        # Never expose internal Python errors in OpenAPI error responses
+        debug=settings.debug,
+    )
+
+    # ------------------------------------------------------------------
+    # Security headers — added to every response
+    # ------------------------------------------------------------------
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
+        response = await call_next(request)
+        for header, value in _SECURITY_HEADERS.items():
+            response.headers[header] = value
+        return response
+
+    # ------------------------------------------------------------------
+    # Bearer token auth — only enforced when GOOSE_API_TOKEN is set
+    # ------------------------------------------------------------------
+    async def verify_token(request: Request) -> None:
+        if not settings.auth_enabled:
+            return
+        # Static files and the SPA root are always public
+        path = request.url.path
+        if not path.startswith("/api/"):
+            return
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Authentication required")
+        token = auth_header.removeprefix("Bearer ").strip()
+        if token != settings.api_token:
+            raise HTTPException(status_code=403, detail="Invalid token")
+
+    # ------------------------------------------------------------------
+    # CORS — explicit localhost-only policy (no allow_origins=["*"])
+    # ------------------------------------------------------------------
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            f"http://127.0.0.1:{settings.port}",
+            f"http://localhost:{settings.port}",
+            "http://127.0.0.1:8000",
+            "http://localhost:8000",
+        ],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "DELETE", "PATCH"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
     # ------------------------------------------------------------------
@@ -82,19 +171,26 @@ def create_app():
     # Case-oriented routes (Sprint 2+)
     # ------------------------------------------------------------------
     from goose.web.cases_api import router as cases_router
-    app.include_router(cases_router)
+    app.include_router(cases_router, dependencies=[Depends(verify_token)])
 
-    # Validation harness routes (Advanced Forensic Validation Sprint)
+    # Validation harness routes
     from goose.web.routes.validation import router as validation_router
-    app.include_router(validation_router)
+    app.include_router(validation_router, dependencies=[Depends(verify_token)])
 
-    # v11 Strategy Sprint — profile + feature-gate routes (app-level, not under /api/cases)
+    # Profile + feature-gate routes
     from goose.web.routes.profiles import router as profiles_router
-    app.include_router(profiles_router)
+    app.include_router(profiles_router, dependencies=[Depends(verify_token)])
 
-    # v11 Strategy Sprint — Quick Analysis (session-only triage flow)
+    # Quick Analysis (session-only triage flow)
     from goose.web.routes.quick_analysis import router as quick_analysis_router
-    app.include_router(quick_analysis_router)
+    app.include_router(quick_analysis_router, dependencies=[Depends(verify_token)])
+
+    # ------------------------------------------------------------------
+    # Settings endpoint — exposes current runtime config (no secrets)
+    # ------------------------------------------------------------------
+    @app.get("/api/settings", dependencies=[Depends(verify_token)])
+    async def get_settings() -> JSONResponse:
+        return JSONResponse({"ok": True, "settings": settings.as_dict()})
 
     # ------------------------------------------------------------------
     # Routes
@@ -112,29 +208,18 @@ def create_app():
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
 
-    @app.get("/api/runs/recent")
+    @app.get("/api/runs/recent", dependencies=[Depends(verify_token)])
     async def recent_runs(limit: int = 20) -> JSONResponse:
-        """Return the most recent analysis runs across all cases.
-
-        Supports the 'Open Recent' UX entry path. Returns case_id, run_id,
-        case_name, profile, severity summary, and timestamp — enough context
-        for the user to select a run to reopen without loading full case data.
-
-        Args:
-            limit: Maximum number of runs to return (default 20, capped at 100).
-        """
-        from goose.forensics import CaseService
-        import json as _json
+        """Return the most recent analysis runs across all cases."""
+        from goose.web.cases_api import get_service
 
         limit = max(1, min(limit, 100))
 
         try:
-            from goose.web.cases_api import get_service
             svc = get_service()
             all_runs: list[dict] = []
 
             for case in svc.list_cases():
-                # list_cases() returns Case objects directly
                 case_id = case.case_id
                 if not case_id:
                     continue
@@ -162,21 +247,18 @@ def create_app():
                         "parser_name": run.parser_name,
                     })
 
-            # Sort by most recent first
             all_runs.sort(key=lambda r: r.get("started_at", ""), reverse=True)
-            all_runs = all_runs[:limit]
-
             return JSONResponse({
                 "ok": True,
-                "runs": all_runs,
-                "count": len(all_runs),
+                "runs": all_runs[:limit],
+                "count": len(all_runs[:limit]),
                 "limit": limit,
             })
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed to list recent runs")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+            raise HTTPException(status_code=500, detail="Internal server error")
 
-    @app.get("/api/plugins")
+    @app.get("/api/plugins", dependencies=[Depends(verify_token)])
     async def list_plugins() -> JSONResponse:
         """Return metadata for all discovered plugins."""
         try:
@@ -194,35 +276,29 @@ def create_app():
                 ],
                 "count": len(plugins),
             })
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed to list plugins")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+            raise HTTPException(status_code=500, detail="Internal server error")
 
     @app.post("/api/analyze")
     async def analyze(file: UploadFile = File(...)) -> JSONResponse:
         """
         DEPRECATED — This endpoint is removed.
 
-        It emitted thin findings without evidence references, audit trail, or
-        tuning provenance and bypassed the case system entirely.
-
         Use instead:
           POST /api/quick-analysis          — session-only triage (no case created)
           POST /api/cases                   — create a persistent investigation case
           POST /api/cases/{id}/analyze      — run full forensic analysis on a case
         """
-        # Consume the upload to avoid client-side connection errors
         await file.read()
         return JSONResponse(
             status_code=410,
             content={
                 "error": "gone",
                 "message": (
-                    "POST /api/analyze is removed. It produced forensic results "
-                    "without evidence references, audit trail, or tuning provenance. "
-                    "Use POST /api/quick-analysis for session-only triage, or "
-                    "POST /api/cases + POST /api/cases/{id}/analyze for a persistent "
-                    "investigation case with full chain-of-custody."
+                    "POST /api/analyze is removed. Use POST /api/quick-analysis for "
+                    "session-only triage, or POST /api/cases + POST /api/cases/{id}/analyze "
+                    "for a persistent investigation case with full chain-of-custody."
                 ),
                 "alternatives": {
                     "quick_triage": "POST /api/quick-analysis",

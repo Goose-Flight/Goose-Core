@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from typing import Any
 
+import goose
 from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightMetadata
 from goose.core.scoring import compute_overall_score
@@ -53,7 +54,7 @@ def generate(
         start_time_str = meta.start_time_utc.isoformat()
 
     return {
-        "goose_version": "1.0.0",
+        "goose_version": goose.__version__,
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "flight": {
             "source_file": meta.source_file,

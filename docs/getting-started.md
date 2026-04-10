@@ -78,7 +78,7 @@ Goose parses the log, runs every applicable analysis plugin, and prints a
 crash report:
 
 ```
-🪿 Goose v1.0.0 — Crash Analysis
+🪿 Goose v1.3.4 — Crash Analysis
 
   File: flight.ulg
   Aircraft: PX4 1.14.0 · Multirotor · Pixhawk 6C

@@ -56,7 +56,7 @@ Check server health and version.
 ```json
 {
   "status": "ok",
-  "version": "1.0.0"
+  "version": "1.3.4"
 }
 ```
 
@@ -69,7 +69,7 @@ curl http://127.0.0.1:8000/api/health
 ```python
 import requests
 resp = requests.get("http://127.0.0.1:8000/api/health")
-print(resp.json())  # {'status': 'ok', 'version': '1.0.0'}
+print(resp.json())  # {'status': 'ok', 'version': '1.3.4'}
 ```
 
 ---

@@ -6184,6 +6184,176 @@
     return _buildQAChart(container, key, ts, {mini: true, width: (container.clientWidth > 20 ? container.clientWidth : 340)});
   }
 
+  // ── Three.js 3D flight path viewer ────────────────────────────────
+  let _3dRenderer = null; // keep ref for disposal on re-render
+
+  function _render3DFlightPath(container, flightPath, setpointPath) {
+    // Dispose previous WebGL context if any
+    if (_3dRenderer) { try { _3dRenderer.dispose(); } catch(_) {} _3dRenderer = null; }
+    container.innerHTML = '';
+
+    if (!window.THREE) { container.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:13px;">Three.js not loaded</div>'; return; }
+    const THREE = window.THREE;
+
+    const W = container.clientWidth || 700;
+    const H = container.clientHeight || 480;
+
+    // ── Project lat/lon → XZ plane (meters, centered) ─────────────
+    const lats = flightPath.lat, lons = flightPath.lon, alts = flightPath.alt || [];
+    const n = lats.length;
+    const avgLat = lats.reduce((a,b)=>a+b,0)/n;
+    const avgLon = lons.reduce((a,b)=>a+b,0)/n;
+    const metersPerLat = 111320;
+    const metersPerLon = 111320 * Math.cos(avgLat * Math.PI/180);
+
+    const pts = lats.map((lat,i) => new THREE.Vector3(
+      (lons[i] - avgLon) * metersPerLon,
+      (alts[i] || 0),
+      -(lat - avgLat) * metersPerLat
+    ));
+
+    // Bounding box for camera distance
+    const bbox = new THREE.Box3().setFromPoints(pts);
+    const center = bbox.getCenter(new THREE.Vector3());
+    const size = bbox.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 1);
+
+    // ── Scene ─────────────────────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x080b0e);
+
+    // Ambient + directional light
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dLight.position.set(maxDim, maxDim*2, maxDim);
+    scene.add(dLight);
+
+    // ── Ground plane grid ─────────────────────────────────────────
+    const groundY = Math.min(...alts.filter(a=>a!=null), 0) - 2;
+    const gridSize = Math.max(size.x, size.z) * 1.5;
+    const grid = new THREE.GridHelper(gridSize, 20, 0x1a2a1a, 0x0d1a0d);
+    grid.position.set(center.x, groundY, center.z);
+    scene.add(grid);
+
+    // ── Actual flight path (gradient green → red) ─────────────────
+    const pathGeom = new THREE.BufferGeometry().setFromPoints(pts);
+    // Color each vertex: green at start, red at end
+    const colors = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      colors[i*3]   = t * 0.9 + 0.05;        // R: 0→0.95
+      colors[i*3+1] = (1-t) * 0.75 + 0.05;   // G: 0.8→0.05
+      colors[i*3+2] = 0.1;                     // B: low
+    }
+    pathGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const pathLine = new THREE.Line(pathGeom, new THREE.LineBasicMaterial({vertexColors:true, linewidth:2}));
+    scene.add(pathLine);
+
+    // ── Setpoint path (orange dashed approximation) ───────────────
+    if (setpointPath && setpointPath.lat && setpointPath.lat.length >= 2) {
+      const slats = setpointPath.lat, slons = setpointPath.lon, salts = setpointPath.alt || [];
+      const spts = slats.map((lat,i) => new THREE.Vector3(
+        (slons[i] - avgLon) * metersPerLon,
+        (salts[i] || 0),
+        -(lat - avgLat) * metersPerLat
+      ));
+      // Dashed: sample every other segment
+      const dashPts = [];
+      for (let i = 0; i < spts.length - 1; i++) {
+        if (i % 2 === 0) { dashPts.push(spts[i], spts[i+1]); }
+      }
+      if (dashPts.length) {
+        const spGeom = new THREE.BufferGeometry().setFromPoints(dashPts);
+        scene.add(new THREE.LineSegments(spGeom, new THREE.LineBasicMaterial({color:0xEF9F27, opacity:0.7, transparent:true})));
+      }
+    }
+
+    // ── Start/end markers (spheres) ───────────────────────────────
+    const sphereGeom = new THREE.SphereGeometry(maxDim * 0.015, 12, 8);
+    const startMesh = new THREE.Mesh(sphereGeom, new THREE.MeshStandardMaterial({color:0x6ECC72}));
+    startMesh.position.copy(pts[0]);
+    scene.add(startMesh);
+    const endMesh = new THREE.Mesh(sphereGeom, new THREE.MeshStandardMaterial({color:0xE24B4A}));
+    endMesh.position.copy(pts[n-1]);
+    scene.add(endMesh);
+
+    // ── Altitude shadow line (path projected to ground) ───────────
+    const shadowPts = pts.map(p => new THREE.Vector3(p.x, groundY + 0.1, p.z));
+    const shadowGeom = new THREE.BufferGeometry().setFromPoints(shadowPts);
+    scene.add(new THREE.Line(shadowGeom, new THREE.LineBasicMaterial({color:0x223322, opacity:0.5, transparent:true})));
+
+    // ── Camera ────────────────────────────────────────────────────
+    const camera = new THREE.PerspectiveCamera(50, W/H, 0.1, maxDim * 50);
+    const camDist = maxDim * 1.8;
+    camera.position.set(center.x + camDist*0.7, center.y + camDist*0.6, center.z + camDist*0.7);
+    camera.lookAt(center);
+
+    // ── Renderer ─────────────────────────────────────────────────
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(W, H);
+    renderer.domElement.style.cssText = 'display:block;width:100%;height:100%;';
+    container.appendChild(renderer.domElement);
+    _3dRenderer = renderer;
+
+    // ── Inline orbit controls ─────────────────────────────────────
+    const spherical = {theta: Math.PI*0.45, phi: Math.PI*0.35, radius: camDist};
+    const target = {x: center.x, y: center.y, z: center.z};
+    let isDown=false, isRight=false, lastX=0, lastY=0;
+
+    function orbitUpdate() {
+      const sinP=Math.sin(spherical.phi), cosP=Math.cos(spherical.phi);
+      const sinT=Math.sin(spherical.theta), cosT=Math.cos(spherical.theta);
+      camera.position.set(
+        target.x + spherical.radius * sinP * sinT,
+        target.y + spherical.radius * cosP,
+        target.z + spherical.radius * sinP * cosT
+      );
+      camera.lookAt(target.x, target.y, target.z);
+    }
+
+    const el = renderer.domElement;
+    el.addEventListener('mousedown', e => { isDown=true; lastX=e.clientX; lastY=e.clientY; isRight=e.button===2; e.preventDefault(); });
+    el.addEventListener('contextmenu', e => e.preventDefault());
+    window.addEventListener('mouseup', () => isDown=false);
+    window.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      const dx=(e.clientX-lastX)*0.005, dy=(e.clientY-lastY)*0.005;
+      if (isRight) {
+        const side = new THREE.Vector3(-Math.cos(spherical.theta), 0, Math.sin(spherical.theta)).multiplyScalar(dx*spherical.radius*0.5);
+        target.x += side.x; target.z += side.z; target.y -= dy*spherical.radius*0.5;
+      } else {
+        spherical.theta -= dx;
+        spherical.phi = Math.max(0.05, Math.min(Math.PI*0.9, spherical.phi + dy));
+      }
+      lastX=e.clientX; lastY=e.clientY;
+      orbitUpdate();
+    });
+    el.addEventListener('wheel', e => {
+      spherical.radius = Math.max(maxDim*0.2, spherical.radius * (1 + e.deltaY*0.001));
+      orbitUpdate(); e.preventDefault();
+    }, {passive:false});
+
+    // ── Legend overlay ────────────────────────────────────────────
+    const legend = document.createElement('div');
+    legend.style.cssText = 'position:absolute;bottom:10px;left:12px;font-size:11px;font-family:monospace;pointer-events:none;line-height:1.6;';
+    legend.innerHTML = '<span style="color:#6ECC72">● Start</span>  <span style="color:#E24B4A">● End</span>' + (setpointPath&&setpointPath.lat&&setpointPath.lat.length>=2 ? '  <span style="color:#EF9F27">- - Commanded</span>' : '');
+    container.style.position = 'relative';
+    container.appendChild(legend);
+
+    // ── Render loop ───────────────────────────────────────────────
+    let animId = null;
+    function animate() { animId = requestAnimationFrame(animate); renderer.render(scene, camera); }
+    animate();
+
+    // Stop animation when tab switches away
+    const observer = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting) { cancelAnimationFrame(animId); animId=null; }
+      else if (!animId) animate();
+    }, {threshold: 0.01});
+    observer.observe(container);
+  }
+
   function _drawFlightPath(canvas, flightPath, setpointPath) {
     if (!flightPath || !flightPath.lat || flightPath.lat.length < 3) return false;
     const lats = flightPath.lat;
@@ -6633,18 +6803,17 @@
         </tbody></table>`;
     }
 
-    // Tab: Flight Path
-    const pathPane = makePane('qa-pane-path', 'Flight Path', null);
+    // Tab: Flight Path (3D viewer)
+    const pathPane = makePane('qa-pane-path', 'Flight Path 3D', null);
     if (fp && fp.lat && fp.lat.length >= 3) {
-      const canvas = document.createElement('canvas');
-      canvas.className = 'qa-flight-canvas-lg';
-      canvas.width = 700; canvas.height = 440;
+      const viewerWrap = document.createElement('div');
+      viewerWrap.style.cssText = 'position:relative;width:100%;height:480px;border-radius:6px;overflow:hidden;background:#080b0e;';
       const info = document.createElement('div');
       info.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:6px;';
-      info.textContent = `${fp.point_count} GPS points` + (spPath ? ' · orange dashed = autopilot commanded path' : ' · no setpoint path in this log');
-      pathPane.appendChild(canvas);
+      info.textContent = `${fp.point_count} GPS points · drag to rotate · scroll to zoom · right-drag to pan` + (spPath ? ' · orange = commanded path' : '');
+      pathPane.appendChild(viewerWrap);
       pathPane.appendChild(info);
-      requestAnimationFrame(()=>_drawFlightPath(canvas, fp, spPath));
+      requestAnimationFrame(()=>_render3DFlightPath(viewerWrap, fp, spPath));
     } else {
       pathPane.innerHTML = '<div class="qa-panel-empty">No GPS position data in this log</div>';
     }
@@ -6738,6 +6907,7 @@
   switchTab('welcome');
 </script>
 <script src="/static/uPlot.iife.min.js"></script>
+<script src="/static/three.min.js"></script>
 <script src="/static/cockpit.js"></script>
 </body>
 </html>

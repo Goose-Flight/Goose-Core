@@ -110,21 +110,37 @@ def _parse_entry(row: list) -> dict:
 
 
 def list_public_logs(limit: int = 50) -> list[dict]:
-    """Return up to *limit* public log entries from logs.px4.io."""
-    url = _build_browse_url(0, min(limit, 100))
-    try:
-        data = _fetch_json(url)
-    except urllib.error.URLError as exc:
-        print(f"  [warn] Could not reach logs.px4.io: {exc}", file=sys.stderr)
-        return []
+    """Return up to *limit* public log entries from logs.px4.io, paginating as needed."""
+    PAGE_SIZE = 100
+    entries: list[dict] = []
+    total_announced = None
+    offset = 0
 
-    rows = data.get("data", [])
-    total = data.get("recordsTotal", 0)
-    print(f"  Database has {total:,} total public logs.")
+    while len(entries) < limit:
+        fetch = min(PAGE_SIZE, limit - len(entries))
+        url = _build_browse_url(offset, fetch)
+        try:
+            data = _fetch_json(url)
+        except urllib.error.URLError as exc:
+            print(f"  [warn] Could not reach logs.px4.io: {exc}", file=sys.stderr)
+            break
 
-    entries = [_parse_entry(row) for row in rows]
-    # Filter out entries with no log_id
-    entries = [e for e in entries if e["log_id"]]
+        if total_announced is None:
+            total_announced = data.get("recordsTotal", 0)
+            print(f"  Database has {total_announced:,} total public logs.")
+
+        rows = data.get("data", [])
+        if not rows:
+            break
+
+        batch = [_parse_entry(row) for row in rows]
+        batch = [e for e in batch if e["log_id"]]
+        entries.extend(batch)
+        offset += len(rows)
+
+        if offset >= (total_announced or 0):
+            break
+
     return entries[:limit]
 
 
@@ -224,9 +240,9 @@ def download_logs(
         crashes_dir.mkdir(parents=True, exist_ok=True)
         good_dir.mkdir(parents=True, exist_ok=True)
 
-    fetch_count = limit * 3 if crashes_only else limit
+    fetch_count = limit * 4 if crashes_only else limit
     print(f"Fetching log listing from {LOGS_BASE} ...")
-    entries = list_public_logs(limit=min(fetch_count, 100))
+    entries = list_public_logs(limit=fetch_count)
 
     if not entries:
         print("No logs returned.  Check your internet connection.")

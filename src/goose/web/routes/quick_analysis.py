@@ -144,6 +144,7 @@ async def quick_analysis(
         from goose.core.scoring import compute_overall_score
         from goose.forensics.lifting import generate_hypotheses, build_signal_quality
         from goose.forensics.timeline import build_full_timeline
+        from goose.web.timeseries_utils import extract_timeseries, extract_flight_path
 
         overall_score = compute_overall_score(thin_findings)
         hypotheses = generate_hypotheses(
@@ -151,6 +152,8 @@ async def quick_analysis(
         )
         signal_quality = build_signal_quality(parse_result.diagnostics)
         timeline_events = build_full_timeline(flight, forensic_findings, qa_id)
+        timeseries = extract_timeseries(flight)
+        flight_path = extract_flight_path(flight)
 
         meta = flight.metadata
         findings_by_severity: dict[str, int] = {"critical": 0, "warning": 0, "info": 0, "pass": 0}
@@ -190,6 +193,8 @@ async def quick_analysis(
             "hypotheses": [h.to_dict() for h in hypotheses],
             "signal_quality": [sq.to_dict() for sq in signal_quality],
             "timeline": [e.to_dict() for e in timeline_events],
+            "timeseries": timeseries,
+            "flight_path": flight_path,
             "parse_diagnostics": parse_result.diagnostics.to_dict(),
         })
     except HTTPException:

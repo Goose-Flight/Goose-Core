@@ -15,151 +15,21 @@ logger = logging.getLogger(__name__)
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
+# Timeseries extraction shared with Quick Analysis cockpit
+from goose.web.timeseries_utils import extract_timeseries as _extract_timeseries  # noqa: E402
 
+# Keep private aliases for any call sites inside this module
 def _downsample(arr: list, max_points: int = 2000) -> list:
-    """Downsample a list to max_points using stride-based selection."""
-    if len(arr) <= max_points:
-        return arr
-    stride = len(arr) / max_points
-    return [arr[int(i * stride)] for i in range(max_points)]
-
+    from goose.web.timeseries_utils import downsample
+    return downsample(arr, max_points)
 
 def _safe_val(v: Any) -> Any:
-    """Convert numpy/pandas values to JSON-safe Python types."""
-    if v is None:
-        return None
-    try:
-        import numpy as np
-        if isinstance(v, (np.integer,)):
-            return int(v)
-        if isinstance(v, (np.floating,)):
-            if np.isnan(v) or np.isinf(v):
-                return None
-            return float(v)
-        if isinstance(v, (np.bool_,)):
-            return bool(v)
-    except (ImportError, TypeError, ValueError):
-        pass
-    if isinstance(v, float):
-        if math.isnan(v) or math.isinf(v):
-            return None
-    return v
-
+    from goose.web.timeseries_utils import safe_val
+    return safe_val(v)
 
 def _df_to_series(df: Any, columns: list[str] | None = None, max_points: int = 2000) -> dict[str, list] | None:
-    """Convert a pandas DataFrame to JSON-ready dict of downsampled arrays.
-
-    Returns {"timestamps": [...], "col1": [...], "col2": [...]} or None if empty.
-    """
-    if df is None or df.empty:
-        return None
-
-    if columns is None:
-        columns = [c for c in df.columns if c != "timestamp"]
-
-    if "timestamp" not in df.columns or not columns:
-        return None
-
-    result: dict[str, list] = {}
-    ts = df["timestamp"].tolist()
-    ts_ds = _downsample(ts, max_points)
-    result["timestamps"] = [_safe_val(t) for t in ts_ds]
-
-    stride = len(ts) / len(ts_ds) if len(ts) > max_points else 1
-    indices = [int(i * stride) for i in range(len(ts_ds))] if stride > 1 else list(range(len(ts)))
-
-    for col in columns:
-        if col in df.columns:
-            vals = df[col].tolist()
-            result[col] = [_safe_val(vals[i]) for i in indices]
-
-    return result
-
-
-def _extract_timeseries(flight: Any) -> dict[str, Any]:
-    """Extract downsampled time-series data from a Flight for frontend charting."""
-    ts: dict[str, Any] = {}
-
-    # Altitude
-    pos = _df_to_series(flight.position, ["alt_rel", "alt_msl", "lat", "lon"])
-    if pos:
-        ts["altitude"] = pos
-
-    # Battery
-    bat = _df_to_series(flight.battery, ["voltage", "current", "remaining_pct"])
-    if bat:
-        ts["battery"] = bat
-
-    # Motors
-    if not flight.motors.empty:
-        motor_cols = [c for c in flight.motors.columns if c.startswith("output_")]
-        mot = _df_to_series(flight.motors, motor_cols)
-        if mot:
-            ts["motors"] = mot
-
-    # Attitude (convert radians to degrees for display)
-    if not flight.attitude.empty:
-        import numpy as np
-        att_df = flight.attitude.copy()
-        for col in ["roll", "pitch", "yaw"]:
-            if col in att_df.columns:
-                att_df[col] = np.degrees(att_df[col])
-        att = _df_to_series(att_df, ["roll", "pitch", "yaw"])
-        if att:
-            ts["attitude"] = att
-
-    # Attitude setpoint
-    if not flight.attitude_setpoint.empty:
-        import numpy as np
-        sp_df = flight.attitude_setpoint.copy()
-        for col in ["roll", "pitch", "yaw"]:
-            if col in sp_df.columns:
-                sp_df[col] = np.degrees(sp_df[col])
-        sp = _df_to_series(sp_df, ["roll", "pitch", "yaw"])
-        if sp:
-            ts["attitude_setpoint"] = sp
-
-    # Vibration
-    vib = _df_to_series(flight.vibration, ["accel_x", "accel_y", "accel_z"])
-    if vib:
-        ts["vibration"] = vib
-
-    # GPS
-    gps = _df_to_series(flight.gps, ["satellites", "hdop", "fix_type"])
-    if gps:
-        ts["gps"] = gps
-
-    # EKF
-    if not flight.ekf.empty:
-        ekf_cols = [c for c in flight.ekf.columns if c != "timestamp"][:8]  # limit columns
-        ekf = _df_to_series(flight.ekf, ekf_cols)
-        if ekf:
-            ts["ekf"] = ekf
-
-    # RC signal
-    if not flight.rc_input.empty:
-        rc = _df_to_series(flight.rc_input, ["rssi"])
-        if rc:
-            ts["rc"] = rc
-
-    # Velocity
-    vel = _df_to_series(flight.velocity, ["vx", "vy", "vz"])
-    if vel:
-        ts["velocity"] = vel
-
-    # Mode changes
-    ts["mode_changes"] = [
-        {"timestamp": mc.timestamp, "from_mode": mc.from_mode, "to_mode": mc.to_mode}
-        for mc in flight.mode_changes
-    ]
-
-    # Events
-    ts["events"] = [
-        {"timestamp": ev.timestamp, "type": ev.event_type, "severity": ev.severity, "message": ev.message}
-        for ev in flight.events
-    ]
-
-    return ts
+    from goose.web.timeseries_utils import df_to_series
+    return df_to_series(df, columns, max_points)
 
 
 def _finding_to_dict(finding: Any) -> dict[str, Any]:

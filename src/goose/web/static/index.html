@@ -1836,16 +1836,78 @@
           <div id="welcome-qa-status" style="font-size:13px;color:var(--text-muted);"></div>
         </div>
 
-        <!-- Results panel -->
-        <div id="welcome-qa-results" style="display:none;margin-top:20px;padding-top:18px;border-top:1px solid var(--card-border);">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div style="font-size:14px;font-weight:700;color:var(--green);">Results</div>
-            <button id="welcome-save-case-btn" onclick="saveQuickAsCase()"
-                    style="padding:8px 14px;font-family:var(--font);font-size:13px;font-weight:600;border:1px solid var(--green);border-radius:6px;background:var(--green-glow);color:var(--green);cursor:pointer;">
-              Save as Investigation Case
-            </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QA Cockpit — full dashboard shown after Quick Analysis -->
+  <div id="qa-cockpit" class="qa-cockpit">
+    <!-- Hero bar -->
+    <div class="qa-hero" id="qa-hero">
+      <div class="qa-hero-top">
+        <div class="qa-hero-left">
+          <div class="qa-profile-icon" id="qa-profile-icon"></div>
+          <div>
+            <div class="qa-hero-title" id="qa-hero-title">—</div>
+            <div class="qa-hero-meta" id="qa-hero-meta">—</div>
           </div>
-          <div id="welcome-qa-summary" style="font-size:13px;color:var(--text);line-height:1.6;"></div>
+        </div>
+        <div class="qa-hero-right">
+          <div class="qa-score-badge" id="qa-score-badge">
+            <div class="score-num" id="qa-score-num">—</div>
+            <div class="score-label" id="qa-score-label">—</div>
+          </div>
+          <div class="qa-hero-chips" id="qa-hero-chips"></div>
+          <div style="display:flex;gap:8px;margin-left:8px;">
+            <button class="qa-save-btn" onclick="saveQuickAsCase()">Save as Case</button>
+            <button class="qa-new-analysis-btn" onclick="hideQACockpit()">← New Analysis</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Findings row -->
+    <div class="qa-findings-row" id="qa-findings-row"></div>
+
+    <!-- Timeline strip -->
+    <div class="qa-timeline-strip" id="qa-timeline-strip" style="display:none;">
+      <div class="qa-timeline-label">
+        <span>FLIGHT TIMELINE</span>
+        <span id="qa-timeline-cursor-time" style="color:var(--green);font-weight:600;"></span>
+      </div>
+      <div class="qa-timeline-modes" id="qa-timeline-modes"></div>
+      <div class="qa-timeline-events" id="qa-timeline-events"></div>
+    </div>
+
+    <!-- Chart layout: main + secondary grid -->
+    <div class="qa-chart-layout" id="qa-chart-layout">
+      <div class="qa-chart-main" id="qa-chart-main">
+        <div class="qa-chart-main-header">
+          <span class="qa-chart-main-title" id="qa-chart-main-title">TELEMETRY</span>
+          <div class="qa-series-toggles" id="qa-series-toggles"></div>
+        </div>
+        <div class="qa-chart-main-body" id="qa-chart-main-body"></div>
+      </div>
+      <div class="qa-chart-grid" id="qa-chart-grid"></div>
+    </div>
+
+    <!-- Bottom row: Hypotheses | Signal Quality | Flight Path -->
+    <div class="qa-bottom-row" id="qa-bottom-row">
+      <div class="qa-panel" id="qa-hyp-panel">
+        <div class="qa-panel-title">Hypotheses</div>
+        <div id="qa-hyp-content"><div class="qa-panel-empty">No hypotheses data available for this log</div></div>
+      </div>
+      <div class="qa-panel" id="qa-signal-panel">
+        <div class="qa-panel-title">Signal Quality</div>
+        <div id="qa-signal-content"><div class="qa-panel-empty">No signal quality data available for this log</div></div>
+      </div>
+      <div class="qa-panel" id="qa-path-panel">
+        <div class="qa-panel-title">Flight Path</div>
+        <div id="qa-path-content">
+          <div class="qa-flight-unavailable">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Position data not available for this log</span>
+          </div>
         </div>
       </div>
     </div>
@@ -5684,8 +5746,6 @@
 
   function hideQuickPanel() {
     document.getElementById('welcome-quick-panel').style.display = 'none';
-    document.getElementById('welcome-qa-results').style.display = 'none';
-    document.getElementById('welcome-qa-summary').innerHTML = '';
     document.getElementById('welcome-qa-status').textContent = '';
     _lastQuickAnalysis = null;
   }
@@ -5695,6 +5755,580 @@
     if (typeof openCaseDetail === 'function') {
       setTimeout(() => openCaseDetail(caseId), 50);
     }
+  }
+
+  // ── QA Cockpit constants ──────────────────────────────────────────
+  const QA_PROFILE_CHART_BUNDLES = {
+    default:     ['altitude', 'battery', 'attitude', 'motors', 'gps', 'vibration'],
+    racer:       ['attitude', 'motors', 'battery', 'vibration', 'rc', 'velocity'],
+    research:    ['altitude', 'attitude', 'ekf', 'gps', 'vibration', 'velocity'],
+    shop_repair: ['battery', 'motors', 'gps', 'vibration', 'attitude', 'rc'],
+    factory_qa:  ['motors', 'vibration', 'battery', 'attitude', 'gps', 'altitude'],
+    gov_mil:     ['altitude', 'velocity', 'attitude', 'gps', 'battery', 'motors'],
+    advanced:    ['altitude', 'attitude', 'motors', 'battery', 'vibration', 'gps', 'ekf', 'velocity', 'rc'],
+  };
+
+  const QA_PROFILE_WORDING = {
+    default:     { flight: 'Flight', findings: 'Findings', pilot: 'Operator', incident: 'Incident' },
+    racer:       { flight: 'Run', findings: 'Issues', pilot: 'Pilot', incident: 'Crash' },
+    research:    { flight: 'Test', findings: 'Anomalies', pilot: 'Operator', incident: 'Failure' },
+    shop_repair: { flight: 'Flight', findings: 'Faults', pilot: 'Technician', incident: 'Failure' },
+    factory_qa:  { flight: 'Test Flight', findings: 'Deviations', pilot: 'QA Tech', incident: 'Rejection' },
+    gov_mil:     { flight: 'Sortie', findings: 'Findings', pilot: 'Operator', incident: 'Mishap' },
+    advanced:    { flight: 'Flight', findings: 'Findings', pilot: 'Operator', incident: 'Incident' },
+  };
+
+  const QA_PROFILE_ICONS = {
+    default: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`,
+    racer:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+    research:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-4"/><path d="M9 3a3 3 0 0 0 6 0"/><path d="M8 12h8"/><path d="M8 16h8"/><path d="M8 8h8"/></svg>`,
+    shop_repair:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+    factory_qa:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>`,
+    gov_mil:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    advanced:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>`,
+  };
+
+  let _qaCockpitCharts = [];
+
+  function _qaScoreBadgeClass(score) {
+    if (score == null) return 'score-pass';
+    if (score < 40) return 'score-critical';
+    if (score < 60) return 'score-warning';
+    if (score < 80) return 'score-caution';
+    return 'score-pass';
+  }
+
+  function _qaScoreLabel(score) {
+    if (score == null) return '—';
+    if (score < 40) return 'CRITICAL RISK';
+    if (score < 60) return 'WARNING';
+    if (score < 80) return 'CAUTION';
+    return 'PASS';
+  }
+
+  function _fmtDuration(sec) {
+    if (!sec) return '—';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m > 0 ? m + 'm ' + String(s).padStart(2,'0') + 's' : s + 's';
+  }
+
+  function _sevSortOrder(sev) {
+    return { critical: 0, warning: 1, info: 2, pass: 3 }[sev] ?? 4;
+  }
+
+  function _topFindings(findings) {
+    return [...(findings || [])]
+      .sort((a, b) => _sevSortOrder(a.severity) - _sevSortOrder(b.severity) || (b.score || 0) - (a.score || 0))
+      .slice(0, 3);
+  }
+
+  function _confColor(conf) {
+    if (conf >= 0.7) return 'var(--green)';
+    if (conf >= 0.4) return 'var(--amber)';
+    return 'var(--red)';
+  }
+
+  function _drawFlightPath(canvas, flightPath) {
+    if (!flightPath || !flightPath.lat || flightPath.lat.length < 3) return false;
+    const lats = flightPath.lat;
+    const lons = flightPath.lon;
+    const n = Math.min(lats.length, lons.length);
+    if (n < 3) return false;
+
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    ctx.fillStyle = '#0a0c0f';
+    ctx.fillRect(0, 0, W, H);
+
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+    const pad = 24;
+
+    function toXY(lat, lon) {
+      const x = pad + (lon - minLon) / (maxLon - minLon || 1) * (W - 2 * pad);
+      const y = pad + (1 - (lat - minLat) / (maxLat - minLat || 1)) * (H - 2 * pad);
+      return [x, y];
+    }
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath(); ctx.moveTo(W * i / 4, 0); ctx.lineTo(W * i / 4, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, H * i / 4); ctx.lineTo(W, H * i / 4); ctx.stroke();
+    }
+
+    // Path
+    ctx.strokeStyle = '#6ECC72';
+    ctx.lineWidth = 1.8;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    const [sx, sy] = toXY(lats[0], lons[0]);
+    ctx.moveTo(sx, sy);
+    for (let i = 1; i < n; i++) {
+      const [x, y] = toXY(lats[i], lons[i]);
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Start dot (green)
+    const [x0, y0] = toXY(lats[0], lons[0]);
+    ctx.fillStyle = '#6ECC72';
+    ctx.beginPath(); ctx.arc(x0, y0, 5, 0, Math.PI * 2); ctx.fill();
+
+    // End dot (red)
+    const [xe, ye] = toXY(lats[n - 1], lons[n - 1]);
+    ctx.fillStyle = '#E24B4A';
+    ctx.beginPath(); ctx.arc(xe, ye, 5, 0, Math.PI * 2); ctx.fill();
+
+    // North indicator
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = '10px monospace';
+    ctx.fillText('N↑', 6, 16);
+
+    return true;
+  }
+
+  function _renderQATimeline(data) {
+    const strip = document.getElementById('qa-timeline-strip');
+    const modeChanges = (data.timeseries && data.timeseries.mode_changes) || [];
+    const evts = (data.timeseries && data.timeseries.events) || [];
+    const duration = (data.metadata && data.metadata.duration_sec) || 0;
+    if (!duration || (modeChanges.length === 0 && evts.length === 0)) {
+      strip.style.display = 'none';
+      return;
+    }
+    strip.style.display = '';
+
+    const modesEl = document.getElementById('qa-timeline-modes');
+    if (modeChanges.length > 0) {
+      const MODE_COLORS = {
+        manual:'#5B9BD5',stabilized:'#A77BCA',altitude:'#5BC0BE',position:'#6ECC72',
+        mission:'#EF9F27',hold:'#E8854A',return:'#D46A9F',land:'#A3C44A',
+        takeoff:'#6ECC72',acro:'#E24B4A',offboard:'#5B9BD5',orbit:'#5BC0BE',
+      };
+      modesEl.innerHTML = modeChanges.map((m, i) => {
+        const start = m.timestamp / duration * 100;
+        const end = i < modeChanges.length - 1 ? modeChanges[i+1].timestamp / duration * 100 : 100;
+        const w = end - start;
+        const col = MODE_COLORS[m.to_mode] || 'rgba(255,255,255,0.1)';
+        return `<div class="qa-mode-band" style="left:${start}%;width:${w}%;background:${col}30;border-color:${col};">${w > 8 ? escHtml(m.to_mode||'') : ''}</div>`;
+      }).join('');
+    }
+
+    const evtsEl = document.getElementById('qa-timeline-events');
+    if (evts.length > 0) {
+      const SC = { critical:'#E24B4A', warning:'#EF9F27', info:'#A3C44A' };
+      evtsEl.innerHTML = evts.filter(e => e.severity !== 'info').slice(0,50).map(e => {
+        const pct = (e.timestamp / duration) * 100;
+        const col = SC[e.severity] || 'rgba(255,255,255,0.3)';
+        return `<div class="qa-evt-dot" style="left:${pct}%;background:${col};" title="${escHtml(e.message||'')}"></div>`;
+      }).join('');
+    }
+  }
+
+  function _buildQAMiniChart(container, chartKey, ts) {
+    if (!ts) return null;
+    const CHART_BUILDERS = {
+      altitude:  (el) => {
+        const d = ts.altitude; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.alt_rel) { data.push(d.alt_rel); series.push({label:'Alt(rel)',stroke:'#6ECC72',width:1.5,points:{show:false}}); }
+        if (series.length === 0) return null;
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+      battery:   (el) => {
+        const d = ts.battery; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.voltage) { data.push(d.voltage); series.push({label:'V',stroke:'#EF9F27',width:1.5,points:{show:false}}); }
+        if (d.remaining_pct) { data.push(d.remaining_pct); series.push({label:'%',stroke:'#6ECC72',width:1,points:{show:false}}); }
+        if (series.length === 0) return null;
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+      attitude:  (el) => {
+        const d = ts.attitude; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.roll)  { data.push(d.roll);  series.push({label:'Roll',stroke:'#E24B4A',width:1,points:{show:false}}); }
+        if (d.pitch) { data.push(d.pitch); series.push({label:'Pitch',stroke:'#6ECC72',width:1,points:{show:false}}); }
+        if (series.length === 0) return null;
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+      motors:    (el) => {
+        const d = ts.motors; if (!d) return null;
+        const keys = Object.keys(d).filter(k=>k.startsWith('output_')).sort();
+        if (!keys.length) return null;
+        const MC = ['#6ECC72','#E24B4A','#5B9BD5','#EF9F27','#A77BCA','#5BC0BE'];
+        const data = [d.timestamps]; const series = [];
+        keys.forEach((k,i) => { data.push(d[k]); series.push({label:'M'+(i+1),stroke:MC[i%MC.length],width:1,points:{show:false}}); });
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+      gps:       (el) => {
+        const d = ts.gps; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.satellites) { data.push(d.satellites); series.push({label:'Sats',stroke:'#6ECC72',width:1.5,points:{show:false}}); }
+        if (d.hdop) { data.push(d.hdop); series.push({label:'HDOP',stroke:'#EF9F27',width:1,points:{show:false}}); }
+        if (series.length === 0) return null;
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+      vibration: (el) => {
+        const d = ts.vibration; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.accel_x) { data.push(d.accel_x); series.push({label:'X',stroke:'#E24B4A',width:1,points:{show:false}}); }
+        if (d.accel_y) { data.push(d.accel_y); series.push({label:'Y',stroke:'#6ECC72',width:1,points:{show:false}}); }
+        if (d.accel_z) { data.push(d.accel_z); series.push({label:'Z',stroke:'#5B9BD5',width:1,points:{show:false}}); }
+        if (series.length === 0) return null;
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+      velocity:  (el) => {
+        const d = ts.velocity; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.vx) { data.push(d.vx); series.push({label:'Vx',stroke:'#E24B4A',width:1,points:{show:false}}); }
+        if (d.vy) { data.push(d.vy); series.push({label:'Vy',stroke:'#6ECC72',width:1,points:{show:false}}); }
+        if (series.length === 0) return null;
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+      rc:        (el) => {
+        const d = ts.rc; if (!d || !d.rssi) return null;
+        const data = [d.timestamps, d.rssi];
+        const series = [{label:'RSSI',stroke:'#EF9F27',width:1.5,points:{show:false}}];
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+      ekf:       (el) => {
+        const d = ts.ekf; if (!d || !d.timestamps) return null;
+        const keys = Object.keys(d).filter(k=>k!=='timestamps' && Array.isArray(d[k]));
+        if (!keys.length) return null;
+        const MC = ['#6ECC72','#EF9F27','#E24B4A','#5B9BD5'];
+        const data = [d.timestamps]; const series = [];
+        keys.slice(0,4).forEach((k,i) => { data.push(d[k]); series.push({label:k,stroke:MC[i],width:1,points:{show:false}}); });
+        return new uPlot({width:container.clientWidth-8,height:100,cursor:{show:false},legend:{show:false},scales:{x:{time:false}},axes:[{show:false},{show:false}],series:[{label:'T'},...series]}, data, container);
+      },
+    };
+    const builder = CHART_BUILDERS[chartKey];
+    if (!builder) return null;
+    try {
+      return builder(container);
+    } catch(e) {
+      console.error('QA mini chart error', chartKey, e);
+      return null;
+    }
+  }
+
+  function showQACockpit(data) {
+    // Hide upload panel
+    document.getElementById('welcome-quick-panel').style.display = 'none';
+
+    const cockpit = document.getElementById('qa-cockpit');
+    cockpit.classList.add('visible');
+
+    const profileId = (data.profile && data.profile.profile_id) || 'default';
+    const meta = data.metadata || {};
+    const summary = data.summary || {};
+    const bysev = summary.by_severity || {};
+    const wording = QA_PROFILE_WORDING[profileId] || QA_PROFILE_WORDING.default;
+
+    // ── Hero ─────────────────────────────────────────────────
+    const iconEl = document.getElementById('qa-profile-icon');
+    iconEl.innerHTML = QA_PROFILE_ICONS[profileId] || QA_PROFILE_ICONS.default;
+
+    const profileName = (data.profile && data.profile.name) || 'Default';
+    document.getElementById('qa-hero-title').textContent = profileName + ' Analysis  •  ' + escHtml(meta.filename || '');
+    const metaParts = [];
+    if (meta.vehicle_type) metaParts.push(escHtml(meta.vehicle_type));
+    if (meta.autopilot) metaParts.push(escHtml(meta.autopilot));
+    if (meta.firmware_version) metaParts.push('FW ' + escHtml(meta.firmware_version));
+    if (meta.duration_sec) metaParts.push(_fmtDuration(meta.duration_sec));
+    if (meta.primary_mode) metaParts.push(escHtml(meta.primary_mode) + ' mode');
+    document.getElementById('qa-hero-meta').textContent = metaParts.join('  ·  ') || '—';
+
+    // Score badge
+    const score = data.overall_score;
+    const badge = document.getElementById('qa-score-badge');
+    badge.className = 'qa-score-badge ' + _qaScoreBadgeClass(score);
+    document.getElementById('qa-score-num').textContent = score != null ? score : '—';
+    document.getElementById('qa-score-label').textContent = _qaScoreLabel(score);
+
+    // Chips
+    const chipsEl = document.getElementById('qa-hero-chips');
+    const chips = [];
+    const crashed = meta.crashed;
+    if (crashed != null) {
+      chips.push(`<span class="qa-crashed-badge ${crashed ? 'crashed' : 'ok'}">${crashed ? '✕ CRASHED' : '✓ OK'}</span>`);
+    }
+    if (bysev.critical > 0) chips.push(`<span class="qa-sev-chip sev-critical">${bysev.critical} critical</span>`);
+    if (bysev.warning  > 0) chips.push(`<span class="qa-sev-chip sev-warning">${bysev.warning} warning</span>`);
+    if (bysev.info     > 0) chips.push(`<span class="qa-sev-chip sev-info">${bysev.info} info</span>`);
+    if (bysev.pass     > 0) chips.push(`<span class="qa-sev-chip sev-pass">${bysev.pass} pass</span>`);
+    chipsEl.innerHTML = chips.join('');
+
+    // ── Top Findings ─────────────────────────────────────────
+    const top3 = _topFindings(data.findings);
+    const findingsRow = document.getElementById('qa-findings-row');
+    if (top3.length === 0) {
+      findingsRow.innerHTML = `<div class="qa-panel" style="flex:1;"><div class="qa-panel-empty">No ${wording.findings.toLowerCase()} data available for this log</div></div>`;
+    } else {
+      findingsRow.innerHTML = top3.map((f, idx) => {
+        const sev = f.severity || 'info';
+        const desc = f.description || '';
+        const brief = desc.length > 100 ? desc.slice(0, 100) + '…' : desc;
+        const ts = f.timestamp_start != null ? `<div class="qa-finding-ts">@ ${f.timestamp_start.toFixed(1)}s</div>` : '';
+        return `<div class="qa-finding-card sev-${sev}" id="qa-fc-${idx}" onclick="this.classList.toggle('expanded')">
+          <div class="qa-finding-header">
+            <span class="qa-sev-chip sev-${sev}" style="font-size:11px;padding:2px 7px;">${sev.toUpperCase()}</span>
+            <span class="qa-finding-plugin">${escHtml(f.plugin_name || '')}</span>
+          </div>
+          <div class="qa-finding-title">${escHtml(f.title || 'Untitled')}</div>
+          <div class="qa-finding-desc">${escHtml(brief)}</div>
+          ${ts}
+          ${desc.length > 100 ? `<div class="qa-finding-full-desc">${escHtml(desc)}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    // ── Timeline ─────────────────────────────────────────────
+    _renderQATimeline(data);
+
+    // ── Charts ───────────────────────────────────────────────
+    // Destroy old charts
+    _qaCockpitCharts.forEach(c => { try { c.destroy(); } catch(_) {} });
+    _qaCockpitCharts = [];
+
+    const bundle = QA_PROFILE_CHART_BUNDLES[profileId] || QA_PROFILE_CHART_BUNDLES.default;
+    const ts = data.timeseries || {};
+    const mainKey = bundle[0];
+    const secondaryKeys = bundle.slice(1);
+
+    // Main chart uses Cockpit.render on a sub-container
+    const mainBody = document.getElementById('qa-chart-main-body');
+    const mainTitleEl = document.getElementById('qa-chart-main-title');
+    mainTitleEl.textContent = mainKey.toUpperCase();
+    mainBody.innerHTML = '';
+
+    // Series toggles — we'll build a fresh mini-chart wrapper for main
+    const togglesEl = document.getElementById('qa-series-toggles');
+    togglesEl.innerHTML = '';
+
+    // Render main chart via Cockpit into a wrapper div
+    const mainWrap = document.createElement('div');
+    mainWrap.id = 'qa-cockpit-main-chart-wrap';
+    mainBody.appendChild(mainWrap);
+
+    // Use Cockpit.render but only for the first chart type (full Cockpit data)
+    // Build a single-stream data object so Cockpit renders one chart
+    const mainData = { timeseries: { [mainKey]: ts[mainKey] }, metadata: data.metadata };
+    // Also pass mode_changes/events for timeline sync
+    if (ts.mode_changes) mainData.timeseries.mode_changes = ts.mode_changes;
+    if (ts.events) mainData.timeseries.events = ts.events;
+    if (ts.attitude_setpoint) mainData.timeseries.attitude_setpoint = ts.attitude_setpoint;
+
+    // We render main chart inline using Cockpit's individual builders approach
+    // To avoid Cockpit overwriting the full view, build a targeted uPlot
+    requestAnimationFrame(() => {
+      const MAIN_BUILDERS = {
+        altitude: () => {
+          const d = ts.altitude; if (!d) return null;
+          const data = [d.timestamps]; const series = [];
+          if (d.alt_rel) { data.push(d.alt_rel); series.push({label:'Alt (rel)',stroke:'#6ECC72',width:2,fill:'rgba(110,204,114,0.06)',points:{show:false}}); }
+          if (d.alt_msl) { data.push(d.alt_msl); series.push({label:'Alt (MSL)',stroke:'#5B9BD5',width:1,points:{show:false}}); }
+          if (!series.length) return null;
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m'}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+        attitude: () => {
+          const d = ts.attitude; if (!d) return null;
+          const data = [d.timestamps]; const series = [];
+          if (d.roll)  { data.push(d.roll);  series.push({label:'Roll',stroke:'#E24B4A',width:1.5,points:{show:false}}); }
+          if (d.pitch) { data.push(d.pitch); series.push({label:'Pitch',stroke:'#6ECC72',width:1.5,points:{show:false}}); }
+          if (d.yaw)   { data.push(d.yaw);   series.push({label:'Yaw',stroke:'#5B9BD5',width:1.5,points:{show:false}}); }
+          if (!series.length) return null;
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'°'}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+        battery: () => {
+          const d = ts.battery; if (!d) return null;
+          const data = [d.timestamps]; const series = [];
+          if (d.voltage)       { data.push(d.voltage);       series.push({label:'Voltage',stroke:'#EF9F27',width:2,points:{show:false}}); }
+          if (d.current)       { data.push(d.current);       series.push({label:'Current',stroke:'#E24B4A',width:1.5,points:{show:false}}); }
+          if (d.remaining_pct) { data.push(d.remaining_pct); series.push({label:'Remaining%',stroke:'#6ECC72',width:1,points:{show:false}}); }
+          if (!series.length) return null;
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+        motors: () => {
+          const d = ts.motors; if (!d) return null;
+          const keys = Object.keys(d).filter(k=>k.startsWith('output_')).sort();
+          if (!keys.length) return null;
+          const MC = ['#6ECC72','#E24B4A','#5B9BD5','#EF9F27','#A77BCA','#5BC0BE','#E8854A','#D46A9F'];
+          const data = [d.timestamps]; const series = [];
+          keys.forEach((k,i) => { data.push(d[k]); series.push({label:'M'+(i+1),stroke:MC[i%MC.length],width:1.2,points:{show:false}}); });
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'0–1'}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+        gps: () => {
+          const d = ts.gps; if (!d) return null;
+          const data = [d.timestamps]; const series = [];
+          if (d.satellites) { data.push(d.satellites); series.push({label:'Satellites',stroke:'#6ECC72',width:2,points:{show:false}}); }
+          if (d.hdop)        { data.push(d.hdop);       series.push({label:'HDOP',stroke:'#EF9F27',width:1.5,points:{show:false}}); }
+          if (!series.length) return null;
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+        vibration: () => {
+          const d = ts.vibration; if (!d) return null;
+          const data = [d.timestamps]; const series = [];
+          if (d.accel_x) { data.push(d.accel_x); series.push({label:'X',stroke:'#E24B4A',width:1,points:{show:false}}); }
+          if (d.accel_y) { data.push(d.accel_y); series.push({label:'Y',stroke:'#6ECC72',width:1,points:{show:false}}); }
+          if (d.accel_z) { data.push(d.accel_z); series.push({label:'Z',stroke:'#5B9BD5',width:1,points:{show:false}}); }
+          if (!series.length) return null;
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m/s²'}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+        velocity: () => {
+          const d = ts.velocity; if (!d) return null;
+          const data = [d.timestamps]; const series = [];
+          if (d.vx) { data.push(d.vx); series.push({label:'Vx',stroke:'#E24B4A',width:1.5,points:{show:false}}); }
+          if (d.vy) { data.push(d.vy); series.push({label:'Vy',stroke:'#6ECC72',width:1.5,points:{show:false}}); }
+          if (d.vz) { data.push(d.vz); series.push({label:'Vz',stroke:'#5B9BD5',width:1,points:{show:false}}); }
+          if (!series.length) return null;
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50,label:'m/s'}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+        rc: () => {
+          const d = ts.rc; if (!d||!d.rssi) return null;
+          const data = [d.timestamps, d.rssi];
+          const series = [{label:'RSSI',stroke:'#EF9F27',width:2,fill:'rgba(239,159,39,0.06)',points:{show:false}}];
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+        ekf: () => {
+          const d = ts.ekf; if (!d||!d.timestamps) return null;
+          const keys = Object.keys(d).filter(k=>k!=='timestamps'&&Array.isArray(d[k])).slice(0,4);
+          if (!keys.length) return null;
+          const MC = ['#6ECC72','#EF9F27','#E24B4A','#5B9BD5'];
+          const data = [d.timestamps]; const series = [];
+          keys.forEach((k,i) => { data.push(d[k]); series.push({label:k,stroke:MC[i],width:1,points:{show:false}}); });
+          return new uPlot({width:mainBody.clientWidth-16,height:260,cursor:{sync:{key:'qa-sync'}},legend:{show:true},scales:{x:{time:false}},axes:[{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',values:(u,v)=>v.map(x=>x!=null?(x>=60?Math.floor(x/60)+'m'+String(Math.floor(x%60)).padStart(2,'0')+'s':x.toFixed(0)+'s'):'')},{stroke:'rgba(255,255,255,0.15)',grid:{stroke:'rgba(255,255,255,0.04)',width:1},ticks:{stroke:'rgba(255,255,255,0.04)',width:1},font:'10px monospace',size:50}],series:[{label:'Time'},...series]}, data, mainWrap);
+        },
+      };
+      const mainBuilder = MAIN_BUILDERS[mainKey];
+      if (mainBuilder) {
+        const chart = mainBuilder();
+        if (chart) {
+          _qaCockpitCharts.push(chart);
+          // Series toggle buttons
+          chart.series.slice(1).forEach((s, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'qa-series-btn active';
+            btn.textContent = s.label;
+            btn.style.borderColor = s.stroke ? s.stroke + '60' : '';
+            btn.onclick = () => {
+              const shown = btn.classList.toggle('active');
+              chart.setSeries(i + 1, { show: shown });
+            };
+            togglesEl.appendChild(btn);
+          });
+        } else {
+          mainBody.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:220px;font-size:13px;color:var(--text-muted);">No ${mainKey} data available for this log</div>`;
+        }
+      } else {
+        mainBody.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:220px;font-size:13px;color:var(--text-muted);">No ${mainKey} data available for this log</div>`;
+      }
+
+      // ── Secondary mini charts ─────────────────────────────
+      const gridEl = document.getElementById('qa-chart-grid');
+      gridEl.innerHTML = '';
+      const CHART_LABELS = { altitude:'Altitude', battery:'Battery', attitude:'Attitude', motors:'Motors', gps:'GPS', vibration:'Vibration', velocity:'Velocity', rc:'RC Signal', ekf:'EKF' };
+      secondaryKeys.forEach(key => {
+        const wrap = document.createElement('div');
+        wrap.className = 'qa-chart-mini';
+        wrap.innerHTML = `<div class="qa-chart-mini-header"><span class="qa-chart-mini-title">${CHART_LABELS[key] || key}</span></div><div class="qa-chart-mini-body" id="qa-mini-${key}"></div>`;
+        gridEl.appendChild(wrap);
+
+        const bodyEl = wrap.querySelector('.qa-chart-mini-body');
+        const miniChart = _buildQAMiniChart(bodyEl, key, ts);
+        if (miniChart) {
+          _qaCockpitCharts.push(miniChart);
+        } else {
+          bodyEl.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:80px;font-size:12px;color:var(--text-muted);">No data</div>`;
+        }
+      });
+    });
+
+    // ── Hypotheses ───────────────────────────────────────────
+    const hyps = (data.hypotheses || []).slice(0, 3);
+    const hypContent = document.getElementById('qa-hyp-content');
+    if (hyps.length === 0) {
+      hypContent.innerHTML = '<div class="qa-panel-empty">No hypotheses data available for this log</div>';
+    } else {
+      hypContent.innerHTML = hyps.map(h => {
+        const conf = h.confidence != null ? h.confidence : 0;
+        const confPct = Math.round(conf * 100);
+        const confCol = _confColor(conf);
+        const support = (h.support || []).slice(0, 2).map(s => `<div>• ${escHtml(String(s))}</div>`).join('');
+        return `<div class="qa-hyp-item">
+          <div class="qa-hyp-statement">${escHtml(h.statement || '—')}</div>
+          <div class="qa-hyp-meta">
+            ${h.category ? `<span class="qa-hyp-category">${escHtml(h.category)}</span>` : ''}
+            <div class="qa-hyp-confidence">
+              <div class="qa-hyp-conf-track"><div class="qa-hyp-conf-fill" style="width:${confPct}%;background:${confCol};"></div></div>
+              <span class="qa-hyp-conf-label" style="color:${confCol};">${confPct}%</span>
+            </div>
+          </div>
+          ${support ? `<div class="qa-hyp-support">${support}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    // ── Signal Quality ───────────────────────────────────────
+    const signals = data.signal_quality || [];
+    const sigContent = document.getElementById('qa-signal-content');
+    if (signals.length === 0) {
+      sigContent.innerHTML = '<div class="qa-panel-empty">No signal quality data available for this log</div>';
+    } else {
+      sigContent.innerHTML = signals.map(s => {
+        const q = s.quality_score != null ? s.quality_score : (s.present ? 1 : 0);
+        const pct = Math.round(q * 100);
+        const cls = q >= 0.7 ? 'sq-high' : q >= 0.4 ? 'sq-medium' : (s.present ? 'sq-low' : 'sq-absent');
+        return `<div class="qa-signal-bar">
+          <span class="qa-signal-label">${escHtml(s.stream || '?')}</span>
+          <div class="qa-signal-track"><div class="qa-signal-fill ${cls}" style="width:${pct}%"></div></div>
+          <span class="qa-signal-note">${pct}%</span>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Flight Path ──────────────────────────────────────────
+    const pathContent = document.getElementById('qa-path-content');
+    const fp = data.flight_path;
+    if (fp && fp.lat && fp.lat.length >= 3) {
+      const canvas = document.createElement('canvas');
+      canvas.className = 'qa-flight-canvas';
+      canvas.width = 400;
+      canvas.height = 280;
+      pathContent.innerHTML = '';
+      pathContent.appendChild(canvas);
+      _drawFlightPath(canvas, fp);
+    } else {
+      pathContent.innerHTML = `<div class="qa-flight-unavailable">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Position data not available for this log</span>
+      </div>`;
+    }
+
+    // Scroll to cockpit
+    document.getElementById('qa-cockpit').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function hideQACockpit() {
+    const cockpit = document.getElementById('qa-cockpit');
+    cockpit.classList.remove('visible');
+
+    // Destroy charts
+    _qaCockpitCharts.forEach(c => { try { c.destroy(); } catch(_) {} });
+    _qaCockpitCharts = [];
+
+    // Show upload panel reset
+    const panel = document.getElementById('welcome-quick-panel');
+    panel.style.display = '';
+    document.getElementById('welcome-qa-status').textContent = '';
+    document.getElementById('welcome-qa-status').style.color = 'var(--text-muted)';
+    _lastQuickAnalysis = null;
+
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function runQuickAnalysis() {
@@ -5722,8 +6356,7 @@
       }
       const data = await res.json();
       _lastQuickAnalysis = { file, profile, data };
-      renderQuickAnalysisSummary(data);
-      document.getElementById('welcome-qa-results').style.display = '';
+      showQACockpit(data);
       status.style.color = 'var(--green)';
       status.textContent = 'Quick analysis complete.';
     } catch (err) {
@@ -5732,32 +6365,6 @@
     } finally {
       btn.disabled = false;
     }
-  }
-
-  function renderQuickAnalysisSummary(data) {
-    const summary = data.summary || {};
-    const meta = data.metadata || {};
-    const bysev = summary.by_severity || {};
-    const wrap = document.getElementById('welcome-qa-summary');
-    const findingLines = (data.findings || []).slice(0, 5).map(f => {
-      return `<li>${escHtml(f.severity || 'info').toUpperCase()} — ${escHtml(f.title || 'untitled')}</li>`;
-    }).join('');
-    const hypLines = (data.hypotheses || []).slice(0, 3).map(h => {
-      return `<li>${escHtml(h.category || h.theme || '')} — ${escHtml(h.statement || '')}</li>`;
-    }).join('');
-    wrap.innerHTML = `
-      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;">
-        <div><strong style="color:var(--green);">Score</strong>: ${data.overall_score ?? '—'}/100</div>
-        <div><strong style="color:var(--green);">Duration</strong>: ${meta.duration_sec || 0}s</div>
-        <div><strong style="color:var(--green);">Profile</strong>: ${escHtml((data.profile && data.profile.name) || 'Default')}</div>
-      </div>
-      <div style="margin-bottom:12px;">
-        <strong style="color:var(--green);">Findings by severity</strong>:
-        critical=${bysev.critical||0} · warning=${bysev.warning||0} · info=${bysev.info||0} · pass=${bysev.pass||0}
-      </div>
-      ${findingLines ? `<div style="margin-bottom:10px;"><strong style="color:var(--green);">Top findings</strong><ul style="margin:6px 0 0 18px;">${findingLines}</ul></div>` : ''}
-      ${hypLines ? `<div><strong style="color:var(--green);">Top hypotheses</strong><ul style="margin:6px 0 0 18px;">${hypLines}</ul></div>` : ''}
-    `;
   }
 
   async function saveQuickAsCase() {

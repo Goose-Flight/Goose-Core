@@ -908,3 +908,375 @@
   transform: translateX(-50%);
 }
 
+/* ══ Vehicle Info ══════════════════════════════════════ */
+.qa-vehicle-info {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 12px 18px 14px;
+  margin-bottom: 16px;
+}
+
+.qa-vinfo-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.qa-vehicle-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px 20px;
+}
+
+.qa-vinfo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qa-vinfo-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qa-vinfo-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qa-vinfo-value.na {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.qa-modes-used {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.qa-mode-tag {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-sec);
+  text-transform: capitalize;
+}
+
+/* ══ Chart Tabs ════════════════════════════════════════ */
+.qa-chart-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px 0;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.qa-chart-tab {
+  padding: 5px 11px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-bottom: -1px;
+}
+
+.qa-chart-tab:hover {
+  color: var(--text-sec);
+  border-color: var(--card-border);
+  background: rgba(255,255,255,0.03);
+}
+
+.qa-chart-tab.active {
+  color: var(--green);
+  border-color: var(--card-border);
+  border-bottom-color: var(--card);
+  background: var(--card);
+}
+
+/* ══ Full Chart Grid (all streams) ══════════════════════ */
+.qa-all-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* ══ Data Tabs Section ═════════════════════════════════ */
+.qa-data-section {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.qa-data-tab-bar {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--card-border);
+  background: rgba(255,255,255,0.015);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.qa-data-tab-bar::-webkit-scrollbar { display: none; }
+
+.qa-data-tab-btn {
+  padding: 10px 15px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.qa-data-tab-btn:hover {
+  color: var(--text-sec);
+  background: rgba(255,255,255,0.03);
+}
+
+.qa-data-tab-btn.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+  background: rgba(110,204,114,0.03);
+}
+
+.qa-data-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.qa-data-tab-btn.active .qa-data-tab-badge {
+  background: var(--green-glow);
+  color: var(--green);
+}
+
+.qa-data-pane {
+  display: none;
+  padding: 14px 16px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.qa-data-pane.active { display: block; }
+
+/* ── Parameters ─── */
+.qa-params-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 12px;
+  font-family: var(--font);
+  font-size: 13px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.qa-params-search:focus {
+  outline: none;
+  border-color: rgba(110,204,114,0.3);
+}
+
+.qa-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.qa-data-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--card-border);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 1;
+}
+
+.qa-data-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text-sec);
+  font-variant-numeric: tabular-nums;
+  vertical-align: top;
+}
+
+.qa-data-table td:first-child {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.qa-data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ── Full Findings List ─── */
+.qa-finding-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+}
+
+.qa-finding-row:last-child { border-bottom: none; }
+.qa-finding-row:hover { background: rgba(255,255,255,0.01); }
+
+.qa-finding-row-sev {
+  width: 5px;
+  min-width: 5px;
+  align-self: stretch;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.qa-finding-row-sev.sev-critical { background: var(--red); }
+.qa-finding-row-sev.sev-warning  { background: var(--amber); }
+.qa-finding-row-sev.sev-info     { background: #A3C44A; }
+.qa-finding-row-sev.sev-pass     { background: var(--green); }
+
+.qa-finding-row-body { flex: 1; min-width: 0; }
+
+.qa-finding-row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.qa-finding-row-plugin {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.qa-finding-row-desc {
+  font-size: 12px;
+  color: var(--text-sec);
+  margin-top: 4px;
+  line-height: 1.45;
+  display: none;
+}
+
+.qa-finding-row.expanded .qa-finding-row-desc { display: block; }
+
+.qa-finding-row-ts {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* ── Phases ─── */
+.qa-phases-bar {
+  position: relative;
+  height: 36px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.qa-phase-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.qa-phases-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.qa-phase-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-sec);
+}
+
+.qa-phase-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.qa-phases-table {
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* ── Flight path inside data tab ─── */
+.qa-flight-canvas-lg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 6px;
+  background: #080b0e;
+}
+

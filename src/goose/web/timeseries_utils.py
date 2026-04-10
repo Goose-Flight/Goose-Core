@@ -156,6 +156,40 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
     if vel:
         ts["velocity"] = vel
 
+    # Velocity setpoint
+    vel_sp = df_to_series(flight.velocity_setpoint, ["vx", "vy", "vz"])
+    if vel_sp:
+        ts["velocity_setpoint"] = vel_sp
+
+    # Attitude rate (deg/s)
+    if not flight.attitude_rate.empty:
+        import numpy as np
+        ar_df = flight.attitude_rate.copy()
+        for col in ["roll", "pitch", "yaw"]:
+            if col in ar_df.columns:
+                ar_df[col] = np.degrees(ar_df[col])
+        ar = df_to_series(ar_df, ["roll", "pitch", "yaw"])
+        if ar:
+            ts["attitude_rate"] = ar
+
+    # Attitude rate setpoint (deg/s)
+    if not flight.attitude_rate_setpoint.empty:
+        import numpy as np
+        arsp_df = flight.attitude_rate_setpoint.copy()
+        for col in ["roll", "pitch", "yaw"]:
+            if col in arsp_df.columns:
+                arsp_df[col] = np.degrees(arsp_df[col])
+        arsp = df_to_series(arsp_df, ["roll", "pitch", "yaw"])
+        if arsp:
+            ts["attitude_rate_setpoint"] = arsp
+
+    # CPU load
+    if not flight.cpu.empty:
+        cpu_cols = [c for c in flight.cpu.columns if c != "timestamp"][:4]
+        cpu = df_to_series(flight.cpu, cpu_cols)
+        if cpu:
+            ts["cpu"] = cpu
+
     # Mode changes
     ts["mode_changes"] = [
         {
@@ -178,6 +212,47 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
     ]
 
     return ts
+
+
+def extract_setpoint_path(flight: Any, max_points: int = 1000) -> dict[str, Any] | None:
+    """Extract position setpoint path (what the autopilot commanded) for comparison.
+
+    Returns same structure as extract_flight_path but from position_setpoint df.
+    Only returned if the setpoint df contains lat/lon columns.
+    """
+    pos_sp = flight.position_setpoint
+    if pos_sp is None or pos_sp.empty:
+        return None
+    if "lat" not in pos_sp.columns or "lon" not in pos_sp.columns:
+        return None
+
+    df = pos_sp[(pos_sp["lat"] != 0) & (pos_sp["lon"] != 0)].dropna(subset=["lat", "lon"])
+    if df.empty:
+        return None
+
+    lat_list = df["lat"].tolist()
+    lon_list = df["lon"].tolist()
+    alt_list = df["alt_rel"].tolist() if "alt_rel" in df.columns else (
+        df["alt_msl"].tolist() if "alt_msl" in df.columns else [0.0] * len(lat_list)
+    )
+    ts_list = df["timestamp"].tolist() if "timestamp" in df.columns else []
+
+    total = len(lat_list)
+    if total > max_points:
+        stride = total / max_points
+        indices = [int(i * stride) for i in range(max_points)]
+        lat_list = [lat_list[i] for i in indices]
+        lon_list = [lon_list[i] for i in indices]
+        alt_list = [alt_list[i] for i in indices]
+        ts_list = [ts_list[i] for i in indices] if ts_list else []
+
+    return {
+        "lat": [safe_val(v) for v in lat_list],
+        "lon": [safe_val(v) for v in lon_list],
+        "alt": [safe_val(v) for v in alt_list],
+        "timestamps": [safe_val(v) for v in ts_list],
+        "point_count": len(lat_list),
+    }
 
 
 def extract_flight_path(flight: Any, max_points: int = 1000) -> dict[str, Any] | None:

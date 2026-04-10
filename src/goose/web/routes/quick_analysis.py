@@ -144,7 +144,7 @@ async def quick_analysis(
         from goose.core.scoring import compute_overall_score
         from goose.forensics.lifting import generate_hypotheses, build_signal_quality
         from goose.forensics.timeline import build_full_timeline
-        from goose.web.timeseries_utils import extract_timeseries, extract_flight_path
+        from goose.web.timeseries_utils import extract_timeseries, extract_flight_path, extract_setpoint_path
 
         overall_score = compute_overall_score(thin_findings)
         hypotheses = generate_hypotheses(
@@ -154,6 +154,7 @@ async def quick_analysis(
         timeline_events = build_full_timeline(flight, forensic_findings, qa_id)
         timeseries = extract_timeseries(flight)
         flight_path = extract_flight_path(flight)
+        setpoint_path = extract_setpoint_path(flight)
 
         meta = flight.metadata
         findings_by_severity: dict[str, int] = {"critical": 0, "warning": 0, "info": 0, "pass": 0}
@@ -161,6 +162,25 @@ async def quick_analysis(
             sev = f.severity.value if hasattr(f.severity, "value") else str(f.severity)
             if sev in findings_by_severity:
                 findings_by_severity[sev] += 1
+
+        # Flight phases
+        phases_out = [
+            {
+                "start_time": p.start_time,
+                "end_time": p.end_time,
+                "phase_type": p.phase_type,
+                "duration_sec": round(p.end_time - p.start_time, 1),
+            }
+            for p in flight.phases
+        ]
+
+        # Parameters — cap at 500 most interesting (sorted by key)
+        params_sorted = dict(sorted(flight.parameters.items())[:500])
+
+        # Flight modes used
+        modes_used = list(dict.fromkeys(
+            [mc.to_mode for mc in flight.mode_changes if mc.to_mode]
+        ))
 
         completed_at = datetime.now()
 
@@ -178,8 +198,14 @@ async def quick_analysis(
                 "autopilot": meta.autopilot,
                 "vehicle_type": meta.vehicle_type,
                 "firmware_version": meta.firmware_version,
+                "frame_type": meta.frame_type,
+                "hardware": meta.hardware,
+                "motor_count": meta.motor_count,
+                "log_format": meta.log_format,
                 "duration_sec": round(meta.duration_sec, 1),
+                "start_time_utc": meta.start_time_utc.isoformat() if meta.start_time_utc else None,
                 "primary_mode": flight.primary_mode,
+                "modes_used": modes_used,
                 "crashed": flight.crashed,
             },
             "summary": {
@@ -188,13 +214,19 @@ async def quick_analysis(
                 "plugins_run": len(plugins_to_run),
                 "plugin_errors": plugin_errors,
                 "hypotheses_count": len(hypotheses),
+                "phases_count": len(phases_out),
+                "parameters_count": len(flight.parameters),
+                "events_count": len(flight.events),
             },
             "findings": [f.to_dict() for f in forensic_findings],
             "hypotheses": [h.to_dict() for h in hypotheses],
             "signal_quality": [sq.to_dict() for sq in signal_quality],
             "timeline": [e.to_dict() for e in timeline_events],
+            "phases": phases_out,
+            "parameters": params_sorted,
             "timeseries": timeseries,
             "flight_path": flight_path,
+            "setpoint_path": setpoint_path,
             "parse_diagnostics": parse_result.diagnostics.to_dict(),
         })
     except HTTPException:

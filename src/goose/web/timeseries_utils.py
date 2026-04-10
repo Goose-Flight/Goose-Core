@@ -190,6 +190,71 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
         if cpu:
             ts["cpu"] = cpu
 
+    # Manual control (stick inputs)
+    if not flight.manual_control.empty:
+        mc = df_to_series(flight.manual_control, ["x", "y", "r", "z"])
+        if mc:
+            ts["manual_control"] = mc
+
+    # Actuator controls (demand before mixing)
+    if not flight.actuator_controls.empty:
+        ac = df_to_series(flight.actuator_controls, ["roll", "pitch", "yaw", "thrust"])
+        if ac:
+            ts["actuator_controls"] = ac
+
+    # Magnetometer
+    if not flight.magnetometer.empty:
+        mag_cols = [c for c in flight.magnetometer.columns if c != "timestamp"]
+        mag = df_to_series(flight.magnetometer, mag_cols)
+        if mag:
+            ts["magnetometer"] = mag
+
+    # Airspeed (fixed wing)
+    if not flight.airspeed.empty:
+        asp = df_to_series(
+            flight.airspeed,
+            [c for c in flight.airspeed.columns if c != "timestamp"],
+        )
+        if asp:
+            ts["airspeed"] = asp
+
+    # Wind estimate
+    if not flight.wind.empty:
+        wnd = df_to_series(
+            flight.wind,
+            [c for c in flight.wind.columns if c != "timestamp"],
+        )
+        if wnd:
+            ts["wind"] = wnd
+
+    # RC channels
+    if not flight.rc_channels.empty:
+        rc_cols = [c for c in flight.rc_channels.columns if c != "timestamp"]
+        rcc = df_to_series(flight.rc_channels, rc_cols)
+        if rcc:
+            ts["rc_channels"] = rcc
+
+    # Barometer
+    if not flight.barometer.empty:
+        baro = df_to_series(
+            flight.barometer,
+            [c for c in flight.barometer.columns if c != "timestamp"],
+        )
+        if baro:
+            ts["barometer"] = baro
+
+    # Raw gyro
+    if not flight.raw_gyro.empty:
+        gyro = df_to_series(flight.raw_gyro, ["gyro_x", "gyro_y", "gyro_z"])
+        if gyro:
+            ts["raw_gyro"] = gyro
+
+    # Raw accel
+    if not flight.raw_accel.empty:
+        racc = df_to_series(flight.raw_accel, ["accel_x", "accel_y", "accel_z"])
+        if racc:
+            ts["raw_accel"] = racc
+
     # Mode changes
     ts["mode_changes"] = [
         {

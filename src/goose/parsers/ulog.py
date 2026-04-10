@@ -227,6 +227,15 @@ class ULogParser(BaseParser):
             rc_input = self._extract_rc_input(ulog, start_us)
             ekf = self._extract_ekf(ulog, start_us)
             cpu = self._extract_cpu(ulog, start_us)
+            manual_control = self._extract_manual_control(ulog, start_us)
+            actuator_controls = self._extract_actuator_controls(ulog, start_us)
+            magnetometer = self._extract_magnetometer(ulog, start_us)
+            airspeed = self._extract_airspeed(ulog, start_us)
+            wind = self._extract_wind(ulog, start_us)
+            rc_channels = self._extract_rc_channels(ulog, start_us)
+            barometer = self._extract_barometer(ulog, start_us)
+            raw_gyro = self._extract_raw_gyro(ulog, start_us)
+            raw_accel = self._extract_raw_accel(ulog, start_us)
             mode_changes = self._extract_mode_changes(ulog, start_us)
             events = self._extract_events(ulog, start_us)
             parameters = self._extract_parameters(ulog)
@@ -255,6 +264,15 @@ class ULogParser(BaseParser):
             rc_input=rc_input,
             ekf=ekf,
             cpu=cpu,
+            manual_control=manual_control,
+            actuator_controls=actuator_controls,
+            magnetometer=magnetometer,
+            airspeed=airspeed,
+            wind=wind,
+            rc_channels=rc_channels,
+            barometer=barometer,
+            raw_gyro=raw_gyro,
+            raw_accel=raw_accel,
             mode_changes=mode_changes,
             events=events,
             parameters=parameters,
@@ -702,6 +720,193 @@ class ULogParser(BaseParser):
             if col.startswith("vel_") or col.startswith("pos_") or col == "flags" or "innov" in col:
                 result[col] = df[col]
 
+        return result
+
+    def _extract_manual_control(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract manual control setpoint (stick inputs)."""
+        df = _topic_to_df(ulog, "manual_control_setpoint")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("x", "x"), ("y", "y"), ("r", "r"), ("z", "z"), ("throttle", "z")
+        ]:
+            if raw in df.columns and name not in cols:
+                cols[name] = df[raw]
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_actuator_controls(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract actuator control demands before mixing."""
+        df = _topic_to_df(ulog, "actuator_controls_0")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for i, name in enumerate(["roll", "pitch", "yaw", "thrust"]):
+            col = f"control[{i}]"
+            if col in df.columns:
+                cols[name] = df[col]
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_magnetometer(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract magnetometer (compass) data."""
+        df = _topic_to_df(ulog, "vehicle_magnetometer")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("magnetometer_ga[0]", "mag_x"),
+            ("magnetometer_ga[1]", "mag_y"),
+            ("magnetometer_ga[2]", "mag_z"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw]
+        if not cols:
+            return pd.DataFrame()
+        if "mag_x" in cols and "mag_y" in cols:
+            cols["heading_deg"] = np.degrees(np.arctan2(cols["mag_y"], cols["mag_x"]))
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_airspeed(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract airspeed (fixed-wing)."""
+        df = _topic_to_df(ulog, "airspeed")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("indicated_airspeed_m_s", "indicated"),
+            ("true_airspeed_m_s", "true_airspeed"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw]
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_wind(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract wind estimate."""
+        df = None
+        for topic in ["wind_estimate", "wind"]:
+            df = _topic_to_df(ulog, topic)
+            if df is not None and not df.empty:
+                break
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("windspeed_east", "wind_x"),
+            ("windspeed_north", "wind_y"),
+            ("var_vert", "wind_z"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw]
+        if not cols:
+            return pd.DataFrame()
+        if "wind_x" in cols and "wind_y" in cols:
+            cols["wind_speed"] = np.sqrt(cols["wind_x"] ** 2 + cols["wind_y"] ** 2)
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_rc_channels(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract individual RC channel values."""
+        df = _topic_to_df(ulog, "rc_channels")
+        if df is None or df.empty:
+            df = _topic_to_df(ulog, "input_rc")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for i in range(8):
+            col = f"channels[{i}]"
+            if col in df.columns:
+                cols[f"chan{i + 1}"] = df[col]
+        if "rssi" in df.columns:
+            cols["rssi"] = df["rssi"]
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_barometer(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract raw barometer data."""
+        df = _topic_to_df(ulog, "sensor_baro")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("pressure", "pressure_pa"),
+            ("temperature", "temperature_c"),
+            ("altitude", "baro_alt_meter"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw]
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_raw_gyro(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract high-rate gyroscope data (rad/s → deg/s)."""
+        df = _topic_to_df(ulog, "sensor_combined")
+        if df is None or df.empty:
+            df = _topic_to_df(ulog, "vehicle_imu")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("gyro_rad[0]", "gyro_x"),
+            ("gyro_rad[1]", "gyro_y"),
+            ("gyro_rad[2]", "gyro_z"),
+        ]:
+            if raw in df.columns:
+                cols[name] = np.degrees(df[raw])
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_raw_accel(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract high-rate accelerometer data (m/s²)."""
+        df = _topic_to_df(ulog, "sensor_combined")
+        if df is None or df.empty:
+            df = _topic_to_df(ulog, "vehicle_imu")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("accelerometer_m_s2[0]", "accel_x"),
+            ("accelerometer_m_s2[1]", "accel_y"),
+            ("accelerometer_m_s2[2]", "accel_z"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw]
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
         return result
 
     def _extract_cpu(self, ulog: ULog, start_us: int) -> pd.DataFrame:

@@ -79,6 +79,33 @@ class Flight:
     ekf: pd.DataFrame = field(default_factory=_empty_df)
     cpu: pd.DataFrame = field(default_factory=_empty_df)
 
+    manual_control: pd.DataFrame = field(default_factory=_empty_df)
+    # Stick inputs: x (roll), y (pitch), r (yaw), z (throttle)
+
+    actuator_controls: pd.DataFrame = field(default_factory=_empty_df)
+    # Demand signals before mixer: roll, pitch, yaw, thrust
+
+    magnetometer: pd.DataFrame = field(default_factory=_empty_df)
+    # Compass: mag_x, mag_y, mag_z (Gauss), heading_deg (computed)
+
+    airspeed: pd.DataFrame = field(default_factory=_empty_df)
+    # Fixed-wing: indicated, true_airspeed
+
+    wind: pd.DataFrame = field(default_factory=_empty_df)
+    # Estimated wind: wind_x (east), wind_y (north), wind_z (up), wind_speed
+
+    rc_channels: pd.DataFrame = field(default_factory=_empty_df)
+    # Individual RC channels: chan1..chan8 (normalized), rssi
+
+    raw_accel: pd.DataFrame = field(default_factory=_empty_df)
+    # High-rate accelerometer: accel_x, accel_y, accel_z (m/s²)
+
+    raw_gyro: pd.DataFrame = field(default_factory=_empty_df)
+    # High-rate gyroscope: gyro_x, gyro_y, gyro_z (deg/s)
+
+    barometer: pd.DataFrame = field(default_factory=_empty_df)
+    # Raw barometer: pressure_pa, temperature_c, baro_alt_meter
+
     # Discrete
     mode_changes: list[ModeChange] = field(default_factory=list)
     events: list[FlightEvent] = field(default_factory=list)

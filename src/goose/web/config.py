@@ -10,7 +10,7 @@ override defaults without touching code.  Import the module-level
 
 Environment variables
 ---------------------
-GOOSE_MAX_UPLOAD_MB      Max flight-log upload size in MiB  (default 256)
+GOOSE_MAX_UPLOAD_MB      Max flight-log upload size in MiB  (default 500)
 GOOSE_MAX_ATTACHMENT_MB  Max attachment upload size in MiB  (default 50)
 GOOSE_API_TOKEN          Bearer token required on all /api/* routes.
                          If unset, auth is disabled (local dev default).
@@ -48,7 +48,7 @@ class GooseSettings:
     debug: bool
 
     def __init__(self) -> None:
-        self.max_upload_mb = int(os.environ.get("GOOSE_MAX_UPLOAD_MB", "256"))
+        self.max_upload_mb = int(os.environ.get("GOOSE_MAX_UPLOAD_MB", "500"))
         self.max_attachment_mb = int(os.environ.get("GOOSE_MAX_ATTACHMENT_MB", "50"))
         self.allowed_log_extensions = frozenset(
             {".ulg", ".bin", ".log", ".tlog", ".csv"}

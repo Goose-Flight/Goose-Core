@@ -89,8 +89,17 @@ def _load_data(db_path: Path, min_confidence_pos: float = 0.80,
     df.loc[~human_crash & telem_clean, "label"] = 0
 
     labeled = df.dropna(subset=["label"])
+    import numpy as np
     available_cols = [c for c in FEATURE_COLS if c in labeled.columns]
-    X = labeled[available_cols].fillna(-1)
+    X = labeled[available_cols].copy()
+    # Replace inf/-inf with NaN so fillna handles them uniformly
+    X = X.replace([np.inf, -np.inf], np.nan)
+    # Clip extreme outliers per column (99.9th percentile cap) before imputation
+    for col in X.columns:
+        p999 = X[col].quantile(0.999)
+        p001 = X[col].quantile(0.001)
+        X[col] = X[col].clip(lower=p001, upper=p999)
+    X = X.fillna(-1)
     y = labeled["label"].astype(int)
 
     return X, y, labeled

@@ -718,6 +718,29 @@
       background: rgba(110,204,114,0.15);
     }
 
+    /* Provenance badges — appear in chart section headers */
+    .provenance-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      font-family: var(--font);
+      vertical-align: middle;
+      margin-left: 8px;
+      cursor: help;
+    }
+    .provenance-direct      { background: rgba(110,204,114,0.15); color: #6ECC72; border: 1px solid rgba(110,204,114,0.3); }
+    .provenance-filtered    { background: rgba(96,165,250,0.15);  color: #60A5FA; border: 1px solid rgba(96,165,250,0.3); }
+    .provenance-derived     { background: rgba(239,159,39,0.15);  color: #EF9F27; border: 1px solid rgba(239,159,39,0.3); }
+    .provenance-inferred    { background: rgba(167,139,250,0.15); color: #A78BFA; border: 1px solid rgba(167,139,250,0.3); }
+    .provenance-statistical { background: rgba(34,211,238,0.15);  color: #22D3EE; border: 1px solid rgba(22,211,238,0.3); }
+
+    /* Suppress ::after pseudo-element shrinkage when badge is present */
+    .chart-section-title { display: contents; }
+
     .chart-container {
       background: var(--card);
       border: 1px solid var(--card-border);
@@ -2220,12 +2243,40 @@
         <div class="findings-scroll" id="findings-scroll"></div>
       </div>
 
+      <!-- ══ FLAGSHIP FORENSIC CHARTS ═══════════════════════════ -->
+
+      <!-- CRASH SEQUENCE RECONSTRUCTION — shown only on crashed flights -->
+      <div class="chart-section" id="chart-section-crash-sequence" style="display:none">
+        <div class="chart-section-header">
+          <span class="chart-section-title">
+            Crash Sequence — Final 30 Seconds
+            <span class="provenance-badge provenance-derived" title="Derived from raw sensor streams — synchronized 4-axis view of the final moments">DERIVED</span>
+          </span>
+        </div>
+        <div class="chart-container" style="min-height:0;padding:12px 14px 14px;">
+          <div id="crash-seq-charts" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+      </div>
+
+      <!-- FAILURE EVENT WATERFALL — Gantt-style timeline of events/phases -->
+      <div class="chart-section" id="chart-section-failure-waterfall" style="display:none">
+        <div class="chart-section-header">
+          <span class="chart-section-title">
+            Failure Event Waterfall
+            <span class="provenance-badge provenance-derived" title="Composed from flight phases, mode changes, and findings with timestamps">DERIVED</span>
+          </span>
+        </div>
+        <div class="chart-container" style="min-height:0;padding:12px 14px 14px;">
+          <div id="failure-waterfall-canvas-wrap"></div>
+        </div>
+      </div>
+
       <!-- FLIGHT DATA (charts below findings) -->
       <div class="chart-section-header" style="margin-top:8px;">Flight Data</div>
 
       <!-- ALTITUDE & POSITION -->
       <div class="chart-section" id="chart-section-altitude" draggable="true" data-panel="altitude">
-        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Altitude &amp; Position</div>
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Altitude &amp; Position <span class="provenance-badge provenance-derived" title="Local position after EKF fusion">DERIVED</span></span></div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Altitude</span>
@@ -2236,7 +2287,7 @@
 
       <!-- POWER SYSTEM -->
       <div class="chart-section" id="chart-section-battery" draggable="true" data-panel="battery">
-        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Power System</div>
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Power System <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Battery</span>
@@ -2247,7 +2298,7 @@
 
       <!-- MOTOR OUTPUTS -->
       <div class="chart-section" id="chart-section-motors" draggable="true" data-panel="motors">
-        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Motor Outputs</div>
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Motor Outputs <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Motor Outputs</span>
@@ -2256,9 +2307,25 @@
         </div>
       </div>
 
+      <!-- MOTOR HEALTH HEATMAP -->
+      <div class="chart-section" id="chart-section-motor-heatmap" draggable="true" data-panel="motor-heatmap" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Motor Health Heatmap <span class="provenance-badge provenance-derived" title="Time-binned motor output levels — motor failures appear as dark lanes while others spike">DERIVED</span></span></div>
+        <div class="chart-container" style="min-height:0;padding:12px 14px 14px;">
+          <div id="motor-heatmap-wrap"></div>
+        </div>
+      </div>
+
+      <!-- BATTERY SAG UNDER LOAD -->
+      <div class="chart-section" id="chart-section-battery-sag" draggable="true" data-panel="battery-sag" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Battery Sag Under Load <span class="provenance-badge provenance-statistical" title="Estimated from voltage/current relationship — actual internal resistance depends on cell chemistry and temperature">STATISTICAL</span></span></div>
+        <div class="chart-container" style="min-height:0;padding:12px 14px 14px;">
+          <div id="battery-sag-wrap" style="display:flex;justify-content:flex-start;"></div>
+        </div>
+      </div>
+
       <!-- FLIGHT DYNAMICS -->
       <div class="chart-section" id="chart-section-attitude" draggable="true" data-panel="attitude">
-        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Flight Dynamics</div>
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Flight Dynamics <span class="provenance-badge provenance-filtered" title="EKF quaternion converted to Euler angles">FILTERED</span></span></div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Attitude</span>
@@ -2269,7 +2336,7 @@
 
       <!-- VIBRATION -->
       <div class="chart-section" id="chart-section-vibration" draggable="true" data-panel="vibration">
-        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Vibration</div>
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Vibration <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
         <div class="chart-container">
           <div class="chart-header">
             <span class="chart-title">Vibration</span>
@@ -2280,7 +2347,7 @@
 
       <!-- NAVIGATION -->
       <div class="chart-section" id="chart-section-nav" draggable="true" data-panel="nav">
-        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span>Navigation</div>
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Navigation <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
         <div class="nav-charts-grid">
           <div class="chart-container">
             <div class="chart-header">
@@ -2297,7 +2364,189 @@
         </div>
       </div>
 
-      <!-- (findings moved above charts) -->
+      <!-- RATE CONTROLLER -->
+      <div class="chart-section" id="chart-section-rate-ctrl" draggable="true" data-panel="rate-ctrl" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Rate Controller <span class="provenance-badge provenance-direct" title="Actual rate is direct; setpoint is derived from attitude controller output">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Roll / Pitch / Yaw Rate — Actual vs Commanded</span>
+          </div>
+          <div class="chart-body" id="inline-chart-rate-ctrl"></div>
+        </div>
+      </div>
+
+      <!-- ACTUATOR OUTPUTS (raw normalized) -->
+      <div class="chart-section" id="chart-section-actuator-out" draggable="true" data-panel="actuator-out" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Actuator Outputs (Raw) <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Motor outputs 0–1 (post-mixer)</span>
+          </div>
+          <div class="chart-body" id="inline-chart-actuator-out"></div>
+        </div>
+      </div>
+
+      <!-- EKF STATUS -->
+      <div class="chart-section" id="chart-section-ekf" draggable="true" data-panel="ekf" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">EKF Status <span class="provenance-badge provenance-filtered" title="Extended Kalman Filter internal state">FILTERED</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">EKF Variance / Innovation Flags</span>
+          </div>
+          <div class="chart-body" id="inline-chart-ekf"></div>
+        </div>
+      </div>
+
+      <!-- HORIZONTAL VELOCITY -->
+      <div class="chart-section" id="chart-section-horiz-vel" draggable="true" data-panel="horiz-vel" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Horizontal Velocity <span class="provenance-badge provenance-filtered" title="EKF velocity estimate">FILTERED</span></span></div>
+        <div class="nav-charts-grid">
+          <div class="chart-container">
+            <div class="chart-header">
+              <span class="chart-title">Vx / Vy / |Vhoriz|</span>
+            </div>
+            <div class="chart-body" id="inline-chart-horiz-vel"></div>
+          </div>
+          <div class="chart-container">
+            <div class="chart-header">
+              <span class="chart-title">Vz (Vertical)</span>
+            </div>
+            <div class="chart-body" id="inline-chart-vert-vel"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RC INPUT (stick inputs) -->
+      <div class="chart-section" id="chart-section-rc-input" draggable="true" data-panel="rc-input" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">RC Input <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Roll / Pitch / Throttle / Yaw sticks</span>
+          </div>
+          <div class="chart-body" id="inline-chart-rc-input"></div>
+        </div>
+      </div>
+
+      <!-- WIND ESTIMATE -->
+      <div class="chart-section" id="chart-section-wind" draggable="true" data-panel="wind" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Wind Estimate <span class="provenance-badge provenance-inferred" title="Inferred from airspeed and IMU data">INFERRED</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Wind Speed &amp; Direction Components</span>
+          </div>
+          <div class="chart-body" id="inline-chart-wind"></div>
+        </div>
+      </div>
+
+      <!-- GPS ACCURACY -->
+      <div class="chart-section" id="chart-section-gps-acc" draggable="true" data-panel="gps-acc" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">GPS Accuracy <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">HDOP &amp; Satellite Count</span>
+          </div>
+          <div class="chart-body" id="inline-chart-gps-acc"></div>
+        </div>
+      </div>
+
+      <!-- CPU & SYSTEM -->
+      <div class="chart-section" id="chart-section-cpu" draggable="true" data-panel="cpu" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">CPU &amp; System <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">CPU Load / Memory</span>
+          </div>
+          <div class="chart-body" id="inline-chart-cpu"></div>
+        </div>
+      </div>
+
+      <!-- MAGNETOMETER / HEADING -->
+      <div class="chart-section" id="chart-section-magnetometer" draggable="true" data-panel="magnetometer" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Magnetometer <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Mag X / Y / Z &amp; Heading</span>
+          </div>
+          <div class="chart-body" id="inline-chart-magnetometer"></div>
+        </div>
+      </div>
+
+      <!-- BAROMETER -->
+      <div class="chart-section" id="chart-section-barometer" draggable="true" data-panel="barometer" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Barometer <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Baro Altitude &amp; Temperature</span>
+          </div>
+          <div class="chart-body" id="inline-chart-barometer"></div>
+        </div>
+      </div>
+
+      <!-- RAW GYROSCOPE -->
+      <div class="chart-section" id="chart-section-raw-gyro" draggable="true" data-panel="raw-gyro" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Raw Gyroscope <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Gyro X / Y / Z (deg/s)</span>
+          </div>
+          <div class="chart-body" id="inline-chart-raw-gyro"></div>
+        </div>
+      </div>
+
+      <!-- RAW ACCELEROMETER -->
+      <div class="chart-section" id="chart-section-raw-accel" draggable="true" data-panel="raw-accel" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Raw Accelerometer <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Accel X / Y / Z (m/s²) — ±30 m/s² vibration threshold</span>
+          </div>
+          <div class="chart-body" id="inline-chart-raw-accel"></div>
+        </div>
+      </div>
+
+      <!-- RC CHANNELS (individual) -->
+      <div class="chart-section" id="chart-section-rc-channels" draggable="true" data-panel="rc-channels" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">RC Channels <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Individual RC Channels &amp; RSSI</span>
+          </div>
+          <div class="chart-body" id="inline-chart-rc-channels"></div>
+        </div>
+      </div>
+
+      <!-- ACTUATOR DEMAND (pre-mixer) -->
+      <div class="chart-section" id="chart-section-actuator-demand" draggable="true" data-panel="actuator-demand" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Actuator Demand <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Roll / Pitch / Yaw / Thrust demand (−1 to 1, pre-mixer)</span>
+          </div>
+          <div class="chart-body" id="inline-chart-actuator-demand"></div>
+        </div>
+      </div>
+
+      <!-- VELOCITY TRACKING ERROR (derived) -->
+      <div class="chart-section" id="chart-section-vel-error" draggable="true" data-panel="vel-error" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Velocity Tracking Error <span class="provenance-badge provenance-derived" title="Computed in browser: |setpoint − actual| per axis">DERIVED</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">|Error| Vx / Vy / Vz (m/s)</span>
+          </div>
+          <div class="chart-body" id="inline-chart-vel-error"></div>
+        </div>
+      </div>
+
+      <!-- IMPACT G-FORCE PROFILE (derived) -->
+      <div class="chart-section" id="chart-section-gforce" draggable="true" data-panel="gforce" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Impact G-Force Profile <span class="provenance-badge provenance-derived" title="Computed in browser: √(x²+y²+z²) / 9.81">DERIVED</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Total G-Force — 2g abnormal · 5g severe</span>
+          </div>
+          <div class="chart-body" id="inline-chart-gforce"></div>
+        </div>
+      </div>
 
       <!-- Phase chips + summary (below findings) -->
       <div class="diagnostics-row">
@@ -2603,7 +2852,7 @@
   /* ── Chart panel drag-and-drop reordering ───────────────────── */
   (function() {
     var STORAGE_KEY = 'goose-chart-order';
-    var PANEL_IDS = ['altitude','battery','motors','attitude','vibration','nav'];
+    var PANEL_IDS = ['altitude','battery','motors','attitude','vibration','nav','rate-ctrl','actuator-out','ekf','horiz-vel','rc-input','wind','gps-acc','cpu','magnetometer','barometer','raw-gyro','raw-accel','rc-channels','actuator-demand','vel-error','gforce'];
     var _dragging = null;
 
     function getContainer() {
@@ -2815,8 +3064,9 @@
     try {
       const form = new FormData();
       form.append('file', selectedFile);
+      form.append('profile', 'default');
 
-      const res  = await fetch('/api/analyze', { method: 'POST', body: form });
+      const res  = await fetch('/api/quick-analysis', { method: 'POST', body: form });
       const data = await res.json();
 
       if (!res.ok) {
@@ -2951,11 +3201,23 @@
       k !== 'mode_changes' && k !== 'events' && ts[k] && ts[k].timestamps
     );
 
-    // Show/hide chart sections
+    // Show/hide chart sections — all new sections start hidden; individual builders reveal them
     const chartSections = [
       'chart-section-altitude', 'chart-section-battery',
       'chart-section-motors', 'chart-section-attitude',
       'chart-section-vibration', 'chart-section-nav',
+      'chart-section-rate-ctrl', 'chart-section-actuator-out',
+      'chart-section-ekf', 'chart-section-horiz-vel',
+      'chart-section-rc-input', 'chart-section-wind',
+      'chart-section-gps-acc', 'chart-section-cpu',
+      // New sensor / derived charts
+      'chart-section-magnetometer', 'chart-section-barometer',
+      'chart-section-raw-gyro', 'chart-section-raw-accel',
+      'chart-section-rc-channels', 'chart-section-actuator-demand',
+      'chart-section-vel-error', 'chart-section-gforce',
+      // Flagship forensic charts
+      'chart-section-crash-sequence', 'chart-section-motor-heatmap',
+      'chart-section-battery-sag', 'chart-section-failure-waterfall',
     ];
 
     if (!hasTs || typeof uPlot === 'undefined') {
@@ -3033,10 +3295,19 @@
         const chart = builder(el, ts, C, baseOpts, sd);
         if (chart) {
           window._inlineCharts.push(chart);
+          // Reveal the parent section if it was hidden (new sections start hidden)
+          const parentSection = el.closest('[id^="chart-section-"]');
+          if (parentSection && parentSection.style.display === 'none') {
+            parentSection.style.display = '';
+          }
         } else {
           el.innerHTML = '<div class="chart-empty">No data available</div>';
           const parentSection = el.closest('[id^="chart-section-"]');
-          if (parentSection) parentSection.style.display = 'none';
+          // Only hide the section if no charts in it have data
+          if (parentSection) {
+            const hasAnyChart = parentSection.querySelector('.uplot') != null;
+            if (!hasAnyChart) parentSection.style.display = 'none';
+          }
         }
       } catch(err) {
         console.error('Inline chart error ' + containerId + ':', err);
@@ -3139,6 +3410,863 @@
         opts.axes[1].label = 'm/s';
         return new uPlot(opts, data, el);
       });
+
+      // ── NEW CHARTS ──────────────────────────────────────────────
+
+      // Rate Controller — actual rate vs setpoint
+      buildChart('inline-chart-rate-ctrl', (el, ts, C, base, sd) => {
+        const ar = ts.attitude_rate;
+        const sp = ts.attitude_rate_setpoint;
+        if (!ar) return null;
+        const data = [ar.timestamps]; const series = [];
+        if (ar.roll)  { data.push(ar.roll);  series.push(sd('Roll rate',  C.red,    { width: 1.5 })); }
+        if (ar.pitch) { data.push(ar.pitch); series.push(sd('Pitch rate', C.green,  { width: 1.5 })); }
+        if (ar.yaw)   { data.push(ar.yaw);   series.push(sd('Yaw rate',   C.blue,   { width: 1.5 })); }
+        if (sp) {
+          if (sp.roll)  { data.push(sp.roll);  series.push(sd('Roll SP',  C.red,   { width: 1, dash: [4,3] })); }
+          if (sp.pitch) { data.push(sp.pitch); series.push(sd('Pitch SP', C.green, { width: 1, dash: [4,3] })); }
+          if (sp.yaw)   { data.push(sp.yaw);   series.push(sd('Yaw SP',   C.blue,  { width: 1, dash: [4,3] })); }
+        }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'deg/s';
+        return new uPlot(opts, data, el);
+      });
+
+      // Actuator Outputs — raw motor outputs (post-mixer, 0-1)
+      buildChart('inline-chart-actuator-out', (el, ts, C, base, sd) => {
+        const d = ts.motors; if (!d) return null;
+        const motorKeys = Object.keys(d).filter(k => k.startsWith('output_')).sort();
+        if (!motorKeys.length) return null;
+        const colors = [C.green, C.red, C.blue, C.amber, C.purple, C.cyan, C.orange, C.pink];
+        const data = [d.timestamps]; const series = [];
+        motorKeys.forEach((key, i) => {
+          data.push(d[key]);
+          const idx = parseInt(key.replace('output_', ''));
+          series.push(sd('M' + (idx + 1), colors[i % colors.length], { width: 1.2 }));
+        });
+        const opts = base(el.clientWidth - 4, series);
+        opts.height = 220;
+        opts.axes[1].label = '0–1';
+        return new uPlot(opts, data, el);
+      });
+
+      // EKF Status
+      buildChart('inline-chart-ekf', (el, ts, C, base, sd) => {
+        const d = ts.ekf; if (!d || !d.timestamps) return null;
+        const ekfKeys = Object.keys(d).filter(k => k !== 'timestamps' && Array.isArray(d[k]) && d[k].length > 0);
+        if (!ekfKeys.length) return null;
+        const colors = [C.green, C.amber, C.red, C.blue, C.purple, C.cyan, C.orange, C.pink];
+        const data = [d.timestamps]; const series = [];
+        ekfKeys.slice(0, 6).forEach((key, i) => {
+          data.push(d[key]);
+          series.push(sd(key, colors[i % colors.length], { width: 1 }));
+        });
+        const opts = base(el.clientWidth - 4, series);
+        opts.height = 240;
+        return new uPlot(opts, data, el);
+      });
+
+      // Horizontal Velocity: Vx, Vy, |Vhoriz|
+      buildChart('inline-chart-horiz-vel', (el, ts, C, base, sd) => {
+        const d = ts.velocity; if (!d) return null;
+        const vx = d.vx, vy = d.vy;
+        if (!vx || !vy) return null;
+        // Compute horizontal speed magnitude
+        const vhoriz = vx.map((x, i) => {
+          const xi = x != null ? x : 0;
+          const yi = vy[i] != null ? vy[i] : 0;
+          return Math.sqrt(xi * xi + yi * yi);
+        });
+        const data = [d.timestamps, vx, vy, vhoriz];
+        const series = [
+          sd('Vx (N)', C.red,   { width: 1 }),
+          sd('Vy (E)', C.green, { width: 1 }),
+          sd('|V|',    C.amber, { width: 2, fill: 'rgba(239,159,39,0.05)' }),
+        ];
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'm/s';
+        return new uPlot(opts, data, el);
+      });
+
+      // Vertical Velocity: Vz
+      buildChart('inline-chart-vert-vel', (el, ts, C, base, sd) => {
+        const d = ts.velocity; if (!d || !d.vz) return null;
+        const data = [d.timestamps, d.vz];
+        const series = [sd('Vz (Down)', C.blue, { width: 1.5, fill: 'rgba(91,155,213,0.06)' })];
+        const opts = base(el.clientWidth - 4, series);
+        opts.height = 200;
+        opts.axes[1].label = 'm/s';
+        return new uPlot(opts, data, el);
+      });
+
+      // RC Input — stick inputs via manual_control
+      buildChart('inline-chart-rc-input', (el, ts, C, base, sd) => {
+        const d = ts.manual_control;
+        if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.x) { data.push(d.x); series.push(sd('Roll (x)',     C.red,   { width: 1.2 })); }
+        if (d.y) { data.push(d.y); series.push(sd('Pitch (y)',    C.green, { width: 1.2 })); }
+        if (d.z) { data.push(d.z); series.push(sd('Throttle (z)', C.amber, { width: 1.5, fill: 'rgba(239,159,39,0.05)' })); }
+        if (d.r) { data.push(d.r); series.push(sd('Yaw (r)',      C.blue,  { width: 1.2 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = '−1 to 1';
+        return new uPlot(opts, data, el);
+      });
+
+      // Wind Estimate
+      buildChart('inline-chart-wind', (el, ts, C, base, sd) => {
+        const d = ts.wind; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.wind_x)     { data.push(d.wind_x);     series.push(sd('Wind E (x)', C.red,   { width: 1 })); }
+        if (d.wind_y)     { data.push(d.wind_y);     series.push(sd('Wind N (y)', C.green, { width: 1 })); }
+        if (d.wind_speed) { data.push(d.wind_speed); series.push(sd('Speed',      C.pink,  { width: 2, fill: 'rgba(212,106,159,0.06)' })); }
+        if (!series.length) {
+          // Try generic columns if specific ones not present
+          const wKeys = Object.keys(d).filter(k => k !== 'timestamps' && Array.isArray(d[k]));
+          if (!wKeys.length) return null;
+          const wColors = [C.red, C.green, C.blue, C.amber];
+          wKeys.slice(0, 4).forEach((k, i) => {
+            data.push(d[k]);
+            series.push(sd(k, wColors[i % wColors.length], { width: 1 }));
+          });
+        }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'm/s';
+        return new uPlot(opts, data, el);
+      });
+
+      // GPS Accuracy — hdop and satellite count
+      buildChart('inline-chart-gps-acc', (el, ts, C, base, sd) => {
+        const d = ts.gps; if (!d) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.satellites) { data.push(d.satellites); series.push(sd('Satellites', C.green, { width: 2 })); }
+        if (d.hdop)       { data.push(d.hdop);       series.push(sd('HDOP',       C.amber, { width: 1.5 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.height = 220;
+        return new uPlot(opts, data, el);
+      });
+
+      // CPU & System Load
+      buildChart('inline-chart-cpu', (el, ts, C, base, sd) => {
+        const d = ts.cpu; if (!d) return null;
+        const cpuKeys = Object.keys(d).filter(k => k !== 'timestamps' && Array.isArray(d[k]) && d[k].length > 0);
+        if (!cpuKeys.length) return null;
+        const colors = [C.cyan, C.purple, C.amber, C.green];
+        const data = [d.timestamps]; const series = [];
+        cpuKeys.slice(0, 4).forEach((key, i) => {
+          data.push(d[key]);
+          series.push(sd(key, colors[i % colors.length], { width: 1.5, fill: i === 0 ? 'rgba(91,188,190,0.06)' : undefined }));
+        });
+        const opts = base(el.clientWidth - 4, series);
+        opts.height = 220;
+        opts.axes[1].label = '%';
+        return new uPlot(opts, data, el);
+      });
+
+      // ── NEW SENSOR + DERIVED CHARTS ─────────────────────────────
+
+      // Magnetometer / Heading
+      buildChart('inline-chart-magnetometer', (el, ts, C, base, sd) => {
+        const d = ts.magnetometer; if (!d || !d.timestamps) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.mag_x) { data.push(d.mag_x); series.push(sd('Mag X', C.blue,   { width: 1 })); }
+        if (d.mag_y) { data.push(d.mag_y); series.push(sd('Mag Y', C.cyan,   { width: 1 })); }
+        if (d.mag_z) { data.push(d.mag_z); series.push(sd('Mag Z', C.purple, { width: 1 })); }
+        if (d.heading_deg) { data.push(d.heading_deg); series.push(sd('Heading °', C.amber, { width: 2 })); }
+        // Try generic column fallback if specific keys absent
+        if (!series.length) {
+          const fallbackColors = [C.blue, C.cyan, C.purple, C.amber];
+          Object.keys(d).filter(k => k !== 'timestamps' && Array.isArray(d[k])).slice(0, 4).forEach((k, i) => {
+            data.push(d[k]);
+            series.push(sd(k, fallbackColors[i % fallbackColors.length], { width: 1 }));
+          });
+        }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'Gauss / °';
+        return new uPlot(opts, data, el);
+      });
+
+      // Barometer — altitude + temperature dual-axis via two series
+      buildChart('inline-chart-barometer', (el, ts, C, base, sd) => {
+        const d = ts.barometer; if (!d || !d.timestamps) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.baro_alt_meter) { data.push(d.baro_alt_meter); series.push(sd('Baro Alt (m)',  C.green, { width: 1.5, fill: 'rgba(110,204,114,0.05)' })); }
+        if (d.temperature_c)  { data.push(d.temperature_c);  series.push(sd('Temp (°C)',     C.amber, { width: 1.2 })); }
+        if (d.pressure_pa)    { data.push(d.pressure_pa);    series.push(sd('Pressure (Pa)', C.blue,  { width: 1 })); }
+        if (!series.length) {
+          const fallbackColors = [C.green, C.amber, C.blue];
+          Object.keys(d).filter(k => k !== 'timestamps' && Array.isArray(d[k])).slice(0, 3).forEach((k, i) => {
+            data.push(d[k]);
+            series.push(sd(k, fallbackColors[i % fallbackColors.length], { width: 1 }));
+          });
+        }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'm / °C';
+        return new uPlot(opts, data, el);
+      });
+
+      // Raw Gyroscope
+      buildChart('inline-chart-raw-gyro', (el, ts, C, base, sd) => {
+        const d = ts.raw_gyro; if (!d || !d.timestamps) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.gyro_x) { data.push(d.gyro_x); series.push(sd('Gyro X (roll)',  C.red,   { width: 1 })); }
+        if (d.gyro_y) { data.push(d.gyro_y); series.push(sd('Gyro Y (pitch)', C.green, { width: 1 })); }
+        if (d.gyro_z) { data.push(d.gyro_z); series.push(sd('Gyro Z (yaw)',   C.blue,  { width: 1 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'deg/s';
+        return new uPlot(opts, data, el);
+      });
+
+      // Raw Accelerometer — with ±30 m/s² threshold bands
+      buildChart('inline-chart-raw-accel', (el, ts, C, base, sd) => {
+        const d = ts.raw_accel; if (!d || !d.timestamps) return null;
+        const n = d.timestamps.length;
+        const data = [d.timestamps]; const series = [];
+        if (d.accel_x) { data.push(d.accel_x); series.push(sd('Accel X', C.red,   { width: 1 })); }
+        if (d.accel_y) { data.push(d.accel_y); series.push(sd('Accel Y', C.green, { width: 1 })); }
+        if (d.accel_z) { data.push(d.accel_z); series.push(sd('Accel Z', C.blue,  { width: 1 })); }
+        // Threshold reference lines at +30 and -30
+        const pos30 = new Array(n).fill(30);
+        const neg30 = new Array(n).fill(-30);
+        data.push(pos30); series.push(sd('+30 m/s²', 'rgba(226,75,74,0.4)', { width: 1, dash: [6,3] }));
+        data.push(neg30); series.push(sd('−30 m/s²', 'rgba(226,75,74,0.4)', { width: 1, dash: [6,3] }));
+        if (series.length <= 2) return null; // only thresholds, no real data
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'm/s²';
+        return new uPlot(opts, data, el);
+      });
+
+      // RC Channels (individual) + RSSI
+      buildChart('inline-chart-rc-channels', (el, ts, C, base, sd) => {
+        const d = ts.rc_channels; if (!d || !d.timestamps) return null;
+        const chanKeys = Object.keys(d).filter(k => k !== 'timestamps' && k !== 'rssi' && Array.isArray(d[k])).sort();
+        if (!chanKeys.length && !d.rssi) return null;
+        const chanColors = [C.red, C.green, C.blue, C.amber, C.purple, C.cyan, C.orange, C.pink, C.lime, C.red, C.green, C.blue];
+        const data = [d.timestamps]; const series = [];
+        chanKeys.slice(0, 12).forEach((k, i) => {
+          data.push(d[k]);
+          series.push(sd(k, chanColors[i % chanColors.length], { width: 1 }));
+        });
+        if (d.rssi) { data.push(d.rssi); series.push(sd('RSSI', C.cyan, { width: 2 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.height = 260;
+        opts.axes[1].label = 'PWM / %';
+        return new uPlot(opts, data, el);
+      });
+
+      // Actuator Demand (pre-mixer, −1 to 1)
+      buildChart('inline-chart-actuator-demand', (el, ts, C, base, sd) => {
+        const d = ts.actuator_controls; if (!d || !d.timestamps) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.roll)   { data.push(d.roll);   series.push(sd('Roll',   C.red,   { width: 1.5 })); }
+        if (d.pitch)  { data.push(d.pitch);  series.push(sd('Pitch',  C.green, { width: 1.5 })); }
+        if (d.yaw)    { data.push(d.yaw);    series.push(sd('Yaw',    C.blue,  { width: 1.5 })); }
+        if (d.thrust) { data.push(d.thrust); series.push(sd('Thrust', C.amber, { width: 2, fill: 'rgba(239,159,39,0.05)' })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = '−1 to 1';
+        return new uPlot(opts, data, el);
+      });
+
+      // Velocity Tracking Error — |setpoint − actual| per axis (derived in browser)
+      buildChart('inline-chart-vel-error', (el, ts, C, base, sd) => {
+        const actual = ts.velocity;
+        const sp     = ts.velocity_setpoint;
+        if (!actual || !actual.timestamps || !sp || !sp.timestamps) return null;
+        // Interpolate setpoint onto actual timestamps (simple nearest-sample approach)
+        const n = actual.timestamps.length;
+        // Build lookup arrays: find closest sp index for each actual timestamp
+        function interpAxis(spArr, spTs, actTs) {
+          if (!spArr || !spTs) return null;
+          const spN = spTs.length;
+          return actTs.map(t => {
+            let lo = 0, hi = spN - 1;
+            while (lo < hi) {
+              const mid = (lo + hi) >> 1;
+              if (spTs[mid] < t) lo = mid + 1; else hi = mid;
+            }
+            const spVal = spArr[lo] != null ? spArr[lo] : 0;
+            const actIdx = actTs.indexOf(t);
+            const actVal = actual.vx ? (actIdx >= 0 ? actual.vx[actIdx] : 0) : 0; // placeholder
+            return spVal;
+          });
+        }
+        // Simple nearest-index interp for each axis
+        function computeError(actualArr, spArr, spTs, actTs) {
+          if (!actualArr || !spArr) return null;
+          const spN = spTs.length;
+          return actTs.map((t, i) => {
+            let lo = 0, hi = spN - 1;
+            while (lo < hi) {
+              const mid = (lo + hi) >> 1;
+              if (spTs[mid] < t) lo = mid + 1; else hi = mid;
+            }
+            const spVal  = spArr[lo]    != null ? spArr[lo]    : 0;
+            const actVal = actualArr[i] != null ? actualArr[i] : 0;
+            return Math.abs(spVal - actVal);
+          });
+        }
+        const errVx = computeError(actual.vx, sp.vx, sp.timestamps, actual.timestamps);
+        const errVy = computeError(actual.vy, sp.vy, sp.timestamps, actual.timestamps);
+        const errVz = computeError(actual.vz, sp.vz, sp.timestamps, actual.timestamps);
+        if (!errVx && !errVy && !errVz) return null;
+        const data = [actual.timestamps]; const series = [];
+        if (errVx) { data.push(errVx); series.push(sd('|Err Vx|', C.red,   { width: 1.5 })); }
+        if (errVy) { data.push(errVy); series.push(sd('|Err Vy|', C.green, { width: 1.5 })); }
+        if (errVz) { data.push(errVz); series.push(sd('|Err Vz|', C.blue,  { width: 1.5 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'm/s';
+        return new uPlot(opts, data, el);
+      });
+
+      // Impact G-Force Profile — total_g = √(x²+y²+z²)/9.81 (derived in browser)
+      buildChart('inline-chart-gforce', (el, ts, C, base, sd) => {
+        // Prefer raw_accel; fall back to vibration
+        const d = ts.raw_accel || ts.vibration;
+        if (!d || !d.timestamps) return null;
+        const xKey = d.accel_x != null ? 'accel_x' : (d.accel_x !== undefined ? 'accel_x' : null);
+        const ax = d.accel_x || null;
+        const ay = d.accel_y || null;
+        const az = d.accel_z || null;
+        if (!ax && !ay && !az) return null;
+        const G = 9.81;
+        const n = d.timestamps.length;
+        const totalG = d.timestamps.map((_, i) => {
+          const x = (ax && ax[i] != null) ? ax[i] : 0;
+          const y = (ay && ay[i] != null) ? ay[i] : 0;
+          const z = (az && az[i] != null) ? az[i] : 0;
+          return Math.sqrt(x*x + y*y + z*z) / G;
+        });
+        // Threshold reference lines
+        const thresh2 = new Array(n).fill(2.0);
+        const thresh5 = new Array(n).fill(5.0);
+        const data = [d.timestamps, totalG, thresh2, thresh5];
+        const series = [
+          sd('Total G', C.amber, { width: 2, fill: 'rgba(239,159,39,0.08)' }),
+          sd('2g (abnormal)', 'rgba(239,159,39,0.5)', { width: 1, dash: [6,3] }),
+          sd('5g (severe)',   'rgba(226,75,74,0.6)',  { width: 1, dash: [4,3] }),
+        ];
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'g';
+        return new uPlot(opts, data, el);
+      });
+
+      // ══════════════════════════════════════════════════════════════
+      // FLAGSHIP FORENSIC CHARTS
+      // ══════════════════════════════════════════════════════════════
+
+      // ── Chart 1: Crash Sequence Reconstruction ─────────────────
+      (function buildCrashSequence() {
+        const crashed = !!(data.metadata && data.metadata.crashed);
+        const section = document.getElementById('chart-section-crash-sequence');
+        if (!section) return;
+        if (!crashed) { section.style.display = 'none'; return; }
+
+        const attD = ts.attitude;
+        const altD = ts.altitude;
+        const motD = ts.motors;
+        const vibD = ts.vibration || ts.raw_accel;
+
+        if (!attD || !attD.timestamps || !attD.timestamps.length) {
+          section.style.display = 'none'; return;
+        }
+
+        const masterTs = attD.timestamps;
+        const maxT     = masterTs[masterTs.length - 1];
+        const cutoff   = maxT - 30;
+
+        // Slice a set of parallel arrays to the [cutoff, maxT] window; normalise T to 0
+        function sliceWindow(timestamps) {
+          const extraArrays = Array.prototype.slice.call(arguments, 1);
+          const indices = [];
+          for (let i = 0; i < timestamps.length; i++) {
+            if (timestamps[i] >= cutoff) indices.push(i);
+          }
+          if (!indices.length) return null;
+          const slicedTs = indices.map(function(i) { return timestamps[i] - cutoff; });
+          const sliced = extraArrays.map(function(arr) {
+            return arr ? indices.map(function(i) { return arr[i] != null ? arr[i] : null; }) : null;
+          });
+          return [slicedTs].concat(sliced);
+        }
+
+        const syncKey = uPlot.sync('crash-seq');
+
+        function makeCrashSubChart(containerId, seriesDefs, dataArrays, yLabel) {
+          const container = document.getElementById(containerId);
+          if (!container) return null;
+          const containerEl = section.querySelector('.chart-container');
+          const w = Math.max((containerEl ? containerEl.clientWidth : 600) - 28, 300);
+          const opts = {
+            width: w, height: 120,
+            cursor: { sync: { key: syncKey.key }, drag: { x: true, y: false, setScale: true } },
+            scales: { x: { time: false, min: 0 } },
+            axes: [
+              {
+                stroke: 'rgba(255,255,255,0.15)',
+                grid: { stroke: 'rgba(255,255,255,0.04)', width: 1 },
+                ticks: { stroke: 'rgba(255,255,255,0.04)', width: 1 },
+                font: '11px JetBrains Mono, monospace',
+                values: function(u, vals) { return vals.map(function(v) { return v != null ? v.toFixed(0) + 's' : ''; }); },
+              },
+              {
+                stroke: 'rgba(255,255,255,0.15)',
+                grid: { stroke: 'rgba(255,255,255,0.04)', width: 1 },
+                ticks: { stroke: 'rgba(255,255,255,0.04)', width: 1 },
+                font: '11px JetBrains Mono, monospace',
+                size: 55, label: yLabel,
+              },
+            ],
+            legend: { show: true },
+            series: [{ label: 'T (s)' }].concat(seriesDefs),
+          };
+          try {
+            const chart = new uPlot(opts, dataArrays, container);
+            window._inlineCharts.push(chart);
+            return chart;
+          } catch(e) {
+            console.error('crash-seq sub-chart error', containerId, e);
+            return null;
+          }
+        }
+
+        const wrap = document.getElementById('crash-seq-charts');
+        if (!wrap) { section.style.display = 'none'; return; }
+        wrap.innerHTML = '';
+
+        const subDefs = [
+          { id: 'crash-seq-attitude', label: 'ATTITUDE (°)' },
+          { id: 'crash-seq-altitude', label: 'ALTITUDE (m)' },
+          { id: 'crash-seq-motors',   label: 'MOTOR AVG' },
+          { id: 'crash-seq-gforce',   label: 'G-FORCE' },
+        ];
+        subDefs.forEach(function(sc) {
+          const lbl = document.createElement('div');
+          lbl.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--text-sec);padding:6px 0 2px;';
+          lbl.textContent = sc.label;
+          const div = document.createElement('div');
+          div.id = sc.id;
+          wrap.appendChild(lbl);
+          wrap.appendChild(div);
+        });
+
+        let builtAny = false;
+
+        // Sub 1: Attitude — roll (red) + pitch (green)
+        const attSlice = sliceWindow(attD.timestamps, attD.roll, attD.pitch);
+        if (attSlice) {
+          const slTs = attSlice[0], slRoll = attSlice[1], slPitch = attSlice[2];
+          const series = [], dataArrs = [slTs];
+          if (slRoll)  { dataArrs.push(slRoll);  series.push({ label: 'Roll',  stroke: '#E24B4A', width: 1.8, points: { show: false } }); }
+          if (slPitch) { dataArrs.push(slPitch); series.push({ label: 'Pitch', stroke: '#6ECC72', width: 1.8, points: { show: false } }); }
+          if (series.length) { makeCrashSubChart('crash-seq-attitude', series, dataArrs, 'deg'); builtAny = true; }
+        }
+
+        // Sub 2: Altitude
+        if (altD && altD.timestamps) {
+          const altArr = altD.alt_rel || altD.alt_msl;
+          if (altArr) {
+            const altSlice = sliceWindow(altD.timestamps, altArr);
+            if (altSlice && altSlice[1]) {
+              makeCrashSubChart('crash-seq-altitude',
+                [{ label: 'Altitude', stroke: '#5B9BD5', width: 1.8, points: { show: false }, fill: 'rgba(91,155,213,0.08)' }],
+                [altSlice[0], altSlice[1]], 'm');
+              builtAny = true;
+            }
+          }
+        }
+
+        // Sub 3: Motor Average
+        if (motD && motD.timestamps) {
+          const motorKeys = Object.keys(motD).filter(function(k) { return k.startsWith('output_'); });
+          if (motorKeys.length) {
+            const motArgs = [motD.timestamps].concat(motorKeys.map(function(k) { return motD[k]; }));
+            const motSlice = sliceWindow.apply(null, motArgs);
+            if (motSlice) {
+              const slTs = motSlice[0];
+              const motorArrays = motSlice.slice(1);
+              const motorAvg = slTs.map(function(_, i) {
+                const vals = motorArrays.map(function(a) { return a && a[i] != null ? a[i] : null; }).filter(function(v) { return v !== null; });
+                return vals.length ? vals.reduce(function(s, v) { return s + v; }, 0) / vals.length : null;
+              });
+              makeCrashSubChart('crash-seq-motors',
+                [{ label: 'Motor Avg', stroke: '#EF9F27', width: 1.8, points: { show: false }, fill: 'rgba(239,159,39,0.07)' }],
+                [slTs, motorAvg], '0–1');
+              builtAny = true;
+            }
+          }
+        }
+
+        // Sub 4: G-Force from accel
+        if (vibD && vibD.timestamps) {
+          const vibSlice = sliceWindow(vibD.timestamps, vibD.accel_x, vibD.accel_y, vibD.accel_z);
+          if (vibSlice) {
+            const slTs = vibSlice[0], slX = vibSlice[1], slY = vibSlice[2], slZ = vibSlice[3];
+            const gVals = slTs.map(function(_, i) {
+              const x = slX && slX[i] != null ? slX[i] : 0;
+              const y = slY && slY[i] != null ? slY[i] : 0;
+              const z = slZ && slZ[i] != null ? slZ[i] : 0;
+              return Math.sqrt(x*x + y*y + z*z) / 9.81;
+            });
+            makeCrashSubChart('crash-seq-gforce',
+              [{ label: 'G-Force', stroke: '#A77BCA', width: 1.8, points: { show: false } }],
+              [slTs, gVals], 'G');
+            builtAny = true;
+          }
+        }
+
+        section.style.display = builtAny ? '' : 'none';
+      })();
+
+      // ── Chart 2: Motor Health Heatmap ──────────────────────────
+      (function buildMotorHeatmap() {
+        const section = document.getElementById('chart-section-motor-heatmap');
+        const wrap    = document.getElementById('motor-heatmap-wrap');
+        if (!section || !wrap) return;
+
+        const d = ts.motors;
+        if (!d || !d.timestamps || !d.timestamps.length) { section.style.display = 'none'; return; }
+
+        const motorKeys = Object.keys(d).filter(function(k) { return k.startsWith('output_'); }).sort();
+        if (!motorKeys.length) { section.style.display = 'none'; return; }
+
+        const NUM_BINS = 100;
+        const nMotors  = motorKeys.length;
+        const n        = d.timestamps.length;
+        const tMin     = d.timestamps[0] || 0;
+        const tMax     = d.timestamps[n - 1] || 1;
+        const tRange   = tMax - tMin || 1;
+        const binSize  = tRange / NUM_BINS;
+
+        const bins = motorKeys.map(function(key) {
+          const sums   = new Float64Array(NUM_BINS);
+          const counts = new Int32Array(NUM_BINS);
+          const vals   = d[key];
+          d.timestamps.forEach(function(t, i) {
+            const v = vals[i];
+            if (v == null) return;
+            const bi = Math.min(Math.floor((t - tMin) / binSize), NUM_BINS - 1);
+            sums[bi] += v; counts[bi]++;
+          });
+          return Array.from({ length: NUM_BINS }, function(_, bi) {
+            return counts[bi] > 0 ? sums[bi] / counts[bi] : null;
+          });
+        });
+
+        function motorColor(val, isFailure) {
+          if (isFailure) return '#EF4444';
+          if (val == null) return '#111111';
+          if (val < 0.1)   return '#1a1a1a';
+          if (val < 0.5)   return '#1a4a1a';
+          if (val < 0.8)   return '#3a7a3a';
+          if (val < 0.95)  return '#7a5a00';
+          return '#7a1a1a';
+        }
+
+        const ROW_H    = 32;
+        const LABEL_W  = 64;
+        const LEGEND_W = 100;
+        const AXIS_H   = 36;
+        const sEl      = section.querySelector('.chart-container');
+        const canvasW  = Math.max((sEl ? sEl.clientWidth : 700) - 28, 300);
+        const plotW    = canvasW - LABEL_W - LEGEND_W;
+        const canvasH  = nMotors * ROW_H + AXIS_H + 8;
+        const cellW    = plotW / NUM_BINS;
+
+        const binMaxes = Array.from({ length: NUM_BINS }, function(_, bi) {
+          const vals = bins.map(function(bm) { return bm[bi]; }).filter(function(v) { return v != null; });
+          return vals.length ? Math.max.apply(null, vals) : 0;
+        });
+
+        const dpr    = window.devicePixelRatio || 1;
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(canvasW * dpr);
+        canvas.height = Math.round(canvasH * dpr);
+        canvas.style.width  = canvasW + 'px';
+        canvas.style.height = canvasH + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.02)';
+        ctx.fillRect(0, 0, canvasW, canvasH);
+
+        bins.forEach(function(motorBins, mi) {
+          const y = mi * ROW_H + 4;
+          motorBins.forEach(function(val, bi) {
+            const isFailure = val != null && val < 0.1 && binMaxes[bi] > 0.5;
+            ctx.fillStyle = motorColor(val, isFailure);
+            ctx.fillRect(LABEL_W + bi * cellW, y, Math.ceil(cellW) + 1, ROW_H - 2);
+          });
+          ctx.fillStyle = 'rgba(216,213,206,0.55)';
+          ctx.font = '11px JetBrains Mono, monospace';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('M' + (mi + 1), LABEL_W - 6, y + (ROW_H - 2) / 2);
+          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(LABEL_W, y + ROW_H - 1); ctx.lineTo(LABEL_W + plotW, y + ROW_H - 1); ctx.stroke();
+        });
+
+        const axY = nMotors * ROW_H + 8;
+        ctx.fillStyle = 'rgba(216,213,206,0.35)';
+        ctx.font = '10px JetBrains Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (let i = 0; i <= 6; i++) {
+          const frac = i / 6;
+          const t    = tMin + frac * tRange;
+          const x    = LABEL_W + frac * plotW;
+          ctx.fillText(t.toFixed(0) + 's', x, axY);
+          ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x, nMotors * ROW_H + 4); ctx.stroke();
+        }
+
+        const swatches = [
+          { c: '#EF4444', l: 'Failure' }, { c: '#7a1a1a', l: 'Saturated' }, { c: '#7a5a00', l: 'High' },
+          { c: '#3a7a3a', l: 'Normal'  }, { c: '#1a4a1a', l: 'Low'       }, { c: '#1a1a1a', l: 'Idle' },
+        ];
+        swatches.forEach(function(sw, i) {
+          const lx = LABEL_W + plotW + 8, ly = 4 + i * 20;
+          ctx.fillStyle = sw.c; ctx.fillRect(lx, ly, 14, 14);
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 0.5; ctx.strokeRect(lx, ly, 14, 14);
+          ctx.fillStyle = 'rgba(216,213,206,0.5)'; ctx.font = '10px JetBrains Mono, monospace';
+          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.fillText(sw.l, lx + 18, ly + 7);
+        });
+
+        wrap.innerHTML = '';
+        wrap.appendChild(canvas);
+        section.style.display = '';
+      })();
+
+      // ── Chart 3: Battery Sag Under Load ────────────────────────
+      (function buildBatterySag() {
+        const section = document.getElementById('chart-section-battery-sag');
+        const wrap    = document.getElementById('battery-sag-wrap');
+        if (!section || !wrap) return;
+
+        const d = ts.battery;
+        if (!d || !d.timestamps || !d.current || !d.voltage) { section.style.display = 'none'; return; }
+
+        const pts = [];
+        d.timestamps.forEach(function(t, i) {
+          const I = d.current[i], V = d.voltage[i];
+          if (I != null && V != null && I >= 0.5) pts.push({ I: I, V: V });
+        });
+        if (pts.length < 5) { section.style.display = 'none'; return; }
+
+        // Linear regression V = a + b*I → R_int = -b
+        const n = pts.length;
+        let sumI = 0, sumV = 0, sumII = 0, sumIV = 0;
+        pts.forEach(function(p) { sumI += p.I; sumV += p.V; sumII += p.I * p.I; sumIV += p.I * p.V; });
+        const meanI = sumI / n, meanV = sumV / n;
+        const ssII  = sumII - n * meanI * meanI;
+        const ssIV  = sumIV - n * meanI * meanV;
+        const b     = ssII !== 0 ? ssIV / ssII : 0;
+        const a     = meanV - b * meanI;
+        const R_int = -b;
+
+        const CW = 500, CH = 300;
+        const P  = { t: 24, r: 24, b: 48, l: 60 };
+        const pw = CW - P.l - P.r, ph = CH - P.t - P.b;
+
+        const allI = pts.map(function(p) { return p.I; });
+        const allV = pts.map(function(p) { return p.V; });
+        const mnI  = Math.min.apply(null, allI), mxI = Math.max.apply(null, allI);
+        const mnV  = Math.min.apply(null, allV), mxV = Math.max.apply(null, allV);
+        const piI  = (mxI - mnI) * 0.05 || 1, piV = (mxV - mnV) * 0.05 || 0.5;
+        const xMin = mnI - piI, xMax = mxI + piI;
+        const yMin = mnV - piV, yMax = mxV + piV;
+
+        function toX(I) { return P.l + (I - xMin) / (xMax - xMin) * pw; }
+        function toY(V) { return P.t + (1 - (V - yMin) / (yMax - yMin)) * ph; }
+
+        const dpr = window.devicePixelRatio || 1;
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(CW * dpr); canvas.height = Math.round(CH * dpr);
+        canvas.style.width = CW + 'px'; canvas.style.height = CH + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.015)'; ctx.fillRect(0, 0, CW, CH);
+
+        // Grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+        for (let i = 0; i <= 5; i++) {
+          ctx.beginPath(); ctx.moveTo(P.l + (i/5)*pw, P.t); ctx.lineTo(P.l + (i/5)*pw, P.t+ph); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(P.l, P.t+(i/5)*ph); ctx.lineTo(P.l+pw, P.t+(i/5)*ph); ctx.stroke();
+        }
+
+        // Points — time gradient blue→red
+        pts.forEach(function(p, i) {
+          const frac = i / (pts.length - 1 || 1);
+          const hue  = Math.round(240 - frac * 240);
+          ctx.fillStyle = 'hsla(' + hue + ',85%,55%,0.65)';
+          ctx.beginPath(); ctx.arc(toX(p.I), toY(p.V), 2.5, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // Regression line
+        ctx.strokeStyle = 'rgba(239,159,39,0.85)'; ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
+        ctx.beginPath(); ctx.moveTo(toX(xMin), toY(a + b * xMin)); ctx.lineTo(toX(xMax), toY(a + b * xMax)); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Axis borders
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(P.l, P.t); ctx.lineTo(P.l, P.t+ph); ctx.lineTo(P.l+pw, P.t+ph); ctx.stroke();
+
+        // X ticks
+        ctx.fillStyle = 'rgba(216,213,206,0.45)'; ctx.font = '11px JetBrains Mono, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        for (let i = 0; i <= 5; i++) {
+          ctx.fillText((xMin + (i/5)*(xMax-xMin)).toFixed(0) + 'A', P.l + (i/5)*pw, P.t+ph+6);
+        }
+        ctx.fillStyle = 'rgba(216,213,206,0.6)'; ctx.font = '12px JetBrains Mono, monospace';
+        ctx.fillText('Current (A)', P.l + pw/2, P.t + ph + 28);
+
+        // Y ticks
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(216,213,206,0.45)'; ctx.font = '11px JetBrains Mono, monospace';
+        for (let i = 0; i <= 5; i++) {
+          ctx.fillText((yMin + (i/5)*(yMax-yMin)).toFixed(1) + 'V', P.l - 6, P.t + (1-i/5)*ph);
+        }
+        ctx.save(); ctx.translate(14, P.t + ph/2); ctx.rotate(-Math.PI/2);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillStyle = 'rgba(216,213,206,0.6)'; ctx.font = '12px JetBrains Mono, monospace';
+        ctx.fillText('Voltage (V)', 0, 0); ctx.restore();
+
+        // Title
+        ctx.fillStyle = 'rgba(216,213,206,0.75)'; ctx.font = '12px JetBrains Mono, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('Battery Sag \u2014 Est. R_int: ' + Math.abs(R_int).toFixed(4) + ' \u03A9', P.l + pw/2, 6);
+
+        // Legend
+        const lx = P.l + pw - 118, ly = P.t + 8;
+        ctx.fillStyle = 'hsla(240,85%,55%,0.8)'; ctx.fillRect(lx, ly, 12, 12);
+        ctx.fillStyle = 'rgba(216,213,206,0.5)'; ctx.font = '10px JetBrains Mono, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText('Early flight', lx + 16, ly + 6);
+        ctx.fillStyle = 'hsla(0,85%,55%,0.8)'; ctx.fillRect(lx, ly+18, 12, 12);
+        ctx.fillStyle = 'rgba(216,213,206,0.5)'; ctx.fillText('Late flight', lx + 16, ly + 24);
+        ctx.strokeStyle = 'rgba(239,159,39,0.85)'; ctx.lineWidth = 2; ctx.setLineDash([4,2]);
+        ctx.beginPath(); ctx.moveTo(lx, ly+38); ctx.lineTo(lx+12, ly+38); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(216,213,206,0.5)'; ctx.fillText('Regression', lx + 16, ly + 38);
+
+        wrap.innerHTML = '';
+        wrap.appendChild(canvas);
+        section.style.display = '';
+      })();
+
+      // ── Chart 4: Failure Event Waterfall ───────────────────────
+      (function buildFailureWaterfall() {
+        const section = document.getElementById('chart-section-failure-waterfall');
+        const wrap    = document.getElementById('failure-waterfall-canvas-wrap');
+        if (!section || !wrap) return;
+
+        const duration  = (data.metadata && data.metadata.duration_sec) || 0;
+        if (!duration) { section.style.display = 'none'; return; }
+
+        const findings    = data.findings    || [];
+        const phases      = data.phases      || [];
+        const modeChanges = ts.mode_changes  || [];
+
+        const rows = [];
+
+        phases.forEach(function(p) {
+          if (p.start_time == null || p.end_time == null) return;
+          rows.push({ label: (p.phase_type || 'Phase').toUpperCase(), start: p.start_time, end: p.end_time,
+            color: 'rgba(110,204,114,0.15)', bc: 'rgba(110,204,114,0.45)' });
+        });
+
+        modeChanges.forEach(function(mc, i) {
+          const end = i < modeChanges.length - 1 ? modeChanges[i+1].timestamp : duration;
+          rows.push({ label: (mc.to_mode || 'Mode').toUpperCase(), start: mc.timestamp, end: end,
+            color: 'rgba(91,155,213,0.15)', bc: 'rgba(91,155,213,0.5)' });
+        });
+
+        findings.forEach(function(f) {
+          if (f.timestamp_start == null) return;
+          const end = f.timestamp_end != null ? f.timestamp_end : Math.min(f.timestamp_start + 2, duration);
+          let color, bc;
+          if (f.type === 'failsafe')         { color = 'rgba(167,139,250,0.22)'; bc = 'rgba(167,139,250,0.75)'; }
+          else if (f.severity === 'critical') { color = 'rgba(226,75,74,0.22)';  bc = 'rgba(226,75,74,0.75)';  }
+          else                               { color = 'rgba(239,159,39,0.18)';  bc = 'rgba(239,159,39,0.65)'; }
+          rows.push({ label: (f.title || f.type || 'Event').slice(0, 32), start: f.timestamp_start, end: end, color: color, bc: bc });
+        });
+
+        if (!rows.length) { section.style.display = 'none'; return; }
+
+        const ROW_H  = 30;
+        const LBL_W  = 180;
+        const PAD_R  = 12;
+        const AXIS_H = 28;
+        const MAX_R  = 14;
+        const sEl    = section.querySelector('.chart-container');
+        const canvasW = Math.max((sEl ? sEl.clientWidth : 700) - 28, 300);
+        const plotW   = canvasW - LBL_W - PAD_R;
+        const visRows = rows.slice(0, MAX_R);
+        const canvasH = visRows.length * ROW_H + AXIS_H + 4;
+
+        const dpr    = window.devicePixelRatio || 1;
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(canvasW * dpr); canvas.height = Math.round(canvasH * dpr);
+        canvas.style.width = canvasW + 'px'; canvas.style.height = canvasH + 'px';
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.015)'; ctx.fillRect(0, 0, canvasW, canvasH);
+
+        const GRID_N = 6;
+        ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+        for (let i = 0; i <= GRID_N; i++) {
+          const x = LBL_W + (i / GRID_N) * plotW;
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, visRows.length * ROW_H); ctx.stroke();
+        }
+
+        visRows.forEach(function(row, ri) {
+          const y  = ri * ROW_H + 2, bH = ROW_H - 4;
+          const x1 = LBL_W + (row.start / duration) * plotW;
+          const bW = Math.max((row.end - row.start) / duration * plotW, 4);
+
+          ctx.fillStyle = row.color; ctx.strokeStyle = row.bc; ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) { ctx.roundRect(x1, y, bW, bH, 3); } else { ctx.rect(x1, y, bW, bH); }
+          ctx.fill(); ctx.stroke();
+
+          ctx.fillStyle = 'rgba(216,213,206,0.6)'; ctx.font = '11px JetBrains Mono, monospace';
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          const lstr = row.label.length > 22 ? row.label.slice(0, 21) + '\u2026' : row.label;
+          ctx.fillText(lstr, LBL_W - 8, y + bH / 2);
+
+          ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(0, y + ROW_H - 1); ctx.lineTo(canvasW, y + ROW_H - 1); ctx.stroke();
+        });
+
+        if (rows.length > MAX_R) {
+          ctx.fillStyle = 'rgba(216,213,206,0.3)'; ctx.font = '10px JetBrains Mono, monospace';
+          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.fillText('+' + (rows.length - MAX_R) + ' more', LBL_W + 4, visRows.length * ROW_H - ROW_H / 2);
+        }
+
+        ctx.fillStyle = 'rgba(216,213,206,0.4)'; ctx.font = '10px JetBrains Mono, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        for (let i = 0; i <= GRID_N; i++) {
+          const t = (i / GRID_N) * duration;
+          ctx.fillText(t.toFixed(0) + 's', LBL_W + (i / GRID_N) * plotW, visRows.length * ROW_H + 6);
+        }
+
+        wrap.innerHTML = '';
+        wrap.appendChild(canvas);
+        section.style.display = '';
+      })();
+
     });
   }
 
@@ -7130,7 +8258,8 @@
       btn.className = 'qa-chart-tab' + (key === orderedKeys[0] ? ' active' : '') + (isFeatured ? ' featured' : ' secondary');
       btn.dataset.key = key;
       btn.textContent = meta2.label || key;
-      if (meta2.sp) btn.style.opacity = '0.75';
+      // Don't dim setpoint tabs — they only appear in orderedKeys if they have data
+      if (meta2.sp) btn.setAttribute('title', 'Setpoint overlay');
       if (meta2.corr) btn.setAttribute('title', 'Correlation analysis');
       btn.onclick = () => renderMainChart(key);
       tabBar.appendChild(btn);

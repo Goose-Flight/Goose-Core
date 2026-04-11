@@ -106,6 +106,24 @@ class Flight:
     barometer: pd.DataFrame = field(default_factory=_empty_df)
     # Raw barometer: pressure_pa, temperature_c, baro_alt_meter
 
+    rate_ctrl_status: pd.DataFrame = field(default_factory=_empty_df)
+    # PID integrators: rollspeed_integ, pitchspeed_integ, yawspeed_integ
+
+    failure_detector: pd.DataFrame = field(default_factory=_empty_df)
+    # Failure detector flags (0/1): fd_roll, fd_pitch, fd_battery, fd_imbalanced_prop, fd_motor_failure
+
+    hover_thrust: pd.DataFrame = field(default_factory=_empty_df)
+    # Hover thrust estimate: hover_thrust, hover_thrust_var, valid
+
+    imu_status: pd.DataFrame = field(default_factory=_empty_df)
+    # IMU health: accel_clipping_total, gyro_clipping_total, accel_vib_metric, gyro_vib_metric
+
+    estimator_bias: pd.DataFrame = field(default_factory=_empty_df)
+    # EKF sensor bias: accel_bias_0..2, gyro_bias_0..2, mag_bias_0..2
+
+    control_allocator: pd.DataFrame = field(default_factory=_empty_df)
+    # Mixer saturation: unallocated_thrust, unallocated_torque_x/y/z, handled_motor_failure_mask
+
     # Discrete
     mode_changes: list[ModeChange] = field(default_factory=list)
     events: list[FlightEvent] = field(default_factory=list)

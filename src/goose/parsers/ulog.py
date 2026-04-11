@@ -240,6 +240,12 @@ class ULogParser(BaseParser):
             events = self._extract_events(ulog, start_us)
             parameters = self._extract_parameters(ulog)
             primary_mode = self._compute_primary_mode(mode_changes, metadata.duration_sec)
+            rate_ctrl_status = self._extract_rate_ctrl_status(ulog, start_us)
+            failure_detector = self._extract_failure_detector(ulog, start_us)
+            hover_thrust = self._extract_hover_thrust(ulog, start_us)
+            imu_status = self._extract_imu_status(ulog, start_us)
+            estimator_bias = self._extract_estimator_bias(ulog, start_us)
+            control_allocator = self._extract_control_allocator(ulog, start_us)
         except (KeyError, ValueError, TypeError, AttributeError) as exc:
             diag.errors.append(f"Extraction failed mid-parse: {exc}")
             diag.parser_confidence = 0.0
@@ -277,6 +283,12 @@ class ULogParser(BaseParser):
             events=events,
             parameters=parameters,
             primary_mode=primary_mode,
+            rate_ctrl_status=rate_ctrl_status,
+            failure_detector=failure_detector,
+            hover_thrust=hover_thrust,
+            imu_status=imu_status,
+            estimator_bias=estimator_bias,
+            control_allocator=control_allocator,
         )
 
         # --- Finalize diagnostics ------------------------------------------
@@ -988,6 +1000,156 @@ class ULogParser(BaseParser):
     def _extract_parameters(self, ulog: ULog) -> dict[str, float]:
         """Extract all parameters from ULog header."""
         return {k: float(v) for k, v in ulog.initial_parameters.items()}
+
+    def _extract_rate_ctrl_status(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract PID integrator values from rate_ctrl_status."""
+        df = _topic_to_df(ulog, "rate_ctrl_status")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("rollspeed_integ", "rollspeed_integ"),
+            ("pitchspeed_integ", "pitchspeed_integ"),
+            ("yawspeed_integ", "yawspeed_integ"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw].astype(float)
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_failure_detector(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract failure detector boolean flags from failure_detector_status."""
+        df = _topic_to_df(ulog, "failure_detector_status")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        # PX4 field name for motor failure varies: fd_motor or fd_motor_failure
+        fd_motor_col = next(
+            (c for c in ["fd_motor_failure", "fd_motor"] if c in df.columns), None
+        )
+        for raw, name in [
+            ("fd_roll", "fd_roll"),
+            ("fd_pitch", "fd_pitch"),
+            ("fd_battery", "fd_battery"),
+            ("fd_imbalanced_prop", "fd_imbalanced_prop"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw].astype(int)
+        if fd_motor_col is not None:
+            cols["fd_motor_failure"] = df[fd_motor_col].astype(int)
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_hover_thrust(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract hover thrust trend from hover_thrust_estimate."""
+        df = _topic_to_df(ulog, "hover_thrust_estimate")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("hover_thrust", "hover_thrust"),
+            ("hover_thrust_var", "hover_thrust_var"),
+            ("valid", "valid"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw].astype(float)
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_imu_status(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract IMU health metrics from vehicle_imu_status."""
+        df = _topic_to_df(ulog, "vehicle_imu_status")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+
+        # Accel clipping: may be scalar or array fields (accel_clipping[0..N])
+        clip_cols = [c for c in df.columns if c.startswith("accel_clipping")]
+        if clip_cols:
+            cols["accel_clipping_total"] = sum(df[c] for c in clip_cols).astype(float)
+        elif "accel_clipping" in df.columns:
+            cols["accel_clipping_total"] = df["accel_clipping"].astype(float)
+
+        # Gyro clipping: same pattern
+        gyro_clip_cols = [c for c in df.columns if c.startswith("gyro_clipping")]
+        if gyro_clip_cols:
+            cols["gyro_clipping_total"] = sum(df[c] for c in gyro_clip_cols).astype(float)
+        elif "gyro_clipping" in df.columns:
+            cols["gyro_clipping_total"] = df["gyro_clipping"].astype(float)
+
+        for raw, name in [
+            ("accel_vibration_metric", "accel_vib_metric"),
+            ("gyro_vibration_metric", "gyro_vib_metric"),
+            ("accel_error_count", "accel_error_count"),
+            ("gyro_error_count", "gyro_error_count"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw].astype(float)
+
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_estimator_bias(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract EKF sensor bias estimates from estimator_sensor_bias."""
+        df = _topic_to_df(ulog, "estimator_sensor_bias")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        # PX4 ULog names these accel_bias[0], gyro_bias[0], mag_bias[0]
+        for axis in range(3):
+            for prefix, out_prefix in [
+                ("accel_bias", "accel_bias"),
+                ("gyro_bias", "gyro_bias"),
+                ("mag_bias", "mag_bias"),
+            ]:
+                raw = f"{prefix}[{axis}]"
+                name = f"{out_prefix}_{axis}"
+                if raw in df.columns:
+                    cols[name] = df[raw].astype(float)
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_control_allocator(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract mixer saturation data from control_allocator_status."""
+        df = _topic_to_df(ulog, "control_allocator_status")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("unallocated_thrust", "unallocated_thrust"),
+            ("unallocated_torque[0]", "unallocated_torque_x"),
+            ("unallocated_torque[1]", "unallocated_torque_y"),
+            ("unallocated_torque[2]", "unallocated_torque_z"),
+            ("handled_motor_failure_mask", "handled_motor_failure_mask"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw].astype(float)
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
 
     def _compute_primary_mode(self, mode_changes: list[ModeChange], duration_sec: float) -> str:
         """Compute the most-used flight mode based on time spent in each mode."""

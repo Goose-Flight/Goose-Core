@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -141,6 +141,11 @@ def create_app() -> FastAPI:
     # ------------------------------------------------------------------
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
+        # Redirect /static/index.html → / so the token injection always fires.
+        # StaticFiles would serve it without window.GOOSE_TOKEN, breaking auth.
+        if request.url.path in ("/static/index.html", "/static/index.htm"):
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url="/", status_code=302)
         response = await call_next(request)
         for header, value in _SECURITY_HEADERS.items():
             response.headers[header] = value
@@ -304,34 +309,6 @@ def create_app() -> FastAPI:
         except Exception:
             logger.exception("Failed to list plugins")
             raise HTTPException(status_code=500, detail="Internal server error")
-
-    @app.post("/api/analyze")
-    async def analyze(file: UploadFile = File(...)) -> JSONResponse:
-        """
-        DEPRECATED — This endpoint is removed.
-
-        Use instead:
-          POST /api/quick-analysis          — session-only triage (no case created)
-          POST /api/cases                   — create a persistent investigation case
-          POST /api/cases/{id}/analyze      — run full forensic analysis on a case
-        """
-        await file.read()
-        return JSONResponse(
-            status_code=410,
-            content={
-                "error": "gone",
-                "message": (
-                    "POST /api/analyze is removed. Use POST /api/quick-analysis for "
-                    "session-only triage, or POST /api/cases + POST /api/cases/{id}/analyze "
-                    "for a persistent investigation case with full chain-of-custody."
-                ),
-                "alternatives": {
-                    "quick_triage": "POST /api/quick-analysis",
-                    "create_case": "POST /api/cases",
-                    "analyze_case": "POST /api/cases/{case_id}/analyze",
-                },
-            },
-        )
 
     return app
 

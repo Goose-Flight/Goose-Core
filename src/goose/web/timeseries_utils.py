@@ -255,6 +255,52 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
         if racc:
             ts["raw_accel"] = racc
 
+    # Rate controller integrators (PID wind-up detection)
+    if not flight.rate_ctrl_status.empty:
+        rcs = df_to_series(
+            flight.rate_ctrl_status,
+            ["rollspeed_integ", "pitchspeed_integ", "yawspeed_integ"],
+        )
+        if rcs:
+            ts["rate_ctrl_status"] = rcs
+
+    # Failure detector timeline
+    if not flight.failure_detector.empty:
+        fd_cols = [c for c in flight.failure_detector.columns if c != "timestamp"]
+        fd = df_to_series(flight.failure_detector, fd_cols)
+        if fd:
+            ts["failure_detector"] = fd
+
+    # Hover thrust trend (motor degradation indicator)
+    if not flight.hover_thrust.empty:
+        ht = df_to_series(
+            flight.hover_thrust,
+            ["hover_thrust", "hover_thrust_var", "valid"],
+        )
+        if ht:
+            ts["hover_thrust"] = ht
+
+    # IMU health timeline
+    if not flight.imu_status.empty:
+        imu_cols = [c for c in flight.imu_status.columns if c != "timestamp"]
+        imu = df_to_series(flight.imu_status, imu_cols)
+        if imu:
+            ts["imu_status"] = imu
+
+    # EKF sensor bias estimates
+    if not flight.estimator_bias.empty:
+        eb_cols = [c for c in flight.estimator_bias.columns if c != "timestamp"]
+        eb = df_to_series(flight.estimator_bias, eb_cols)
+        if eb:
+            ts["estimator_bias"] = eb
+
+    # Mixer saturation / control allocator
+    if not flight.control_allocator.empty:
+        ca_cols = [c for c in flight.control_allocator.columns if c != "timestamp"]
+        ca = df_to_series(flight.control_allocator, ca_cols)
+        if ca:
+            ts["control_allocator"] = ca
+
     # Mode changes
     ts["mode_changes"] = [
         {

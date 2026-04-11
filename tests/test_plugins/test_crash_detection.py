@@ -9,7 +9,7 @@ import pytest
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.crash_detection import CrashDetectionPlugin
-from goose.parsers.ulog import ULogParser
+from goose.parsers.detect import parse_file
 
 
 @pytest.fixture
@@ -18,27 +18,22 @@ def plugin() -> CrashDetectionPlugin:
 
 
 @pytest.fixture
-def parser() -> ULogParser:
-    return ULogParser()
-
-
-@pytest.fixture
-def motor_failure_flight(parser: ULogParser, motor_failure_path: Path) -> Flight:
-    result = parser.parse(motor_failure_path)
+def motor_failure_flight(motor_failure_path: Path) -> Flight:
+    result = parse_file(motor_failure_path)
     assert result.flight is not None
     return result.flight
 
 
 @pytest.fixture
-def normal_flight(parser: ULogParser, normal_flight_path: Path) -> Flight:
-    result = parser.parse(normal_flight_path)
+def normal_flight(normal_flight_path: Path) -> Flight:
+    result = parse_file(normal_flight_path)
     assert result.flight is not None
     return result.flight
 
 
 @pytest.fixture
-def vibration_crash_flight(parser: ULogParser, vibration_crash_path: Path) -> Flight:
-    result = parser.parse(vibration_crash_path)
+def vibration_crash_flight(vibration_crash_path: Path) -> Flight:
+    result = parse_file(vibration_crash_path)
     assert result.flight is not None
     return result.flight
 

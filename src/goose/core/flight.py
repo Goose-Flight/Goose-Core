@@ -124,6 +124,15 @@ class Flight:
     control_allocator: pd.DataFrame = field(default_factory=_empty_df)
     # Mixer saturation: unallocated_thrust, unallocated_torque_x/y/z, handled_motor_failure_mask
 
+    esc_status: pd.DataFrame = field(default_factory=_empty_df)
+    # ESC telemetry: esc_rpm_{n}, esc_voltage_{n}, esc_current_{n} for each ESC (up to 8)
+
+    ekf_innovations: pd.DataFrame = field(default_factory=_empty_df)
+    # EKF innovation test ratios: innovation_vel_pos, innovation_mag, innovation_tas
+
+    distance_sensor: pd.DataFrame = field(default_factory=_empty_df)
+    # Distance sensor: current_distance, min_distance, max_distance, signal_quality
+
     # Discrete
     mode_changes: list[ModeChange] = field(default_factory=list)
     events: list[FlightEvent] = field(default_factory=list)

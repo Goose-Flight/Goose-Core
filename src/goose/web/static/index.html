@@ -10,23 +10,27 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:           #0B0D10;
-      --surface:      #0f1216;
-      --card:         rgba(255,255,255,0.025);
-      --card-border:  rgba(255,255,255,0.05);
-      --card-hover:   rgba(255,255,255,0.04);
-      --text:         #D8D5CE;
-      --text-sec:     rgba(216,213,206,0.4);
-      --text-muted:   rgba(216,213,206,0.2);
-      --green:        #6ECC72;
-      --green-pass:   #639922;
-      --green-glow:   rgba(110,204,114,0.12);
-      --amber:        #EF9F27;
-      --amber-glow:   rgba(239,159,39,0.12);
-      --red:          #E24B4A;
-      --red-glow:     rgba(226,75,74,0.12);
-      --radius:       12px;
-      --font:         'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
+      --bg:           #0B1120;
+      --surface:      #0D1526;
+      --card:         rgba(17,27,46,1);
+      --card-border:  rgba(30,41,59,1);
+      --card-hover:   rgba(22,32,54,1);
+      --text:         #F1F5F9;
+      --text-sec:     #94A3B8;
+      --text-muted:   #64748B;
+      --green:        #22C55E;
+      --green-pass:   #16A34A;
+      --green-glow:   rgba(34,197,94,0.12);
+      --amber:        #F59E0B;
+      --amber-glow:   rgba(245,158,11,0.12);
+      --red:          #EF4444;
+      --red-glow:     rgba(239,68,68,0.12);
+      --blue:         #3B82F6;
+      --blue-glow:    rgba(59,130,246,0.12);
+      --purple:       #7C3AED;
+      --radius:       10px;
+      --font:         system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --font-mono:    'JetBrains Mono', 'SF Mono', 'Cascadia Code', ui-monospace, monospace;
     }
 
     /* ── Themes ─────────────────────────────────────────────── */
@@ -46,6 +50,9 @@
       --amber-glow:   rgba(255,215,0,0.12);
       --red:          #FF2222;
       --red-glow:     rgba(255,34,34,0.12);
+      --blue:         #00BFFF;
+      --blue-glow:    rgba(0,191,255,0.12);
+      --purple:       #BF5FFF;
     }
 
     html.theme-clean {
@@ -64,6 +71,9 @@
       --amber-glow:   rgba(196,122,0,0.1);
       --red:          #C0392B;
       --red-glow:     rgba(192,57,43,0.1);
+      --blue:         #2563EB;
+      --blue-glow:    rgba(37,99,235,0.1);
+      --purple:       #7C3AED;
     }
 
     html { font-size: 15px; scroll-behavior: smooth; }
@@ -75,8 +85,6 @@
       min-height: 100vh;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
-      display: flex;
-      flex-direction: column;
     }
 
     /* ── Scrollbar ─────────────────────────────────────────── */
@@ -85,37 +93,220 @@
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
 
-    /* ── Header ─────────────────────────────────────────────── */
-    header {
+    /* ── App shell — sidebar + content ─────────────────────── */
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 200;
+    }
+
+    .sidebar-logo {
+      padding: 20px 16px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo-text {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--green);
+      text-transform: uppercase;
+    }
+
+    .sidebar-version {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sidebar-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 8px 4px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-sec);
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      transition: background 0.15s, color 0.15s;
+      border-left: 3px solid transparent;
+      margin-left: -3px;
+      font-family: var(--font);
+    }
+
+    .sidebar-item:hover {
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+
+    .sidebar-item.active {
+      background: rgba(59,130,246,0.12);
+      border-left-color: var(--blue);
+      color: #F1F5F9;
+      font-weight: 600;
+    }
+
+    .sidebar-item svg {
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+    .sidebar-item.active svg { opacity: 1; }
+
+    .sidebar-recent {
+      padding: 8px;
+      border-top: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-recent-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 6px 8px 4px;
+    }
+
+    .sidebar-recent-item {
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text-sec);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sidebar-recent-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+
+    .sidebar-footer {
+      padding: 12px;
+      border-top: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer-airgap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 6px 8px;
+    }
+
+    .app-main {
+      margin-left: 220px;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .content-topbar {
+      height: 48px;
+      background: rgba(11,17,32,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 12px;
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(11,13,16,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--card-border);
-      padding: 0 28px;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
+      flex-shrink: 0;
     }
 
-    /* ── Clean theme header overrides ───────────────────────── */
-    html.theme-clean header {
+    .content-topbar-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .content-topbar-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: #60A5FA;
+      border-radius: 20px;
+    }
+
+    .topbar-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Legacy header hidden — replaced by sidebar */
+    header {
+      display: none;
+    }
+
+    /* ── Clean theme overrides ───────────────────────── */
+    html.theme-clean .sidebar {
+      background: #FFFFFF;
+      border-right-color: rgba(0,0,0,0.1);
+    }
+    html.theme-clean .content-topbar {
       background: rgba(244,245,247,0.96);
       border-bottom-color: rgba(0,0,0,0.1);
     }
-    html.theme-clean .logo-text { color: #1A1C1E; }
-    html.theme-clean .nav-tab {
+    html.theme-clean .sidebar-logo-text { color: #1A1C1E; }
+    html.theme-clean .sidebar-item {
       color: rgba(26,28,30,0.6);
     }
-    html.theme-clean .nav-tab:hover {
+    html.theme-clean .sidebar-item:hover {
       color: #1A1C1E;
       background: rgba(0,0,0,0.06);
     }
-    html.theme-clean .nav-tab.active {
-      color: var(--green);
-      background: var(--green-glow);
+    html.theme-clean .sidebar-item.active {
+      color: var(--blue);
+      background: var(--blue-glow);
+      border-left-color: var(--blue);
     }
     html.theme-clean #theme-toggle-btn { color: rgba(26,28,30,0.7); }
 
@@ -239,7 +430,7 @@
       margin-bottom: -1px;
     }
     .ws-tab:hover { color: var(--text); }
-    .ws-tab.active { color: var(--green); border-bottom-color: var(--green); }
+    .ws-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
 
     .case-card {
       background: var(--card);
@@ -287,10 +478,10 @@
     /* ── Layout ──────────────────────────────────────────────── */
     main {
       flex: 1;
-      max-width: 1440px;
+      max-width: 1360px;
       margin: 0 auto;
       width: 100%;
-      padding: 32px 24px 40px;
+      padding: 24px 24px 48px;
     }
 
     /* ── Upload View ─────────────────────────────────────────── */
@@ -577,14 +768,14 @@
     }
 
     .status-banner.normal {
-      background: rgba(99,153,34,0.1);
-      border: 1px solid rgba(99,153,34,0.3);
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.25);
       color: var(--green);
     }
 
     .status-banner.crashed {
       background: var(--red-glow);
-      border: 1px solid rgba(226,75,74,0.3);
+      border: 1px solid rgba(239,68,68,0.3);
       color: var(--red);
       animation: pulse-border 2s ease-in-out infinite;
     }
@@ -700,22 +891,27 @@
     .drag-handle:hover { color: var(--green); }
 
     .chart-section-header {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--green);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      color: var(--text);
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 0 2px;
+      padding: 0 2px 10px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 12px;
     }
 
-    .chart-section-header::after {
+    .chart-section-header::before {
       content: '';
-      flex: 1;
-      height: 1px;
-      background: rgba(110,204,114,0.15);
+      display: block;
+      width: 3px;
+      height: 16px;
+      background: var(--blue);
+      border-radius: 2px;
+      flex-shrink: 0;
     }
 
     /* Provenance badges — appear in chart section headers */
@@ -1082,13 +1278,13 @@
 
     .finding-row:last-child { border-bottom: none; }
     .finding-row:hover { background: var(--card-hover); }
-    .finding-row.active { background: rgba(110,204,114,0.05); }
+    .finding-row.active { background: rgba(59,130,246,0.06); }
     .finding-row.active::before {
       content: '';
       position: absolute;
       left: 0; top: 0; bottom: 0;
       width: 2px;
-      background: var(--green);
+      background: var(--blue);
       border-radius: 0 2px 2px 0;
     }
 
@@ -1105,10 +1301,10 @@
       margin-top: 1px;
     }
 
-    .sev-icon-critical { background: rgba(226,75,74,0.2);  color: var(--red);   border: 1px solid rgba(226,75,74,0.35); }
-    .sev-icon-warning  { background: rgba(239,159,39,0.2); color: var(--amber); border: 1px solid rgba(239,159,39,0.35); }
-    .sev-icon-info     { background: rgba(99,153,34,0.15); color: #a3c44a;      border: 1px solid rgba(99,153,34,0.3); }
-    .sev-icon-pass     { background: rgba(110,204,114,0.1); color: var(--green); border: 1px solid rgba(110,204,114,0.25); }
+    .sev-icon-critical { background: #EF4444; color: #fff; border: none; }
+    .sev-icon-warning  { background: #F59E0B; color: #1a1a1a; border: none; }
+    .sev-icon-info     { background: #3B82F6; color: #fff; border: none; }
+    .sev-icon-pass     { background: #22C55E; color: #071008; border: none; }
 
     .finding-row-body { flex: 1; min-width: 0; }
 
@@ -1189,12 +1385,12 @@
     .col-critical { color: var(--red); }
     .col-warning  { color: var(--amber); }
     .col-pass     { color: var(--green); }
-    .col-info     { color: #a3c44a; }
+    .col-info     { color: var(--blue); }
 
     .bg-critical  { background: var(--red); }
     .bg-warning   { background: var(--amber); }
     .bg-pass      { background: var(--green-pass); }
-    .bg-info      { background: #a3c44a; }
+    .bg-info      { background: var(--blue); }
 
     /* ── New analysis button ─────────────────────────────────── */
     .new-analysis-btn {
@@ -1244,10 +1440,10 @@
       opacity: 0.7;
     }
 
-    .chip-critical { background: rgba(226,75,74,0.1);  border: 1px solid rgba(226,75,74,0.2);  color: var(--red); }
-    .chip-warning  { background: rgba(239,159,39,0.1); border: 1px solid rgba(239,159,39,0.2); color: var(--amber); }
-    .chip-info     { background: rgba(99,153,34,0.1);  border: 1px solid rgba(99,153,34,0.2);  color: #a3c44a; }
-    .chip-pass     { background: rgba(110,204,114,0.08); border: 1px solid rgba(110,204,114,0.15); color: var(--green); }
+    .chip-critical { background: #EF4444; border: none; color: #fff; }
+    .chip-warning  { background: #F59E0B; border: none; color: #1a1a1a; }
+    .chip-info     { background: #3B82F6; border: none; color: #fff; }
+    .chip-pass     { background: #22C55E; border: none; color: #071008; }
 
     /* ── Filter tabs in findings header ──────────────────────── */
     .findings-filter-tabs {
@@ -1271,7 +1467,7 @@
     }
 
     .ftab:hover { color: var(--text); background: var(--card-hover); }
-    .ftab.active { color: var(--green); background: var(--green-glow); }
+    .ftab.active { color: #fff; background: var(--blue); }
 
     /* ── Empty state ─────────────────────────────────────────── */
     .empty-state {
@@ -1716,6 +1912,180 @@
       line-height: 1.6;
     }
 
+    /* ── Data values use mono font ──────────────────────────── */
+    .stat-card-val, .stat-val, .score-ring-number, .finding-score,
+    .plugin-bar-score, .sev-bd-count, .ev-row-hash,
+    .confidence-pct, .detail-evidence .ev-val {
+      font-family: var(--font-mono);
+    }
+
+    /* ── Section header row (motor, battery, etc.) ────────── */
+    .section-header-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 24px 0 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    /* ── Motor Summary Cards ─────────────────────────────────── */
+    .motor-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 900px) {
+      .motor-cards-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .motor-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .motor-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .motor-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .motor-card-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .motor-metric { margin-bottom: 8px; }
+    .motor-metric-key {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+      font-weight: 500;
+    }
+    .motor-metric-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font-mono);
+    }
+    .motor-mini-bar-track {
+      height: 3px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+    .motor-mini-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+    .motor-kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      .motor-kpi-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    .motor-kpi-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .motor-kpi-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .motor-kpi-label { font-size: 12px; color: var(--text-muted); margin-bottom: 2px; }
+    .motor-kpi-value { font-size: 20px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+
+    /* ── Battery Summary Panel ───────────────────────────────── */
+    .battery-summary-panel {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: auto 1fr 1fr 1fr;
+      gap: 24px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      .battery-summary-panel { grid-template-columns: 1fr 1fr; }
+    }
+    .battery-health-gauge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 100px;
+    }
+    .battery-gauge-ring {
+      position: relative;
+      width: 80px;
+      height: 80px;
+    }
+    .battery-gauge-ring svg { transform: rotate(-90deg); }
+    .battery-gauge-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .battery-gauge-pct {
+      font-size: 20px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font-mono);
+      line-height: 1;
+    }
+    .battery-stat-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .battery-stat-main {
+      font-size: 24px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font-mono);
+      color: var(--text);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+    .battery-stat-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
     /* ── Footer ──────────────────────────────────────────────── */
     footer {
       border-top: 1px solid var(--card-border);
@@ -1784,12 +2154,14 @@
     }
 
     @media (max-width: 640px) {
-      header { padding: 0 16px; }
+      .sidebar { width: 56px; min-width: 56px; }
+      .sidebar-logo-text, .sidebar-version, .sidebar-section-label,
+      .sidebar-recent, .sidebar-footer-airgap span { display: none; }
+      .sidebar-item { justify-content: center; padding: 10px; }
+      .sidebar-item span { display: none; }
+      .app-main { margin-left: 56px; }
       main { padding: 20px 12px 32px; }
       .stat-cards-grid { grid-template-columns: 1fr; }
-      .header-meta { display: none; }
-      nav { gap: 0; }
-      .nav-tab { padding: 5px 8px; font-size: 14px; }
       footer { padding: 12px 16px; }
       .footer-right { display: none; }
     }
@@ -1814,7 +2186,91 @@
   })();
 </script>
 
-<!-- ── Header ────────────────────────────────────────────────── -->
+<div class="app-shell">
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon" aria-hidden="true">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:28px;height:28px;filter:drop-shadow(0 0 6px var(--green));">
+        <path d="M14 3C8.48 3 4 7.48 4 13c0 3.12 1.38 5.91 3.56 7.82L6 25l4.63-1.54A9.93 9.93 0 0 0 14 24c5.52 0 10-4.48 10-10S19.52 3 14 3z" fill="none" stroke="var(--green)" stroke-width="1.5"/>
+        <path d="M9 13.5l3 3 7-7" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="14" cy="13" r="1.5" fill="var(--green)" opacity="0.4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="sidebar-logo-text">Goose</div>
+      <div class="sidebar-version">v1.3.4 · Air-gapped</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">Analysis</div>
+
+    <button class="sidebar-item" id="nav-welcome" onclick="switchTab('welcome')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span>Dashboard</span>
+    </button>
+
+    <button class="sidebar-item active" id="nav-cases" onclick="switchTab('cases')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span>Cases</span>
+    </button>
+
+    <button class="sidebar-item" id="nav-analyze" onclick="switchTab('analyze')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span>Quick Analysis</span>
+    </button>
+
+    <div class="sidebar-section-label">Data</div>
+
+    <button class="sidebar-item" id="nav-plugins" onclick="switchTab('plugins')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      <span>Plugins</span>
+    </button>
+
+    <button class="sidebar-item" id="nav-history" onclick="switchTab('history')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>History</span>
+    </button>
+
+    <!-- Hidden crash tab trigger (no sidebar button — activated programmatically) -->
+    <button class="sidebar-item" id="tab-crash" onclick="switchTab('crash')" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span>Crash</span>
+    </button>
+  </nav>
+
+  <!-- Recent logs -->
+  <div class="sidebar-recent">
+    <div class="sidebar-recent-label">Recent Logs</div>
+    <div id="sidebar-recent-list"><div style="font-size:12px;color:var(--text-muted);padding:4px 8px;">No recent logs</div></div>
+  </div>
+
+  <!-- Sidebar footer -->
+  <div class="sidebar-footer">
+    <div class="sidebar-footer-airgap">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>No data leaves your machine</span>
+    </div>
+    <button id="theme-toggle-btn" class="sidebar-item" onclick="cycleTheme()" style="font-size:12px;opacity:0.6;margin-top:4px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <span>DARK</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ══ MAIN CONTENT AREA ════════════════════════════════════════ -->
+<div class="app-main">
+
+  <!-- Top content bar -->
+  <div class="content-topbar" id="content-topbar">
+    <span class="content-topbar-title" id="topbar-title">Goose Flight Analyzer</span>
+    <span class="content-topbar-badge" id="topbar-badge" style="display:none"></span>
+    <div class="topbar-actions"></div>
+  </div>
+
+<!-- ── Legacy Header (hidden by CSS, kept for backwards compat) ── -->
 <header>
   <div class="logo-group">
     <div class="logo-icon" aria-hidden="true">
@@ -2178,8 +2634,11 @@
         </div>
       </div>
 
+      <!-- System Health Bars -->
+      <div id="system-health-bars" style="display:none;padding:4px 0 8px;"></div>
+
       <!-- Flight Timeline (mode bands) -->
-      <div id="results-cockpit-timeline" class="cockpit-timeline" style="display:none;position:sticky;top:52px;z-index:50;">
+      <div id="results-cockpit-timeline" class="cockpit-timeline" style="display:none;position:sticky;top:48px;z-index:50;">
         <div class="timeline-scrubber-label">
           <span>FLIGHT TIMELINE</span>
           <span class="timeline-cursor-time" id="inline-cursor-time">--</span>
@@ -2285,6 +2744,15 @@
         </div>
       </div>
 
+      <!-- Battery Summary Panel — populated by JS -->
+      <div id="battery-summary-section" style="display:none;">
+        <div class="section-header-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="18" height="12" rx="2" ry="2"/><line x1="23" y1="13" x2="23" y2="11"/></svg>
+          Battery
+        </div>
+        <div id="battery-summary-panel" class="battery-summary-panel"></div>
+      </div>
+
       <!-- POWER SYSTEM -->
       <div class="chart-section" id="chart-section-battery" draggable="true" data-panel="battery">
         <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Power System <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
@@ -2294,6 +2762,16 @@
           </div>
           <div class="chart-body" id="inline-chart-battery"></div>
         </div>
+      </div>
+
+      <!-- Motor Summary Cards — populated by JS after analysis -->
+      <div id="motor-summary-section" style="display:none;">
+        <div class="section-header-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Motor Analysis
+        </div>
+        <div id="motor-cards-grid" class="motor-cards-grid"></div>
+        <div id="motor-kpi-row" class="motor-kpi-row"></div>
       </div>
 
       <!-- MOTOR OUTPUTS -->
@@ -2548,6 +3026,50 @@
         </div>
       </div>
 
+      <!-- RATE CONTROLLER INTEGRATORS (PID wind-up) -->
+      <div class="chart-section" id="chart-section-rate-ctrl-integ" draggable="true" data-panel="rate-ctrl-integ" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Rate Controller Integrators <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">PID Integrator Wind-up — Roll · Pitch · Yaw</span>
+          </div>
+          <div class="chart-body" id="inline-chart-rate-ctrl-integ"></div>
+        </div>
+      </div>
+
+      <!-- ESC TELEMETRY -->
+      <div class="chart-section" id="chart-section-esc-status" draggable="true" data-panel="esc-status" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">ESC Telemetry <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">ESC RPM per Motor</span>
+          </div>
+          <div class="chart-body" id="inline-chart-esc-rpm"></div>
+        </div>
+      </div>
+
+      <!-- EKF INNOVATION TEST RATIOS -->
+      <div class="chart-section" id="chart-section-ekf-innovations" draggable="true" data-panel="ekf-innovations" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">EKF Innovation Test Ratios <span class="provenance-badge provenance-filtered" title="EKF innovation normalized to test threshold — values &gt;1 indicate test failure">FILTERED</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Innovation Ratios — &gt;1.0 = test failing</span>
+          </div>
+          <div class="chart-body" id="inline-chart-ekf-innovations"></div>
+        </div>
+      </div>
+
+      <!-- DISTANCE SENSOR -->
+      <div class="chart-section" id="chart-section-distance-sensor" draggable="true" data-panel="distance-sensor" style="display:none">
+        <div class="chart-section-header"><span class="drag-handle" title="Drag to reorder">⠿</span><span class="chart-section-title">Distance Sensor <span class="provenance-badge provenance-direct" title="Raw sensor measurement">DIRECT</span></span></div>
+        <div class="chart-container">
+          <div class="chart-header">
+            <span class="chart-title">Rangefinder Distance</span>
+          </div>
+          <div class="chart-body" id="inline-chart-distance-sensor"></div>
+        </div>
+      </div>
+
       <!-- Phase chips + summary (below findings) -->
       <div class="diagnostics-row">
         <div class="card" id="phase-card" style="display:none">
@@ -2775,24 +3297,13 @@
 </main>
 
 <!-- ── Footer ────────────────────────────────────────────────── -->
-<footer>
-  <div class="footer-left">
-    <span>GOOSE v1.3.4</span>
-    <span class="footer-sep">&middot;</span>
-    <span>Open Source Flight Analysis</span>
-    <span class="footer-sep">&middot;</span>
-    <span>Apache 2.0</span>
-    <span class="footer-sep">&middot;</span>
-    <a href="https://github.com/Goose-Flight/Goose-Core" target="_blank" rel="noopener noreferrer">GitHub &#x2197;</a>
-  </div>
-  <div class="footer-right">
-    <span class="footer-airgap">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Air-gapped
-    </span>
-    <span style="color:var(--text-muted);font-size:14px;">No data leaves your machine</span>
-  </div>
+<footer style="border-top:1px solid var(--card-border);background:var(--surface);padding:12px 24px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;">
+  <span>GOOSE v1.3.4 · Open Source · Apache 2.0 · <a href="https://github.com/Goose-Flight/Goose-Core" target="_blank" rel="noopener noreferrer" style="color:rgba(34,197,94,0.6);">GitHub &#x2197;</a></span>
+  <span>Air-gapped · No data leaves your machine</span>
 </footer>
+
+</div><!-- /.app-main -->
+</div><!-- /.app-shell -->
 
 <script>
   /* ════════════════════════════════════════════════════════════
@@ -2943,12 +3454,17 @@
   function switchTab(tab) {
     currentTab = tab;
 
-    // Update nav highlights
+    // Update sidebar nav highlights
     document.getElementById('nav-welcome').classList.toggle('active', tab === 'welcome');
     document.getElementById('nav-cases').classList.toggle('active', tab === 'cases');
     document.getElementById('nav-analyze').classList.toggle('active', tab === 'analyze');
     document.getElementById('nav-plugins').classList.toggle('active', tab === 'plugins');
     document.getElementById('nav-history').classList.toggle('active', tab === 'history');
+
+    // Update topbar title
+    var topbarTitles = { welcome: 'Dashboard', cases: 'Investigation Cases', analyze: 'Quick Analysis', plugins: 'Plugin Registry', history: 'Analysis History', crash: 'Crash Analysis' };
+    var topbarEl = document.getElementById('topbar-title');
+    if (topbarEl) topbarEl.textContent = topbarTitles[tab] || 'Goose Flight Analyzer';
 
     // Hide all views
     document.getElementById('welcome-view').style.display   = 'none';
@@ -3192,6 +3708,197 @@
 
     // Render inline charts if timeseries data available
     renderInlineCharts(data);
+
+    // Render motor cards, battery summary, and system health bars
+    renderMotorCards(data.timeseries, findings);
+    renderBatterySummary(data.timeseries);
+    renderSystemHealthBars(findings);
+  }
+
+  /* ── Motor Summary Cards ───────────────────────────────────── */
+  function renderMotorCards(ts, findings) {
+    var section = document.getElementById('motor-summary-section');
+    var grid = document.getElementById('motor-cards-grid');
+    var kpiRow = document.getElementById('motor-kpi-row');
+    if (!section || !grid || !kpiRow) return;
+
+    var d = ts && ts.motors;
+    if (!d || !d.timestamps || !d.timestamps.length) {
+      section.style.display = 'none';
+      return;
+    }
+
+    var motorKeys = Object.keys(d).filter(function(k) { return k.startsWith('output_'); }).sort();
+    if (!motorKeys.length) { section.style.display = 'none'; return; }
+
+    var motorColors = ['#EF4444', '#F59E0B', '#22C55E', '#3B82F6', '#A855F7', '#06B6D4', '#F97316', '#EC4899'];
+
+    var stats = motorKeys.map(function(key, idx) {
+      var vals = d[key].filter(function(v) { return v != null; });
+      if (!vals.length) return null;
+      var sum = 0; for (var i = 0; i < vals.length; i++) sum += vals[i];
+      var avg = sum / vals.length;
+      var max = Math.max.apply(null, vals);
+      var satCount = 0; for (var i = 0; i < vals.length; i++) if (vals[i] > 0.95) satCount++;
+      var saturation = satCount / vals.length * 100;
+      return { key: key, idx: idx, avg: avg, max: max, saturation: saturation, color: motorColors[idx % motorColors.length] };
+    }).filter(Boolean);
+
+    if (!stats.length) { section.style.display = 'none'; return; }
+
+    var overallAvg = 0; for (var i = 0; i < stats.length; i++) overallAvg += stats[i].avg;
+    overallAvg = overallAvg / stats.length;
+
+    grid.innerHTML = stats.map(function(m) {
+      var deviation = ((m.avg - overallAvg) / Math.max(overallAvg, 0.01)) * 100;
+      var devColor = Math.abs(deviation) < 5 ? 'var(--green)' : Math.abs(deviation) < 10 ? 'var(--amber)' : 'var(--red)';
+      var avgPct = Math.round(m.avg * 100);
+      var maxPct = Math.round(m.max * 100);
+      var satPct = m.saturation.toFixed(1);
+      return '<div class="motor-card">' +
+        '<div class="motor-card-header"><div class="motor-dot" style="background:' + m.color + '"></div><div class="motor-card-label">Motor ' + (m.idx + 1) + '</div></div>' +
+        '<div class="motor-metric"><div class="motor-metric-key">Avg Output</div><div class="motor-metric-val">' + avgPct + '%</div>' +
+        '<div class="motor-mini-bar-track"><div class="motor-mini-bar-fill" style="width:' + avgPct + '%;background:' + m.color + '"></div></div></div>' +
+        '<div class="motor-metric"><div class="motor-metric-key">Deviation</div><div class="motor-metric-val" style="color:' + devColor + '">' + (deviation >= 0 ? '+' : '') + deviation.toFixed(1) + '%</div></div>' +
+        '<div style="display:flex;gap:16px;"><div class="motor-metric"><div class="motor-metric-key">Max</div><div class="motor-metric-val">' + maxPct + '%</div></div>' +
+        '<div class="motor-metric"><div class="motor-metric-key">Saturation</div><div class="motor-metric-val">' + satPct + '%</div></div></div>' +
+        '</div>';
+    }).join('');
+
+    var allDevs = stats.map(function(m) { return Math.abs(((m.avg - overallAvg) / Math.max(overallAvg, 0.01)) * 100); });
+    var maxDev = Math.max.apply(null, allDevs);
+    var hoverThrottle = overallAvg * 100;
+    var maxMotorMax = 0; for (var i = 0; i < stats.length; i++) if (stats[i].max > maxMotorMax) maxMotorMax = stats[i].max;
+    var headroom = (1 - maxMotorMax) * 100;
+    var satSum = 0; for (var i = 0; i < stats.length; i++) satSum += stats[i].saturation;
+    var effScore = Math.max(0, Math.round(100 - maxDev * 4 - satSum));
+
+    kpiRow.innerHTML = '' +
+      '<div class="motor-kpi-card"><div class="motor-kpi-icon" style="background:rgba(34,197,94,0.15);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="motor-kpi-body"><div class="motor-kpi-label">Efficiency Score</div><div class="motor-kpi-value">' + effScore + '<span style="font-size:13px;color:var(--text-muted)">/100</span></div></div></div>' +
+      '<div class="motor-kpi-card"><div class="motor-kpi-icon" style="background:rgba(59,130,246,0.15);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div><div class="motor-kpi-body"><div class="motor-kpi-label">Hover Throttle</div><div class="motor-kpi-value">' + hoverThrottle.toFixed(1) + '%</div></div></div>' +
+      '<div class="motor-kpi-card"><div class="motor-kpi-icon" style="background:rgba(6,182,212,0.15);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div class="motor-kpi-body"><div class="motor-kpi-label">Headroom</div><div class="motor-kpi-value">' + headroom.toFixed(1) + '%</div></div></div>' +
+      '<div class="motor-kpi-card"><div class="motor-kpi-icon" style="background:' + (maxDev > 10 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)') + ';"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + (maxDev > 10 ? '#EF4444' : '#F59E0B') + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="motor-kpi-body"><div class="motor-kpi-label">Max Deviation</div><div class="motor-kpi-value" style="color:' + (maxDev > 10 ? 'var(--red)' : maxDev > 5 ? 'var(--amber)' : 'var(--green)') + '">' + maxDev.toFixed(1) + '%</div></div></div>';
+
+    section.style.display = '';
+  }
+
+  /* ── Battery Summary Panel ─────────────────────────────────── */
+  function renderBatterySummary(ts) {
+    var section = document.getElementById('battery-summary-section');
+    var panel = document.getElementById('battery-summary-panel');
+    if (!section || !panel) return;
+
+    var d = ts && ts.battery;
+    if (!d || !d.timestamps || !d.timestamps.length) {
+      section.style.display = 'none';
+      return;
+    }
+
+    var voltages = (d.voltage || []).filter(function(v) { return v != null; });
+    var currents = (d.current || []).filter(function(v) { return v != null; });
+    var remaining = (d.remaining_pct || []).filter(function(v) { return v != null; });
+
+    if (!voltages.length) { section.style.display = 'none'; return; }
+
+    var voltStart = voltages[0];
+    var voltMin = Math.min.apply(null, voltages);
+    var voltEnd = voltages[voltages.length - 1];
+    var voltMax = Math.max.apply(null, voltages);
+    var currMax = currents.length ? Math.max.apply(null, currents) : null;
+    var remEnd = remaining.length ? remaining[remaining.length - 1] : null;
+
+    var healthPct = remEnd != null ? Math.round(remEnd) : Math.round(Math.max(0, Math.min(100, ((voltEnd - voltMin) / Math.max(voltStart - voltMin, 0.1)) * 100)));
+    var healthColor = healthPct > 70 ? 'var(--green)' : healthPct > 40 ? 'var(--amber)' : 'var(--red)';
+    var healthLabel = healthPct > 70 ? 'Healthy' : healthPct > 40 ? 'Degraded' : 'Critical';
+    var r = 34, circ = 2 * Math.PI * r;
+    var dashOffset = circ * (1 - healthPct / 100);
+
+    var voltRangeWidth = Math.round(((voltEnd - voltMin) / Math.max(voltMax - voltMin, 0.1)) * 100);
+
+    panel.innerHTML = '' +
+      '<div class="battery-health-gauge">' +
+      '  <div class="battery-gauge-ring">' +
+      '    <svg width="80" height="80" viewBox="0 0 80 80">' +
+      '      <circle cx="40" cy="40" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/>' +
+      '      <circle cx="40" cy="40" r="' + r + '" fill="none" stroke="' + healthColor + '" stroke-width="7" stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '" stroke-linecap="round" style="transition:stroke-dashoffset 1s cubic-bezier(0.16,1,0.3,1)"/>' +
+      '    </svg>' +
+      '    <div class="battery-gauge-center"><div class="battery-gauge-pct" style="color:' + healthColor + '">' + healthPct + '%</div></div>' +
+      '  </div>' +
+      '  <div style="font-size:12px;font-weight:700;color:' + healthColor + '">' + healthLabel + '</div>' +
+      '</div>' +
+      '<div class="battery-stat-col">' +
+      '  <div class="battery-stat-title">Voltage</div>' +
+      '  <div class="battery-stat-main">' + voltEnd.toFixed(2) + ' V</div>' +
+      '  <div class="battery-stat-sub">Start: ' + voltStart.toFixed(2) + ' V<br>Min: <span style="color:' + (voltMin < voltStart * 0.9 ? 'var(--amber)' : 'var(--text-muted)') + '">' + voltMin.toFixed(2) + ' V</span></div>' +
+      '</div>' +
+      '<div class="battery-stat-col">' +
+      '  <div class="battery-stat-title">Current</div>' +
+      '  <div class="battery-stat-main">' + (currents.length ? currents[currents.length - 1].toFixed(1) + ' A' : '\u2014') + '</div>' +
+      '  <div class="battery-stat-sub">Max: ' + (currMax != null ? currMax.toFixed(1) + ' A' : '\u2014') + (remEnd != null ? '<br>Remaining: ' + Math.round(remEnd) + '%' : '') + '</div>' +
+      '</div>' +
+      '<div class="battery-stat-col">' +
+      '  <div class="battery-stat-title">Voltage Range</div>' +
+      '  <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:8px;overflow:hidden;position:relative;">' +
+      '    <div style="width:' + voltRangeWidth + '%;height:100%;background:linear-gradient(90deg,var(--amber),var(--green));border-radius:3px;"></div>' +
+      '  </div>' +
+      '  <div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="font-size:11px;color:var(--text-muted)">' + voltMin.toFixed(1) + ' V</span><span style="font-size:11px;color:var(--text-muted)">' + voltMax.toFixed(1) + ' V</span></div>' +
+      '</div>';
+
+    section.style.display = '';
+  }
+
+  /* ── System Health Bars ────────────────────────────────────── */
+  function renderSystemHealthBars(findings) {
+    var el = document.getElementById('system-health-bars');
+    if (!el) return;
+
+    var subsystems = {
+      'GPS':       { label: 'GPS',       scores: [] },
+      'Battery':   { label: 'Battery',   scores: [] },
+      'Motor':     { label: 'Motors',    scores: [] },
+      'Vibration': { label: 'Vibration', scores: [] },
+    };
+
+    findings.forEach(function(f) {
+      if (!f.plugin_name) return;
+      Object.keys(subsystems).forEach(function(key) {
+        if (f.plugin_name.indexOf(key) !== -1 || (f.plugin_name.toLowerCase().indexOf(key.toLowerCase()) !== -1)) {
+          subsystems[key].scores.push(f.score);
+        }
+      });
+    });
+
+    var bars = Object.keys(subsystems).map(function(key) {
+      var info = subsystems[key];
+      var arr = info.scores;
+      var pct = arr.length ? Math.round(arr.reduce(function(a,b){return a+b;},0) / arr.length) : 85;
+      var color = pct >= 80 ? '#22C55E' : pct >= 50 ? '#F59E0B' : '#EF4444';
+      return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">' +
+        '<div style="width:90px;font-size:13px;color:var(--text-sec);flex-shrink:0;">' + info.label + '</div>' +
+        '<div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">' +
+        '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;transition:width 1s cubic-bezier(0.16,1,0.3,1)"></div></div>' +
+        '<div style="width:36px;text-align:right;font-size:13px;font-weight:700;color:' + color + ';font-family:var(--font-mono);">' + pct + '%</div></div>';
+    }).join('');
+
+    el.innerHTML = bars;
+    el.style.display = bars ? '' : 'none';
+  }
+
+  /* ── Sidebar Recent Logs ───────────────────────────────────── */
+  function updateSidebarRecent() {
+    var el = document.getElementById('sidebar-recent-list');
+    if (!el) return;
+    var history = JSON.parse(localStorage.getItem('goose_history') || '[]');
+    var recent = history.slice(0, 3);
+    if (!recent.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px 8px;">No recent logs</div>';
+      return;
+    }
+    el.innerHTML = recent.map(function(item) {
+      var fname = item.filename || 'unknown';
+      var display = fname.length > 22 ? escHtml(fname.slice(0, 22)) + '\u2026' : escHtml(fname);
+      return '<div class="sidebar-recent-item" title="' + escHtml(fname) + '">' + display + '</div>';
+    }).join('');
   }
 
   /* ── Inline charts (uPlot) ─────────────────────────────────── */
@@ -3215,6 +3922,9 @@
       'chart-section-raw-gyro', 'chart-section-raw-accel',
       'chart-section-rc-channels', 'chart-section-actuator-demand',
       'chart-section-vel-error', 'chart-section-gforce',
+      // Tier 2 charts
+      'chart-section-rate-ctrl-integ', 'chart-section-esc-status',
+      'chart-section-ekf-innovations', 'chart-section-distance-sensor',
       // Flagship forensic charts
       'chart-section-crash-sequence', 'chart-section-motor-heatmap',
       'chart-section-battery-sag', 'chart-section-failure-waterfall',
@@ -3240,11 +3950,11 @@
 
     // Chart colors
     const C = {
-      green: '#6ECC72', amber: '#EF9F27', red: '#E24B4A',
-      blue: '#5B9BD5', purple: '#A77BCA', cyan: '#5BC0BE',
-      orange: '#E8854A', pink: '#D46A9F', lime: '#A3C44A',
-      grid: 'rgba(255,255,255,0.04)', axis: 'rgba(255,255,255,0.15)',
-      text: 'rgba(216,213,206,0.4)',
+      green: '#22C55E', amber: '#F59E0B', red: '#EF4444',
+      blue: '#3B82F6', purple: '#A855F7', cyan: '#06B6D4',
+      orange: '#F97316', pink: '#EC4899', lime: '#84CC16',
+      grid: 'rgba(30,41,59,1)', axis: 'rgba(100,116,139,0.6)',
+      text: 'rgba(148,163,184,0.7)',
     };
 
     window._inlineCharts = window._inlineCharts || [];
@@ -3757,6 +4467,73 @@
         ];
         const opts = base(el.clientWidth - 4, series);
         opts.axes[1].label = 'g';
+        return new uPlot(opts, data, el);
+      });
+
+      // ══════════════════════════════════════════════════════════════
+      // TIER 2 CHARTS
+      // ══════════════════════════════════════════════════════════════
+
+      // Rate Controller Integrators — PID wind-up detection
+      buildChart('inline-chart-rate-ctrl-integ', (el, ts, C, base, sd) => {
+        const d = ts.rate_ctrl_status; if (!d || !d.timestamps) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.rollspeed_integ)  { data.push(d.rollspeed_integ);  series.push(sd('Roll Integ',  C.red,    { width: 1.5 })); }
+        if (d.pitchspeed_integ) { data.push(d.pitchspeed_integ); series.push(sd('Pitch Integ', C.green,  { width: 1.5 })); }
+        if (d.yawspeed_integ)   { data.push(d.yawspeed_integ);   series.push(sd('Yaw Integ',   C.blue,   { width: 1.5 })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'rad·s';
+        return new uPlot(opts, data, el);
+      });
+
+      // ESC Telemetry — RPM per motor
+      buildChart('inline-chart-esc-rpm', (el, ts, C, base, sd) => {
+        const d = ts.esc_status; if (!d || !d.timestamps) return null;
+        const ESC_COLORS = [C.red, C.green, C.blue, C.amber,
+                            'rgba(180,100,220,0.9)', 'rgba(0,200,200,0.9)',
+                            'rgba(220,120,60,0.9)',  'rgba(140,180,60,0.9)'];
+        const data = [d.timestamps]; const series = [];
+        for (let n = 0; n < 8; n++) {
+          const key = `esc_rpm_${n}`;
+          if (d[key]) {
+            data.push(d[key]);
+            series.push(sd(`ESC ${n}`, ESC_COLORS[n % ESC_COLORS.length], { width: 1.5 }));
+          }
+        }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'RPM';
+        return new uPlot(opts, data, el);
+      });
+
+      // EKF Innovation Test Ratios — values >1.0 = test failing
+      buildChart('inline-chart-ekf-innovations', (el, ts, C, base, sd) => {
+        const d = ts.ekf_innovations; if (!d || !d.timestamps) return null;
+        const n = d.timestamps.length;
+        const thresh = new Array(n).fill(1.0);
+        const data = [d.timestamps]; const series = [];
+        if (d.innovation_vel_pos) { data.push(d.innovation_vel_pos); series.push(sd('Vel/Pos', C.blue,  { width: 1.5 })); }
+        if (d.innovation_mag)     { data.push(d.innovation_mag);     series.push(sd('Mag',     C.amber, { width: 1.5 })); }
+        if (d.innovation_tas)     { data.push(d.innovation_tas);     series.push(sd('Airspeed',C.green, { width: 1.5 })); }
+        if (!series.length) return null;
+        data.push(thresh);
+        series.push(sd('Fail threshold (1.0)', 'rgba(226,75,74,0.6)', { width: 1, dash: [4,3] }));
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'ratio';
+        return new uPlot(opts, data, el);
+      });
+
+      // Distance Sensor — rangefinder altitude
+      buildChart('inline-chart-distance-sensor', (el, ts, C, base, sd) => {
+        const d = ts.distance_sensor; if (!d || !d.timestamps) return null;
+        const data = [d.timestamps]; const series = [];
+        if (d.current_distance) { data.push(d.current_distance); series.push(sd('Distance', C.blue,  { width: 2 })); }
+        if (d.min_distance)     { data.push(d.min_distance);     series.push(sd('Min',      'rgba(239,159,39,0.5)', { width: 1, dash: [4,3] })); }
+        if (d.max_distance)     { data.push(d.max_distance);     series.push(sd('Max',      'rgba(239,159,39,0.5)', { width: 1, dash: [4,3] })); }
+        if (!series.length) return null;
+        const opts = base(el.clientWidth - 4, series);
+        opts.axes[1].label = 'm';
         return new uPlot(opts, data, el);
       });
 
@@ -5311,6 +6088,7 @@
   }
 
   function renderHistoryTab() {
+    updateSidebarRecent();
     const container = document.getElementById('history-content');
     const history   = loadHistory();
 
@@ -8529,6 +9307,7 @@
 
   // Default to Welcome tab on load (v11 Strategy Sprint)
   switchTab('welcome');
+  updateSidebarRecent();
 </script>
 <script src="/static/uPlot.iife.min.js"></script>
 <script src="/static/three.min.js"></script>

@@ -246,6 +246,9 @@ class ULogParser(BaseParser):
             imu_status = self._extract_imu_status(ulog, start_us)
             estimator_bias = self._extract_estimator_bias(ulog, start_us)
             control_allocator = self._extract_control_allocator(ulog, start_us)
+            esc_status = self._extract_esc_status(ulog, start_us)
+            ekf_innovations = self._extract_ekf_innovations(ulog, start_us)
+            distance_sensor = self._extract_distance_sensor(ulog, start_us)
         except (KeyError, ValueError, TypeError, AttributeError) as exc:
             diag.errors.append(f"Extraction failed mid-parse: {exc}")
             diag.parser_confidence = 0.0
@@ -289,6 +292,9 @@ class ULogParser(BaseParser):
             imu_status=imu_status,
             estimator_bias=estimator_bias,
             control_allocator=control_allocator,
+            esc_status=esc_status,
+            ekf_innovations=ekf_innovations,
+            distance_sensor=distance_sensor,
         )
 
         # --- Finalize diagnostics ------------------------------------------
@@ -1142,6 +1148,79 @@ class ULogParser(BaseParser):
             ("unallocated_torque[1]", "unallocated_torque_y"),
             ("unallocated_torque[2]", "unallocated_torque_z"),
             ("handled_motor_failure_mask", "handled_motor_failure_mask"),
+        ]:
+            if raw in df.columns:
+                cols[name] = df[raw].astype(float)
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_esc_status(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract ESC telemetry (RPM, voltage, current) from esc_status."""
+        df = _topic_to_df(ulog, "esc_status")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for n in range(8):
+            for raw_field, out_prefix in [
+                (f"esc[{n}].esc_rpm", "esc_rpm"),
+                (f"esc[{n}].esc_voltage", "esc_voltage"),
+                (f"esc[{n}].esc_current", "esc_current"),
+            ]:
+                if raw_field in df.columns:
+                    cols[f"{out_prefix}_{n}"] = df[raw_field].astype(float)
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_ekf_innovations(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract EKF innovation test ratios from estimator_innovation_test_ratios."""
+        df = _topic_to_df(ulog, "estimator_innovation_test_ratios")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        # Field names vary by PX4 version — try both naming conventions
+        vel_pos_candidates = ["vel_pos_innov_ratio", "velpos_innov_ratio"]
+        mag_candidates = ["mag_innov_ratio", "heading_innov_ratio", "mag_field_innov_ratio"]
+        tas_candidates = ["tas_innov_ratio", "airspeed_innov_ratio"]
+        for candidates, out_name in [
+            (vel_pos_candidates, "innovation_vel_pos"),
+            (mag_candidates, "innovation_mag"),
+            (tas_candidates, "innovation_tas"),
+        ]:
+            for field_name in candidates:
+                if field_name in df.columns:
+                    cols[out_name] = df[field_name].astype(float)
+                    break
+        # Also try array-style vel_pos_innov_ratio[0..5] — sum absolute values
+        if "innovation_vel_pos" not in cols:
+            vp_arr = [c for c in df.columns if c.startswith("vel_pos_innov_ratio[")]
+            if vp_arr:
+                cols["innovation_vel_pos"] = df[vp_arr].abs().max(axis=1).astype(float)
+        if not cols:
+            return pd.DataFrame()
+        result = pd.DataFrame(cols)
+        result.insert(0, "timestamp", df["timestamp"])
+        return result
+
+    def _extract_distance_sensor(self, ulog: ULog, start_us: int) -> pd.DataFrame:
+        """Extract distance sensor data from distance_sensor topic."""
+        df = _topic_to_df(ulog, "distance_sensor")
+        if df is None or df.empty:
+            return pd.DataFrame()
+        df = _us_to_sec(df, start_us)
+        cols: dict[str, Any] = {}
+        for raw, name in [
+            ("current_distance", "current_distance"),
+            ("min_distance", "min_distance"),
+            ("max_distance", "max_distance"),
+            ("signal_quality", "signal_quality"),
         ]:
             if raw in df.columns:
                 cols[name] = df[raw].astype(float)

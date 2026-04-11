@@ -301,6 +301,29 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
         if ca:
             ts["control_allocator"] = ca
 
+    # ESC telemetry (RPM, voltage, current per ESC)
+    if not flight.esc_status.empty:
+        esc_cols = [c for c in flight.esc_status.columns if c != "timestamp"]
+        esc = df_to_series(flight.esc_status, esc_cols)
+        if esc:
+            ts["esc_status"] = esc
+
+    # EKF innovation test ratios
+    if not flight.ekf_innovations.empty:
+        innov_cols = [c for c in flight.ekf_innovations.columns if c != "timestamp"]
+        innov = df_to_series(flight.ekf_innovations, innov_cols)
+        if innov:
+            ts["ekf_innovations"] = innov
+
+    # Distance sensor
+    if not flight.distance_sensor.empty:
+        dist = df_to_series(
+            flight.distance_sensor,
+            ["current_distance", "min_distance", "max_distance", "signal_quality"],
+        )
+        if dist:
+            ts["distance_sensor"] = dist
+
     # Mode changes
     ts["mode_changes"] = [
         {

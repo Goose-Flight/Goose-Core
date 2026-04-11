@@ -9395,7 +9395,6 @@
 
     const hypotheses = data.hypotheses || [];
     const signals = data.signal_quality || [];
-    const allFindings = [...(data.findings||[])].sort((a,b)=>_sevSortKey(a)-_sevSortKey(b));
     const parameters = data.parameters || {};
     const events = (ts.events || []);
     const phases = data.phases || [];

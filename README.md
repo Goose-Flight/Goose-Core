@@ -14,68 +14,20 @@
 
 ---
 
-Goose is an open-source, **local-first flight forensic and investigation platform for UAV logs**. It is built for the whole workflow from a quick "what happened on this run?" question to a multi-day forensic investigation with evidence custody, structured findings, and auditable reports.
+**Goose is an open-source, local-first flight forensic and investigation platform for UAV logs.** It parses PX4, ArduPilot, and CSV flight logs, runs 17 deterministic analysis plugins, scores crash confidence with an XGBoost ML model trained on 8,668 real-world flights, and presents results through 27+ interactive telemetry charts — all without sending a single byte off your machine.
 
-Two entry paths cover the full range:
+### Why Goose instead of PX4 Flight Review?
 
-- **Quick Analysis** — drag a log in, pick a profile, get findings, hypotheses, and a summary. Session-only, nothing persisted. Perfect for a fast triage pass or a one-off question. Promote to a full investigation case with one click.
-- **Investigation Cases** — case-oriented workflow with evidence ingest, SHA-256/SHA-512 hashing, chain of custody, append-only audit log, and saved analysis runs. Built for deeper work that you want to keep, share, or revisit.
-
-The same forensic engine — same parsers, same plugins, same canonical models — powers both paths. Profiles only tailor defaults and wording. They never change forensic truth.
-
----
-
-## Profiles and Roles
-
-Goose ships with data-driven **profiles** that tailor defaults for different operator classes without forking the engine:
-
-| Profile | For | Emphasizes |
-|---------|-----|------------|
-| **Racer** | FPV racers, performance tuners | Vibration, motor saturation, attitude tracking |
-| **Research / University** | Academic and research labs | Log health, GPS, EKF consistency, estimator quality |
-| **Shop / Repair** | Drone repair shops and triage | Crash detection, battery sag, motor, log health |
-| **Factory / QA** | Manufacturing QA and acceptance | Log health, vibration, motors, attitude tracking |
-| **Gov / Mil** | Public safety and mission operators | Crash, GPS, failsafes, EKF, full case metadata |
-| **Advanced** | Power users | No defaults — full control |
-| **Default** | General use | Balanced defaults |
-
-Profiles bias which plugins are emphasized, which charts appear first, which case metadata fields are prominent, and which wording the reports use ("Run" vs "Case" vs "Sortie" vs "Test"). The underlying forensic artifact is identical across profiles — same parser, same plugins, same canonical models. See `GET /api/profiles`.
-
-> **Note:** Goose is evidence-preserving and structured, with hashed ingest, append-only audit logs, and canonical finding/hypothesis models. It does **not** claim formal military or regulatory compliance certification.
-
----
-
-## Key Capabilities
-
-**Forensic case system** — Create cases, ingest evidence with SHA-256/SHA-512 hashing, maintain chain of custody with append-only audit logs. Case directory structure preserves evidence integrity from ingest through analysis.
-
-**Quick Analysis** — Session-only triage flow for users who need findings without creating a case. Upload a log, pick a profile, get findings + hypotheses + summary. Promote to a full Investigation Case with one click. See `POST /api/quick-analysis`.
-
-**Parser framework with diagnostics** — `ParseResult` contract returns `(Flight, ParseDiagnostics, Provenance)` for every parse operation. Diagnostics include format confidence, parse confidence, stream coverage across 20 telemetry streams, corruption indicators, and timebase anomaly detection. The parser never raises — it always returns structured output.
-
-**17 built-in analyzers** — crash_detection, battery_sag, gps_health, vibration, motor_saturation, attitude_tracking, ekf_consistency, rc_signal, position_tracking, failsafe_events, log_health, payload_change_detection, mission_phase_anomaly, operator_action_sequence, environment_conditions, damage_impact_classification, and link_telemetry_health. Each plugin emits findings with severity, scores, and confidence, and declares a formal `PluginManifest` with required streams, trust state, and output finding types.
-
-**Plugin trust model** — Every plugin declares a `PluginManifest` with a `PluginTrustState` (`builtin_trusted`, `local_signed`, `community`, etc.). Runtime `PluginDiagnostics` report execution status (`RAN` / `SKIPPED` / `BLOCKED`), missing streams, and warnings per run.
-
-**Findings, hypotheses, and canonical models** — Plugins emit `ForensicFinding` objects with evidence references linking each finding back to a specific time range and stream. Hypotheses are a distinct type with their own evaluation state (`candidate` / `supported` / `refuted` / `inconclusive`), so parser confidence, finding confidence, and root-cause certainty never get conflated.
-
-**User profiles** — Data-driven profile configurations (Racer, Research, Shop/Repair, Factory/QA, Gov/Mil, Advanced, Default) bias defaults, plugin selection, chart presets, and report wording without forking the forensic engine.
-
-**Rich case metadata** — Cases carry full operational context (mission/sortie ids, operator and unit, platform and firmware, customer/ticket info, damage and corrective actions) so investigation output is forensically complete for every profile.
-
-**Attachments** — Non-telemetry attachments (photos, videos, GCS logs, notes, report appendices, checklists) are hashed and stored per-case with a manifest.
-
-**Structured timeline** — Typed `TimelineEvent` stream built from parser output (flight phases, mode changes, failsafes) and plugin findings. Persisted per analysis run at `analysis/timeline.json`.
-
-**Replay and export** — Cases can be exported as replayable bundles for sharing, archival, or reproducing a past run with the exact evidence, parser, and tuning profile that produced it.
-
-**Feature gate scaffold** — `goose.features.FeatureGate` provides capability checks for future tiering. The open-source build runs at `OSS_CORE` (free, local-first) with **Local Pro coming** for advanced workflows. No billing logic lives in the core.
-
-**Web GUI** — Welcome screen with the Quick Analysis vs Investigation Case choice, profile selector, case list, case creation, evidence upload, findings view, audit trail view, parse diagnostics tab, telemetry charts (uPlot), and SVG flight path visualization. The GUI is the primary product surface.
-
-**CLI** — Full command-line interface for analysis, case management, and server operation.
-
-**CI/CD** — GitHub Actions pipeline: ruff, mypy, pytest (Python 3.10/3.11/3.12 matrix), bandit, pip-audit.
+| | PX4 Flight Review | Goose |
+|---|---|---|
+| **Crash analysis** | Manual visual inspection | Automated crash detection with root-cause classification and confidence scoring |
+| **ML scoring** | None | XGBoost model (AUC 1.000) trained on 8,668 real flights with 190 features |
+| **Analyzers** | None — chart viewer only | 17 built-in forensic plugins with evidence-linked findings |
+| **Evidence integrity** | Upload to cloud server | SHA-256/512 hashing, immutable evidence, append-only audit log |
+| **Provenance** | None | Every finding traces to parser version, plugin version, trust state, and evidence reference |
+| **Privacy** | Logs uploaded to remote server | 100% local — nothing leaves your machine |
+| **Charting** | Basic timeseries | 27+ uPlot interactive charts with synchronized zoom/pan + forensic canvas overlays |
+| **Case management** | None | Full investigation cases with chain of custody and replay/export |
 
 ---
 
@@ -96,9 +48,31 @@ goose crash flight.ulg
 goose analyze flight.ulg
 ```
 
-The web GUI runs at `http://localhost:8000`. No data leaves your machine.
+The web GUI runs at `http://localhost:8000`. A session token is generated at startup for API security — the browser receives it automatically, no login required. No data leaves your machine.
 
-On first launch the welcome screen asks you to pick **Quick Analysis** or **Investigation Case** and choose a profile. You can change profiles at any time.
+---
+
+## Key Capabilities
+
+**Crash confidence scoring** — Multi-signal probabilistic crash detection using altitude drop rate, G-force signatures, attitude divergence, and motor cutoff patterns. Each crash is classified (motor failure, power loss, GPS loss, impact, mechanical, pilot error) with a confidence score.
+
+**ML-powered analysis** — XGBoost gradient-boosted classifier trained on 8,668 real-world PX4 flights with 190 extracted features. Cross-validated AUC of 1.000. Top predictors: maximum roll angle (40% importance), peak G-force, IMU accelerometer clipping. See [research findings](https://goose.ing/research).
+
+**17 built-in analyzers** — Deterministic forensic plugins covering crash detection, vibration, battery health, GPS, EKF consistency, motor saturation, attitude/position tracking, RC signal, failsafe events, log integrity, payload changes, mission phase anomalies, operator actions, environment conditions, damage classification, and telemetry link health.
+
+**Forensic case system** — Create investigation cases with SHA-256/SHA-512 evidence hashing, immutable evidence storage, chain of custody, append-only audit logs, and run-scoped artifact archives. Quick Analysis mode provides session-only triage without creating a case.
+
+**27+ interactive telemetry charts** — uPlot-based time-series visualization covering altitude, attitude, attitude setpoint, attitude rate, rate setpoint, velocity, velocity setpoint, motors, battery, GPS, vibration, RC signal, EKF, CPU load, attitude tracking error, rate tracking error, velocity tracking error, control-response correlation, stick inputs, actuator demands, magnetometer, airspeed, wind estimate, RC channels, barometer, raw gyro, and raw accelerometer.
+
+**Parser framework with diagnostics** — `ParseResult` returns `(Flight, ParseDiagnostics, Provenance)` for every parse. Diagnostics include format confidence, parse confidence, stream coverage, corruption indicators, and timebase anomaly detection. The parser never raises — it always returns structured output.
+
+**Provenance and trust model** — Every plugin declares a `PluginManifest` with trust state (`builtin_trusted`, `local_signed`, `community`). Every finding includes evidence references linking it to specific time ranges and streams. Parser confidence, finding confidence, and hypothesis confidence are explicitly scoped and never conflated.
+
+**User profiles** — Seven data-driven profiles (Racer, Research, Shop/Repair, Factory/QA, Gov/Mil, Advanced, Default) tailor plugin emphasis, chart ordering, report wording, and metadata fields. Profiles never change forensic truth — the same canonical model is produced regardless of profile.
+
+**Session token auth** — API is protected by a per-session bearer token generated at startup. The token is injected into the SPA automatically. No login UI needed, but local processes cannot call the API without the token.
+
+**Export and replay** — Cases export as replayable bundles containing all findings, hypotheses, diagnostics, and plugin versions. Replay verification detects engine version drift between export and reimport.
 
 ---
 
@@ -106,47 +80,71 @@ On first launch the welcome screen asks you to pick **Quick Analysis** or **Inve
 
 | Format | Status |
 |--------|--------|
-| PX4 ULog (`.ulg`) | **Supported** |
-| ArduPilot DataFlash (`.bin`, `.log`) | **Supported** (basic message extraction) |
-| MAVLink telemetry (`.tlog`) | Core stub only — real parser in Goose Pro |
-| Generic CSV (`.csv`) | **Supported** (stream heuristics) |
+| PX4 ULog (`.ulg`) | **Supported** — full telemetry extraction across 20+ streams |
+| ArduPilot DataFlash (`.bin`, `.log`) | **Supported** — basic message extraction |
+| MAVLink telemetry (`.tlog`) | Core stub — full parser in Goose Pro |
+| Generic CSV (`.csv`) | **Supported** — stream heuristics |
 
-Goose parses **PX4 ULog, ArduPilot DataFlash, and generic CSV** natively. A stub parser exists for MAVLink TLog in Core; the real TLog parser ships in Goose Pro. See [docs/supported-formats.md](docs/supported-formats.md) for format-specific extraction details.
+See [docs/supported-formats.md](docs/supported-formats.md) for format-specific extraction details.
 
 ---
 
-## Case System
+## Plugins
 
-Goose organizes investigation work around forensic cases:
+Goose ships with 17 built-in analyzers. Each plugin declares a formal `PluginManifest` with required streams, trust state, and output finding types.
 
-```
-cases/
-  CASE-2026-000001/
-    case.json                  # Case metadata, status, run history
-    evidence/
-      EV-0001-flight.ulg       # Immutable original (SHA-256 + SHA-512 verified)
-    manifests/
-      evidence_manifest.json   # Hashes, acquisition metadata
-    parsed/
-      canonical_flight.json    # Parsed Flight object
-      parse_diagnostics.json   # Full parse quality report
-      provenance.json          # Parser lineage record
-    analysis/
-      findings.json            # Latest run findings (pointer)
-      findings_{run_id}.json   # Run-specific archive (for diff/replay)
-      hypotheses.json          # Latest run hypotheses (pointer)
-      hypotheses_{run_id}.json # Run-specific archive
-      timeline.json            # Typed timeline events
-      signal_quality.json      # Per-stream signal quality report
-      plugin_diagnostics.json  # Per-plugin execution records
-    audit/
-      audit_log.jsonl          # Append-only audit trail
-    exports/
-```
+| Plugin | What It Checks |
+|--------|---------------|
+| `crash_detection` | Crash events with classification (motor failure, power loss, impact, GPS loss, pilot error, mechanical) and confidence scoring |
+| `vibration` | IMU vibration RMS/peak per axis, accelerometer clipping, bearing degradation trends |
+| `battery_sag` | Voltage sag under load, cell voltage thresholds, brownout risk, temperature monitoring |
+| `gps_health` | Fix quality, satellite count, HDOP, position drift, dropout detection, jamming indicators |
+| `motor_saturation` | Motor output saturation, asymmetry between axes, failure signatures, remaining headroom |
+| `ekf_consistency` | EKF innovation ratios, magnetometer consistency, reset detection, estimator fault flags |
+| `rc_signal` | RSSI monitoring, signal dropout detection, stuck channel detection, RC failsafe tracking |
+| `attitude_tracking` | Roll/pitch/yaw tracking error vs setpoint, PID oscillation detection |
+| `position_tracking` | Horizontal position error (Haversine), vertical altitude error, hover drift detection |
+| `failsafe_events` | Failsafe trigger cataloging, emergency mode transitions, failsafe vs pilot-initiated classification |
+| `log_health` | Log integrity, data gaps, sensor dropout, data rate validation |
+| `payload_change_detection` | Candidate mid-flight payload/mass-change events |
+| `mission_phase_anomaly` | Anomalous behavior within mission phases (takeoff, cruise, landing) |
+| `operator_action_sequence` | Operator input patterns — mode switches, arm/disarm, RC commands |
+| `environment_conditions` | Environmental inference — wind estimation, GPS multipath indicators |
+| `damage_impact_classification` | Post-impact damage signature classification |
+| `link_telemetry_health` | Telemetry link quality, dropout events, RSSI degradation |
 
-Evidence files are set read-only immediately after ingest. The audit log is append-only and never truncated. Case metadata is the only mutable file.
+Plugins are discoverable via Python entry points. See [docs/writing-plugins.md](docs/writing-plugins.md) for the plugin development guide.
 
-Quick Analysis runs do not create any of these directories — they run in memory and are discarded when the session ends, unless you promote them to a full case.
+---
+
+## ML Research
+
+Goose includes an ML pipeline trained on 8,668 community-submitted PX4 flights from the public flight.review database:
+
+- **190 features** extracted per flight (attitude, vibration, power, control loop, GPS, EKF, failsafe, timing)
+- **XGBoost classifier** with 5-fold stratified cross-validation
+- **AUC 1.000** — perfect class separation on the training dataset
+- **Top predictor**: maximum roll angle captures ~40% of model importance
+- **Key finding**: autonomous mission mode crashes 62% more often than manual flight (42.9% vs 26.5%)
+- **30.7% overall crash rate** across the community fleet
+
+Full methodology and results: [goose.ing/research](https://goose.ing/research)
+
+---
+
+## Profiles
+
+| Profile | For | Emphasizes |
+|---------|-----|------------|
+| **Racer** | FPV racers, performance tuners | Vibration, motor saturation, attitude tracking |
+| **Research / University** | Academic and research labs | Log health, GPS, EKF consistency, estimator quality |
+| **Shop / Repair** | Drone repair shops and triage | Crash detection, battery sag, motor, log health |
+| **Factory / QA** | Manufacturing QA and acceptance | Log health, vibration, motors, attitude tracking |
+| **Gov / Mil** | Public safety and mission operators | Crash, GPS, failsafes, EKF, full case metadata |
+| **Advanced** | Power users | No defaults — full control |
+| **Default** | General use | Balanced defaults |
+
+Profiles bias which plugins are emphasized, which charts appear first, and which wording reports use. The underlying forensic artifact is identical across all profiles.
 
 ---
 
@@ -159,14 +157,15 @@ goose serve
 The web GUI at `http://localhost:8000` provides:
 
 - Welcome screen with Quick Analysis / Investigation Case / Open Recent Case
-- Profile selector (Racer, Research, Shop/Repair, Factory/QA, Gov/Mil, Advanced, Default)
-- Case list and case creation
-- Evidence upload with integrity verification
-- Findings view with severity and confidence
+- Profile selector (7 profiles)
+- Case list, case creation, evidence upload with integrity verification
+- Findings view with severity, confidence, and evidence references
 - Parse diagnostics tab (stream coverage, confidence scores, warnings)
+- Hypothesis view with supporting/contradicting finding links
+- 27+ interactive uPlot telemetry charts with synchronized zoom/pan
+- SVG flight path visualization
 - Audit trail viewer
-- Telemetry charts (altitude, battery, motors, attitude, vibration, GPS, velocity)
-- SVG flight path with zoom/pan
+- Export and replay verification
 
 ---
 
@@ -188,56 +187,21 @@ See [docs/cli-reference.md](docs/cli-reference.md) for full documentation.
 
 ## REST API
 
-The API supports the Quick Analysis flow, the full case-oriented workflow, and a backward-compatible analysis endpoint:
-
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/quick-analysis` | POST | Session-only triage (no case persisted) |
-| `/api/cases` | GET | List all cases |
-| `/api/cases` | POST | Create a new case |
+| `/api/cases` | GET/POST | List or create cases |
 | `/api/cases/{id}/evidence` | POST | Ingest evidence into a case |
 | `/api/cases/{id}/analyze` | POST | Run analysis on case evidence |
 | `/api/profiles` | GET | List available user profiles |
-| `/api/analyze` | POST | Removed — returns 410 Gone with redirect instructions |
+| `/api/plugins` | GET | List installed plugins |
 | `/api/cases/{id}/exports/bundle` | POST | Create a replayable export bundle |
-| `/api/cases/{id}/exports/verify-replay` | POST | Compare bundle versions with current engine |
 | `/api/cases/{id}/diff` | POST | Structured diff between two analysis runs |
-| `/api/cases/{id}/exports/reports/mission-summary` | GET | Mission summary report |
-| `/api/cases/{id}/exports/reports/forensic-case` | GET | Full forensic case report |
-| `/api/cases/{id}/exports/reports/crash` | GET | Crash/mishap report |
+| `/api/cases/{id}/exports/reports/*` | GET | Mission summary, forensic case, and crash reports |
 | `/api/runs/recent` | GET | Recent analysis runs across all cases |
 | `/api/health` | GET | Health check |
-| `/api/plugins` | GET | List installed plugins |
 
-See [docs/api-reference.md](docs/api-reference.md) for full API documentation.
-
----
-
-## Plugins
-
-Goose ships with 17 built-in analyzers:
-
-| Plugin | What It Checks |
-|--------|---------------|
-| `crash_detection` | Crash events, classification (motor failure, power loss, impact, etc.) |
-| `vibration` | IMU vibration levels, clipping, resonance |
-| `battery_sag` | Voltage sag under load, cell imbalance, brownout risk |
-| `gps_health` | Fix quality, satellite count, HDOP, position drift |
-| `motor_saturation` | Motor output saturation, asymmetry, control authority loss |
-| `ekf_consistency` | EKF innovation consistency and divergence |
-| `rc_signal` | RC link quality, signal loss events |
-| `attitude_tracking` | Attitude tracking error between setpoint and actual |
-| `position_tracking` | Position tracking accuracy |
-| `failsafe_events` | Failsafe triggers and flight termination events |
-| `log_health` | Log integrity, data gaps, sensor dropout |
-| `payload_change_detection` | Candidate mid-flight payload / mass-change events (Phase 1) |
-| `mission_phase_anomaly` | Anomalous behavior within mission phases (takeoff, cruise, landing) |
-| `operator_action_sequence` | Operator input patterns — mode switches, arm/disarm, RC commands |
-| `environment_conditions` | Environmental inference — wind estimation, GPS multipath indicators |
-| `damage_impact_classification` | Post-impact damage signature classification |
-| `link_telemetry_health` | Telemetry link quality, dropout events, RSSI degradation |
-
-Plugins are discoverable via Python entry points and declare a formal `PluginManifest` (required streams, trust state, output finding types). See [docs/writing-plugins.md](docs/writing-plugins.md) for the plugin development guide.
+All `/api/*` endpoints require a `Bearer` token (generated at startup). See [docs/api-reference.md](docs/api-reference.md) for full API documentation.
 
 ---
 
@@ -269,9 +233,15 @@ Log File (.ulg / .bin / .log / .csv)
         [ Web GUI / CLI / Report export ]
 ```
 
-The forensic subsystem (`src/goose/forensics/`) manages cases, evidence, manifests, canonical models, tuning profiles, and audit trails. Parsers return structured `ParseResult` tuples. Plugins operate on the canonical `Flight` object, not raw log data.
+Built on FastAPI + uvicorn with a vanilla JS frontend using uPlot for charting. The forensic subsystem (`src/goose/forensics/`) manages cases, evidence, manifests, canonical models, tuning profiles, and audit trails. Parsers return structured `ParseResult` tuples. Plugins operate on the canonical `Flight` object, not raw log data.
 
-See [docs/architecture/](docs/architecture/) for the full architecture audit, target architecture, and migration plan.
+See [docs/architecture/](docs/architecture/) for the full architecture documentation.
+
+---
+
+## Hosted Version
+
+A hosted version with team collaboration features is in development at [goose.ing](https://goose.ing). The marketing site and research findings live in the [Goose-Nest](https://github.com/Goose-Flight/Goose-Nest) repository.
 
 ---
 
@@ -279,8 +249,8 @@ See [docs/architecture/](docs/architecture/) for the full architecture audit, ta
 
 | Tier | Status | Scope |
 |------|--------|-------|
-| **OSS Core** | Available today | Local-first, free. Full case system, all 17 built-in analyzers, Quick Analysis, profiles, GUI and CLI. |
-| **Local Pro** | Coming | Advanced local workflows — reserved for future work. |
+| **OSS Core** | Available now | Local-first, free. Full case system, all 17 analyzers, Quick Analysis, profiles, GUI and CLI. |
+| **Local Pro** | Coming | Advanced local workflows — MAVLink TLog parsing, extended reporting. |
 | **Hosted / Team** | Planned | Shared cases, org-level audit, team collaboration. |
 
 The open-source core is never crippled. Feature gating lives behind a scaffold (`goose.features.FeatureGate`) and no billing or remote-call logic exists in the core build.

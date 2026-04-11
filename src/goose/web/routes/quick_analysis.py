@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import tempfile
 import uuid
 from datetime import datetime
@@ -28,6 +29,31 @@ from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
+
+
+def _sanitize(obj: Any) -> Any:
+    """Recursively convert numpy/pandas scalars to JSON-safe Python types."""
+    if obj is None:
+        return None
+    # numpy scalars — detected by duck-typing to avoid a hard numpy dep here
+    t = type(obj)
+    tname = t.__name__
+    mod = getattr(t, "__module__", "") or ""
+    if "numpy" in mod:
+        if tname.startswith("int") or tname.startswith("uint"):
+            return int(obj)
+        if tname.startswith("float"):
+            v = float(obj)
+            return None if (math.isnan(v) or math.isinf(v)) else v
+        if tname.startswith("bool"):
+            return bool(obj)
+    if isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize(v) for v in obj]
+    return obj
 
 from goose import __version__
 from goose.forensics.profiles import get_profile
@@ -200,14 +226,14 @@ async def quick_analysis(
 
         completed_at = datetime.now()
 
-        return JSONResponse({
+        payload = _sanitize({
             "ok": True,
             "quick_analysis_id": qa_id,
             "profile": cfg.to_dict(),
             "engine_version": __version__,
             "started_at": started_at.isoformat(),
             "completed_at": completed_at.isoformat(),
-            "persisted": False,  # explicit — no case was created
+            "persisted": False,
             "overall_score": overall_score,
             "metadata": {
                 "filename": file.filename,
@@ -247,6 +273,7 @@ async def quick_analysis(
             "setpoint_path": setpoint_path,
             "parse_diagnostics": parse_result.diagnostics.to_dict(),
         })
+        return JSONResponse(payload)
     except HTTPException:
         raise
     except Exception as exc:

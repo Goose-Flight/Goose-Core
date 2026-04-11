@@ -712,6 +712,31 @@
       letter-spacing: 0.04em;
     }
 
+    /* ── Loading step rows ───────────────────────────────── */
+    .loading-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+    .loading-step[data-done="true"]  { color: var(--green); }
+    .loading-step[data-active="true"] { color: var(--text); }
+    .lstep-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .loading-step[data-done="true"]   .lstep-dot { background: var(--green); }
+    .loading-step[data-active="true"] .lstep-dot { background: var(--blue); animation: pulse-dot 1s ease-in-out infinite; }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(1.4); }
+    }
+
     .loading-spinner {
       width: 36px; height: 36px;
       border: 2px solid rgba(110,204,114,0.15);
@@ -2448,14 +2473,14 @@
       </div>
     </div>
 
-    <!-- ── Top Findings row ──────────────────────────── -->
-    <div class="qa-findings-row" id="qa-findings-row"></div>
-
-    <!-- ── Data tabs panel (analysis first) ────────── -->
+    <!-- ── Data tabs panel — right under overview ──── -->
     <div class="qa-data-section" id="qa-data-section">
       <div class="qa-data-tab-bar" id="qa-data-tab-bar"></div>
       <!-- panes injected by JS -->
     </div>
+
+    <!-- ── Forensic Findings (collapsible) ──────────── -->
+    <div class="qa-findings-row" id="qa-findings-row"></div>
 
     <!-- ── Timeline strip ───────────────────────────── -->
     <div class="qa-timeline-strip" id="qa-timeline-strip" style="display:none;">
@@ -2545,14 +2570,30 @@
 
   <!-- ── Loading view ────────────────────────────────────────── -->
   <div id="loading-view" aria-live="polite" style="display:none">
-    <div class="loading-spinner" aria-hidden="true"></div>
-    <div class="loading-title">Analyzing flight data&hellip;</div>
-    <div class="loading-sub">Running plugin pipeline &mdash; this may take a moment</div>
-    <div class="skeleton-grid" aria-hidden="true">
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card" style="height:80px;grid-column:1/-1"></div>
+    <div style="max-width:520px;margin:80px auto 0;padding:0 24px;">
+      <!-- File name -->
+      <div id="loading-filename" style="font-size:13px;color:var(--text-muted);margin-bottom:20px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+      <!-- Stage label -->
+      <div id="loading-stage" style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:10px;text-align:center;">Uploading…</div>
+      <!-- Progress bar -->
+      <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;margin-bottom:12px;">
+        <div id="loading-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:2px;transition:width 0.4s ease;"></div>
+      </div>
+      <!-- Sub-steps -->
+      <div id="loading-steps" style="display:flex;flex-direction:column;gap:6px;margin-top:16px;">
+        <div class="loading-step" id="lstep-parse" data-done="false">
+          <span class="lstep-dot"></span><span class="lstep-label">Parsing log file</span>
+        </div>
+        <div class="loading-step" id="lstep-plugins" data-done="false">
+          <span class="lstep-dot"></span><span class="lstep-label">Running analysis plugins</span>
+        </div>
+        <div class="loading-step" id="lstep-hyp" data-done="false">
+          <span class="lstep-dot"></span><span class="lstep-label">Generating hypotheses</span>
+        </div>
+        <div class="loading-step" id="lstep-render" data-done="false">
+          <span class="lstep-dot"></span><span class="lstep-label">Building results</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -3584,6 +3625,33 @@
   /* ════════════════════════════════════════════════════════════
      Analysis
   ════════════════════════════════════════════════════════════ */
+  function _setLoadingStage(stage, barPct) {
+    // stage: 'upload' | 'parse' | 'plugins' | 'hyp' | 'render'
+    const stageLabels = {
+      upload: 'Uploading log file…',
+      parse:  'Parsing flight data…',
+      plugins:'Running analysis plugins…',
+      hyp:    'Generating hypotheses…',
+      render: 'Building results…',
+    };
+    const stageToStep = { parse: 'lstep-parse', plugins: 'lstep-plugins', hyp: 'lstep-hyp', render: 'lstep-render' };
+    const el = document.getElementById('loading-stage');
+    if (el) el.textContent = stageLabels[stage] || '';
+    const bar = document.getElementById('loading-bar');
+    if (bar) bar.style.width = barPct + '%';
+    // Mark previous steps done, current active
+    const order = ['lstep-parse','lstep-plugins','lstep-hyp','lstep-render'];
+    const cur = stageToStep[stage];
+    let passed = cur == null; // if stage is 'upload', no steps active yet
+    order.forEach(id => {
+      const s = document.getElementById(id);
+      if (!s) return;
+      if (id === cur) { s.dataset.active = 'true'; s.dataset.done = 'false'; passed = true; }
+      else if (!passed) { s.dataset.done = 'true'; s.dataset.active = 'false'; }
+      else { s.dataset.done = 'false'; s.dataset.active = 'false'; }
+    });
+  }
+
   async function runAnalysis() {
     if (!selectedFile) return;
 
@@ -3596,12 +3664,32 @@
     document.getElementById('upload-view').style.display  = 'none';
     document.getElementById('loading-view').style.display = '';
 
+    // Reset progress bar
+    const filenameEl = document.getElementById('loading-filename');
+    if (filenameEl) filenameEl.textContent = selectedFile.name;
+    // Reset all steps
+    ['lstep-parse','lstep-plugins','lstep-hyp','lstep-render'].forEach(id => {
+      const s = document.getElementById(id);
+      if (s) { s.dataset.done = 'false'; s.dataset.active = 'false'; }
+    });
+    _setLoadingStage('upload', 5);
+
+    // Simulate stage progression — server doesn't stream progress so we fake it
+    // based on typical timing: upload+parse ~20%, plugins ~60%, hyp ~80%, render ~95%
+    const stageTimer = setTimeout(() => _setLoadingStage('parse', 20), 400);
+    const pluginsTimer = setTimeout(() => _setLoadingStage('plugins', 45), 1800);
+    const hypTimer = setTimeout(() => _setLoadingStage('hyp', 75), 4000);
+
     try {
       const form = new FormData();
       form.append('file', selectedFile);
       form.append('profile', 'default');
 
       const res  = await fetch('/api/quick-analysis', { method: 'POST', body: form });
+
+      clearTimeout(stageTimer); clearTimeout(pluginsTimer); clearTimeout(hypTimer);
+      _setLoadingStage('render', 90);
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -3640,10 +3728,17 @@
       currentTab = 'analyze';
 
     } catch (err) {
+      clearTimeout(stageTimer); clearTimeout(pluginsTimer); clearTimeout(hypTimer);
       console.error('runAnalysis error:', err);
       document.getElementById('loading-view').style.display = 'none';
       document.getElementById('upload-view').style.display  = '';
-      showError('Analysis error: ' + escHtml(err.message));
+      // Show the detail if it's a server error JSON, else show raw message
+      let errMsg = err.message || String(err);
+      try {
+        const parsed = JSON.parse(errMsg);
+        if (parsed && parsed.detail) errMsg = typeof parsed.detail === 'string' ? parsed.detail : JSON.stringify(parsed.detail);
+      } catch (_) {}
+      showError('Analysis failed: ' + escHtml(errMsg));
     } finally {
       btn.classList.remove('loading');
       btn.disabled = false;
@@ -9189,16 +9284,24 @@
       allFindings.forEach(f => { sevCounts[f.severity||'info'] = (sevCounts[f.severity||'info']||0)+1; });
       const sevColors = {critical:'var(--red)',warning:'var(--amber)',info:'var(--green)',pass:'var(--green-pass)'};
 
-      findingsRow.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:0;width:100%;';
+      findingsRow.style.cssText = 'display:block;width:100%;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;';
       findingsRow.innerHTML = `
-        <!-- Header bar -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px;border-bottom:1px solid var(--card-border);">
-          <span style="font-size:12px;font-weight:700;letter-spacing:0.05em;color:var(--text-sec);">FORENSIC ${wording.findings.toUpperCase()} &nbsp;<span style="color:var(--text-muted);font-weight:400;">${allFindings.length} total</span></span>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            ${Object.entries(sevCounts).filter(([,n])=>n>0).map(([s,n])=>`<span style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid ${sevColors[s]||'var(--text-muted)'};color:${sevColors[s]||'var(--text-muted)'};font-weight:600;">${s.toUpperCase()} ${n}</span>`).join('')}
+        <!-- Collapsible header — click to expand/collapse -->
+        <div id="qa-findings-header" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none;transition:background 0.15s;"
+             onmouseenter="this.style.background='rgba(255,255,255,0.025)'"
+             onmouseleave="this.style.background=''"
+             onclick="(function(h){var b=document.getElementById('qa-findings-body');var open=b.style.display!=='none';b.style.display=open?'none':'block';h.querySelector('.qa-findings-chevron').style.transform=open?'rotate(-90deg)':'rotate(0deg)'})(this)">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-sec)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span style="font-size:13px;font-weight:700;color:var(--text);">Forensic ${wording.findings} <span style="color:var(--text-muted);font-weight:400;font-size:12px;">${allFindings.length} total</span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            ${Object.entries(sevCounts).filter(([,n])=>n>0).map(([s,n])=>`<span style="font-size:11px;padding:2px 8px;border-radius:4px;background:${s==='critical'?'rgba(239,68,68,0.15)':s==='warning'?'rgba(245,158,11,0.15)':s==='pass'?'rgba(34,197,94,0.15)':'rgba(59,130,246,0.15)'};color:${sevColors[s]||'var(--text-muted)'};font-weight:700;">${s.toUpperCase()} ${n}</span>`).join('')}
+            <svg class="qa-findings-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;transform:rotate(0deg);flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </div>
-        <!-- Finding cards -->
+        <!-- Finding cards — visible by default -->
+        <div id="qa-findings-body" style="border-top:1px solid var(--card-border);">
         ${allFindings.map((f, idx) => {
           const sev = f.severity||'info';
           const sc = sevColors[sev]||'var(--text-muted)';
@@ -9269,6 +9372,7 @@
             </div>
           </div>`;
         }).join('')}
+        </div>
       `;
     }
 

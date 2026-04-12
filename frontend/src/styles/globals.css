@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* Goose Flight Design System — Dark Theme */
+@theme {
+  --color-goose-bg: #0B1120;
+  --color-goose-surface: #111827;
+  --color-goose-surface-hover: #1F2937;
+  --color-goose-border: #1E293B;
+  --color-goose-border-subtle: #334155;
+  --color-goose-text: #F1F5F9;
+  --color-goose-text-secondary: #94A3B8;
+  --color-goose-text-muted: #64748B;
+
+  /* Accent */
+  --color-goose-accent: #14B8A6;
+  --color-goose-accent-hover: #0D9488;
+  --color-goose-accent-dim: #14B8A620;
+
+  /* Status */
+  --color-goose-success: #22C55E;
+  --color-goose-warning: #F59E0B;
+  --color-goose-error: #EF4444;
+  --color-goose-info: #3B82F6;
+  --color-goose-critical: #DC2626;
+
+  /* Severity */
+  --color-goose-severity-critical: #EF4444;
+  --color-goose-severity-warning: #F59E0B;
+  --color-goose-severity-info: #3B82F6;
+  --color-goose-severity-pass: #22C55E;
+
+  /* Confidence bands */
+  --color-goose-confidence-high: #22C55E;
+  --color-goose-confidence-medium: #F59E0B;
+  --color-goose-confidence-low: #EF4444;
+  --color-goose-confidence-unknown: #64748B;
+
+  /* Chart colors */
+  --color-goose-chart-1: #14B8A6;
+  --color-goose-chart-2: #3B82F6;
+  --color-goose-chart-3: #F59E0B;
+  --color-goose-chart-4: #EF4444;
+  --color-goose-chart-5: #8B5CF6;
+  --color-goose-chart-6: #EC4899;
+  --color-goose-chart-7: #22C55E;
+  --color-goose-chart-8: #F97316;
+
+  /* Motor colors */
+  --color-goose-motor-1: #14B8A6;
+  --color-goose-motor-2: #3B82F6;
+  --color-goose-motor-3: #F59E0B;
+  --color-goose-motor-4: #EF4444;
+  --color-goose-motor-5: #8B5CF6;
+  --color-goose-motor-6: #EC4899;
+  --color-goose-motor-7: #22C55E;
+  --color-goose-motor-8: #F97316;
+
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Base styles */
+body {
+  @apply bg-goose-bg text-goose-text font-sans antialiased;
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-goose-bg;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-goose-border-subtle rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-goose-text-muted;
+}

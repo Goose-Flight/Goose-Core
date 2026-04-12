@@ -16,6 +16,7 @@ import goose as _goose_pkg
 logger = logging.getLogger(__name__)
 
 _STATIC_DIR = Path(__file__).parent / "static"
+_FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend" / "dist"
 
 # Timeseries extraction shared with Quick Analysis cockpit
 
@@ -185,8 +186,10 @@ def create_app() -> FastAPI:
     )
 
     # ------------------------------------------------------------------
-    # Static files
+    # Static files — React frontend build takes priority over legacy
     # ------------------------------------------------------------------
+    if _FRONTEND_DIR.exists() and (_FRONTEND_DIR / "index.html").exists():
+        app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIR / "assets")), name="frontend-assets")
     if _STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
@@ -219,24 +222,47 @@ def create_app() -> FastAPI:
     # Routes
     # ------------------------------------------------------------------
 
-    @app.get("/", include_in_schema=False)
-    async def index() -> Response:
-        """Serve the SPA with session token injected as window.GOOSE_TOKEN."""
+    def _serve_spa(html_path: Path) -> Response:
+        """Serve an SPA index.html with session token injected."""
         from fastapi.responses import HTMLResponse
-        html_path = _STATIC_DIR / "index.html"
         if not html_path.exists():
             raise HTTPException(status_code=404, detail="index.html not found")
         html = html_path.read_text(encoding="utf-8")
-        # Inject token as the very first script tag so it's available before
-        # any other JS runs. Never expose the token in a meta tag (referer leaks).
-        injection = (
-            f'<script>window.GOOSE_TOKEN="{_session_token}";</script>'
-        )
+        injection = f'<script>window.GOOSE_TOKEN="{_session_token}";</script>'
         html = html.replace("<head>", f"<head>\n  {injection}", 1)
         return HTMLResponse(
             content=html,
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
+
+    # Determine which frontend to serve
+    _use_react = _FRONTEND_DIR.exists() and (_FRONTEND_DIR / "index.html").exists()
+
+    @app.get("/", include_in_schema=False)
+    async def index() -> Response:
+        """Serve the SPA with session token injected as window.GOOSE_TOKEN."""
+        if _use_react:
+            return _serve_spa(_FRONTEND_DIR / "index.html")
+        return _serve_spa(_STATIC_DIR / "index.html")
+
+    @app.get("/legacy", include_in_schema=False)
+    async def legacy_index() -> Response:
+        """Always serve the legacy vanilla JS frontend."""
+        return _serve_spa(_STATIC_DIR / "index.html")
+
+    # SPA catch-all — serves React index.html for all client-side routes
+    if _use_react:
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_catchall(full_path: str) -> Response:
+            # Don't catch API routes or static assets
+            if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("assets/"):
+                raise HTTPException(status_code=404)
+            # Check if it's a real file in the frontend dist
+            file_path = _FRONTEND_DIR / full_path
+            if file_path.exists() and file_path.is_file():
+                return FileResponse(file_path)
+            # Otherwise serve the SPA
+            return _serve_spa(_FRONTEND_DIR / "index.html")
 
     @app.get("/api/runs/recent", dependencies=[Depends(verify_token)])
     async def recent_runs(limit: int = 20) -> JSONResponse:

@@ -60,3 +60,17 @@ docs/internal_*.md
 
 # Runtime case storage (local filesystem, never commit)
 cases/
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# Data files
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.json
+
+# Logs
+logs/*.log
+logs/px4/good_flights/

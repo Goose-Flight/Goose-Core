@@ -36,32 +36,45 @@ export function QuickResults() {
     )
   }
 
-  const { metadata, overall_score, findings, hypotheses, phases } = currentAnalysis
+  const { metadata, overall_score, findings, hypotheses, phases, summary } = currentAnalysis
   const criticalCount = findings.filter((f) => f.severity === 'critical').length
   const warningCount = findings.filter((f) => f.severity === 'warning').length
 
   const crashed = metadata.crashed
   const crashConf = metadata.crash_confidence ?? 0
 
+  // Profile and engine info
+  const profileName = typeof currentAnalysis.profile === 'object' && currentAnalysis.profile !== null
+    ? (currentAnalysis.profile as Record<string, unknown>).name as string || 'default'
+    : 'default'
+  const engineVersion = currentAnalysis.engine_version || 'unknown'
+
+  // Plugin stats from summary
+  const pluginsRun = summary?.plugins_run ?? 0
+  const pluginErrors = summary?.plugin_errors ?? []
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Crash Banner */}
       {crashed && (
-        <div className="relative overflow-hidden rounded-xl border-2 border-goose-error/50 bg-gradient-to-r from-goose-error/10 via-goose-error/5 to-transparent p-5">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-goose-error/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-goose-error/20 flex items-center justify-center shrink-0">
-              <svg className="w-8 h-8 text-goose-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="relative overflow-hidden rounded-xl border-2 border-goose-error/60 bg-gradient-to-r from-goose-error/15 via-goose-error/8 to-transparent p-6 shadow-lg shadow-goose-error/5">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-goose-error/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-goose-error/3 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <div className="flex items-center gap-4 relative">
+            <div className="w-16 h-16 rounded-full bg-goose-error/20 border-2 border-goose-error/30 flex items-center justify-center shrink-0">
+              <svg className="w-9 h-9 text-goose-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-goose-error">CRASH DETECTED</h2>
-              <p className="text-sm text-goose-text mt-0.5">
-                {crashConf > 0 ? `${(crashConf * 100).toFixed(0)}% confidence` : 'Crash indicators found in flight data'}
+              <h2 className="text-xl font-bold text-goose-error tracking-wide">CRASH DETECTED</h2>
+              <p className="text-sm text-goose-text mt-1">
+                {crashConf > 0
+                  ? `Crash confirmed with ${(crashConf * 100).toFixed(0)}% confidence based on telemetry analysis.`
+                  : 'Crash indicators were found in the flight data. Review findings below for details.'}
               </p>
               {metadata.crash_signals && metadata.crash_signals.length > 0 && (
-                <div className="flex gap-2 mt-2 flex-wrap">
+                <div className="flex gap-2 mt-3 flex-wrap">
                   {metadata.crash_signals.map((sig: any, i: number) => (
                     <Badge key={i} variant="error">{typeof sig === 'string' ? sig : sig.type || 'signal'}</Badge>
                   ))}
@@ -89,6 +102,66 @@ export function QuickResults() {
         </div>
       </div>
 
+      {/* Analysis Summary Card */}
+      <Card className="bg-gradient-to-br from-goose-accent/5 to-transparent border-goose-accent/20">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg bg-goose-accent/10 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-goose-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-goose-accent">Analysis Summary</p>
+            <div className="grid grid-cols-3 gap-4 mt-3">
+              <div>
+                <p className="text-xs text-goose-text-muted">Profile</p>
+                <p className="text-sm text-goose-text font-medium mt-0.5">{profileName}</p>
+              </div>
+              <div>
+                <p className="text-xs text-goose-text-muted">Engine Version</p>
+                <p className="text-sm text-goose-text font-medium mt-0.5">{engineVersion}</p>
+              </div>
+              <div>
+                <p className="text-xs text-goose-text-muted">Flight Duration</p>
+                <p className="text-sm text-goose-text font-medium mt-0.5">
+                  {Math.floor(metadata.duration_sec / 60)}m {Math.round(metadata.duration_sec % 60)}s
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* What Was Analyzed */}
+      <Card>
+        <CardTitle className="mb-3">What Was Analyzed</CardTitle>
+        <div className="flex items-center gap-2 mb-3">
+          <Badge variant="accent">{pluginsRun} plugins executed</Badge>
+          {pluginErrors.length > 0 && (
+            <Badge variant="error">{pluginErrors.length} plugin error{pluginErrors.length > 1 ? 's' : ''}</Badge>
+          )}
+          {pluginErrors.length === 0 && pluginsRun > 0 && (
+            <Badge variant="info">All plugins succeeded</Badge>
+          )}
+        </div>
+        <p className="text-xs text-goose-text-muted mb-3">
+          The analysis engine ran {pluginsRun} plugins across motor health, battery condition, GPS quality,
+          vibration levels, control response, environment conditions, and more. Each plugin independently
+          evaluates telemetry streams and produces scored findings.
+        </p>
+        {pluginErrors.length > 0 && (
+          <div className="space-y-1.5 mt-2">
+            <p className="text-xs font-medium text-goose-error">Plugin Errors:</p>
+            {pluginErrors.map((err, i) => (
+              <div key={i} className="flex items-start gap-2 p-2 rounded bg-goose-error/5 border border-goose-error/20">
+                <Badge variant="error">{err.plugin}</Badge>
+                <p className="text-xs text-goose-text-muted">{err.error}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* Top Row: Health Score + KPIs */}
       <div className="grid grid-cols-12 gap-4">
         <Card className="col-span-3 flex items-center justify-center">
@@ -113,9 +186,9 @@ export function QuickResults() {
           />
           <KPICard
             label="Plugins"
-            value="17"
-            status="healthy"
-            subtitle="All plugins executed"
+            value={String(pluginsRun || 17)}
+            status={pluginErrors.length > 0 ? 'warning' : 'healthy'}
+            subtitle={pluginErrors.length > 0 ? `${pluginErrors.length} error${pluginErrors.length > 1 ? 's' : ''}` : 'All plugins executed'}
           />
         </div>
       </div>
@@ -126,38 +199,49 @@ export function QuickResults() {
           Findings
           <span className="ml-2 text-xs text-goose-text-muted font-normal">({findings.length} total)</span>
         </CardTitle>
-        <div className="space-y-3">
-          {findings
-            .sort((a, b) => {
-              const order = { critical: 0, warning: 1, info: 2, pass: 3 }
-              return (order[a.severity] ?? 4) - (order[b.severity] ?? 4)
-            })
-            .slice(0, 10)
-            .map((finding) => (
-              <div
-                key={finding.finding_id}
-                className="flex items-start gap-3 p-3 rounded-lg bg-goose-bg border border-goose-border"
-              >
-                <div className="shrink-0 mt-0.5">
-                  <SeverityBadge severity={finding.severity} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-goose-text">{finding.title}</p>
-                    <ConfidenceBadge band={finding.confidence_band} score={finding.confidence} />
+        {findings.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-goose-text-muted">No findings were generated. The flight data appears nominal.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {findings
+              .sort((a, b) => {
+                const order = { critical: 0, warning: 1, info: 2, pass: 3 }
+                return (order[a.severity] ?? 4) - (order[b.severity] ?? 4)
+              })
+              .slice(0, 10)
+              .map((finding) => (
+                <div
+                  key={finding.finding_id}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-goose-bg border border-goose-border"
+                >
+                  <div className="shrink-0 mt-0.5">
+                    <SeverityBadge severity={finding.severity} />
                   </div>
-                  <p className="text-xs text-goose-text-muted mt-1 line-clamp-2">{finding.description}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <Badge>{finding.plugin_id}</Badge>
-                    {finding.phase && <Badge variant="info">{finding.phase}</Badge>}
-                    {finding.score !== undefined && (
-                      <span className="text-[10px] text-goose-text-muted">Score: {finding.score}/100</span>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-goose-text">{finding.title}</p>
+                      <ConfidenceBadge band={finding.confidence_band} score={finding.confidence} />
+                    </div>
+                    <p className="text-xs text-goose-text-muted mt-1 line-clamp-2">{finding.description}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <Badge>{finding.plugin_id}</Badge>
+                      {finding.phase && <Badge variant="info">{finding.phase}</Badge>}
+                      {finding.score !== undefined && (
+                        <span className="text-[10px] text-goose-text-muted">Score: {finding.score}/100</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-        </div>
+              ))}
+            {findings.length > 10 && (
+              <p className="text-xs text-goose-text-muted text-center pt-2">
+                Showing top 10 of {findings.length} findings, sorted by severity.
+              </p>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Hypotheses */}
@@ -187,7 +271,7 @@ export function QuickResults() {
         </Card>
       )}
 
-      {/* Mini 3D Flight Path Widget — click to see full view */}
+      {/* Mini 3D Flight Path Widget */}
       {currentAnalysis.flight_path && currentAnalysis.flight_path.lat && currentAnalysis.flight_path.lat.length > 10 && (
         <Card
           hover

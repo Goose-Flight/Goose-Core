@@ -1,10 +1,67 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { KPICard } from '@/components/ui/KPICard'
+import { getRecentRuns, getCases } from '@/lib/api'
+
+interface DashboardStats {
+  totalRuns: number
+  openCases: number
+  recentRuns: Array<{
+    quick_analysis_id?: string
+    filename?: string
+    overall_score?: number
+    crashed?: boolean
+    duration_sec?: number
+    created_at?: string
+    [key: string]: unknown
+  }>
+}
 
 export function Dashboard() {
   const navigate = useNavigate()
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRuns: 0,
+    openCases: 0,
+    recentRuns: [],
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadStats() {
+      const result: DashboardStats = { totalRuns: 0, openCases: 0, recentRuns: [] }
+
+      try {
+        const runs = await getRecentRuns()
+        if (!cancelled && Array.isArray(runs)) {
+          result.totalRuns = runs.length
+          result.recentRuns = runs.slice(0, 5) as DashboardStats['recentRuns']
+        }
+      } catch {
+        // API unavailable — keep defaults
+      }
+
+      try {
+        const cases = await getCases()
+        if (!cancelled && Array.isArray(cases)) {
+          result.openCases = cases.filter((c: any) => c.status === 'open' || c.status === 'active').length || cases.length
+        }
+      } catch {
+        // API unavailable — keep defaults
+      }
+
+      if (!cancelled) {
+        setStats(result)
+        setLoading(false)
+      }
+    }
+
+    loadStats()
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -53,11 +110,59 @@ export function Dashboard() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard label="Total Analyses" value="0" subtitle="Run your first analysis" />
-        <KPICard label="Open Cases" value="0" subtitle="No active investigations" />
+        <KPICard
+          label="Total Analyses"
+          value={loading ? '...' : String(stats.totalRuns)}
+          subtitle={stats.totalRuns > 0 ? `${stats.totalRuns} run${stats.totalRuns > 1 ? 's' : ''} on record` : 'Run your first analysis'}
+        />
+        <KPICard
+          label="Open Cases"
+          value={loading ? '...' : String(stats.openCases)}
+          subtitle={stats.openCases > 0 ? `${stats.openCases} active investigation${stats.openCases > 1 ? 's' : ''}` : 'No active investigations'}
+        />
         <KPICard label="Drone Fleet" value="0" subtitle="Add your first drone" />
         <KPICard label="Plugins" value="17" subtitle="11 Core + 6 Pro" status="healthy" />
       </div>
+
+      {/* Recent Analyses */}
+      {stats.recentRuns.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Analyses</CardTitle>
+          </CardHeader>
+          <div className="space-y-2 mt-2">
+            {stats.recentRuns.map((run, i) => {
+              const filename = (run.filename as string) || 'Unknown file'
+              const score = typeof run.overall_score === 'number' ? run.overall_score : null
+              const crashed = !!run.crashed
+              const duration = typeof run.duration_sec === 'number' ? run.duration_sec : null
+              return (
+                <div
+                  key={run.quick_analysis_id || i}
+                  className="flex items-center justify-between p-3 rounded-lg bg-goose-bg border border-goose-border hover:border-goose-accent/30 transition-colors cursor-pointer"
+                  onClick={() => run.quick_analysis_id && navigate(`/analyze/${run.quick_analysis_id}`)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${crashed ? 'bg-goose-error' : score !== null && score < 50 ? 'bg-goose-warning' : 'bg-goose-success'}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm text-goose-text truncate">{filename}</p>
+                      <p className="text-xs text-goose-text-muted">
+                        {duration !== null ? `${Math.floor(duration / 60)}m ${Math.round(duration % 60)}s flight` : 'Duration unknown'}
+                        {crashed && <span className="text-goose-error ml-2">CRASH</span>}
+                      </p>
+                    </div>
+                  </div>
+                  {score !== null && (
+                    <div className={`text-sm font-bold ${score >= 70 ? 'text-goose-success' : score >= 40 ? 'text-goose-warning' : 'text-goose-error'}`}>
+                      {score}/100
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* How It Works */}
       <Card>

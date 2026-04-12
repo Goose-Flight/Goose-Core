@@ -64,14 +64,42 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export async function runQuickAnalysis(
   file: File,
-  metadata?: UploadMetadata
+  metadata?: UploadMetadata,
+  onUploadProgress?: (pct: number) => void
 ): Promise<QuickAnalysisResponse> {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('profile', metadata?.profile || 'default')
-  return request<QuickAnalysisResponse>('/quick-analysis', {
-    method: 'POST',
-    body: formData,
+
+  // Use XMLHttpRequest for upload progress on large files
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', '/api/quick-analysis')
+    xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`)
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onUploadProgress) {
+        onUploadProgress(Math.round((e.loaded / e.total) * 100))
+      }
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText))
+        } catch {
+          reject(new Error('Failed to parse response'))
+        }
+      } else {
+        reject(new Error(`API ${xhr.status}: ${xhr.responseText.slice(0, 200)}`))
+      }
+    }
+
+    xhr.onerror = () => reject(new Error('Network error — is the backend running?'))
+    xhr.ontimeout = () => reject(new Error('Request timed out — file may be too large'))
+    xhr.timeout = 600000 // 10 minute timeout for huge files
+
+    xhr.send(formData)
   })
 }
 

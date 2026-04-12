@@ -48,6 +48,12 @@ export function UploadWizard() {
   const navigate = useNavigate()
   const { setAnalysis, setAnalyzing, setError, isAnalyzing, error } = useAnalysisStore()
 
+  // Reset stuck analyzing state on mount (e.g. after HMR or back navigation)
+  useEffect(() => {
+    setAnalyzing(false)
+    setError(null)
+  }, [])
+
   const [step, setStep] = useState<WizardStep>('incident')
   const [metadata, setMetadata] = useState<UploadMetadata>({
     incident_type: 'routine',
@@ -55,6 +61,8 @@ export function UploadWizard() {
   })
   const [file, setFile] = useState<File | null>(null)
   const [stageIndex, setStageIndex] = useState(0)
+  const [uploadPct, setUploadPct] = useState(0)
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'analyzing' | 'done'>('idle')
 
   // Animated progress during analysis
   useEffect(() => {
@@ -69,17 +77,27 @@ export function UploadWizard() {
     if (!file) return
     setAnalyzing(true)
     setStageIndex(0)
+    setUploadPct(0)
+    setPhase('uploading')
+    setError(null)
     try {
-      const result = await runQuickAnalysis(file, metadata)
-      console.log('Analysis result:', result)
+      const result = await runQuickAnalysis(file, metadata, (pct) => {
+        setUploadPct(pct)
+        if (pct >= 100) setPhase('analyzing')
+      })
+      console.log('Analysis complete:', result.quick_analysis_id, 'score:', result.overall_score, 'findings:', result.findings?.length)
       if (!result || !result.ok) {
         throw new Error('Analysis returned invalid response')
       }
+      setPhase('done')
       setAnalysis(result)
+      setAnalyzing(false)
       navigate(`/analyze/${result.quick_analysis_id}`)
     } catch (err) {
       console.error('Analysis error:', err)
-      setError(err instanceof Error ? err.message : 'Analysis failed')
+      setError(err instanceof Error ? err.message : String(err))
+      setAnalyzing(false)
+      setPhase('idle')
     }
   }
 
@@ -132,21 +150,41 @@ export function UploadWizard() {
             </div>
 
             <div className="text-center">
-              <p className="text-lg font-semibold text-goose-text">Analyzing Flight Log</p>
-              <p className="text-sm text-goose-accent mt-1">{analysisStages[stageIndex]}</p>
+              <p className="text-lg font-semibold text-goose-text">
+                {phase === 'uploading' ? 'Uploading Flight Log' : phase === 'done' ? 'Analysis Complete!' : 'Analyzing Flight Log'}
+              </p>
+              <p className="text-sm text-goose-accent mt-1">
+                {phase === 'uploading'
+                  ? `Uploading ${file?.name || 'file'}... ${uploadPct}%`
+                  : phase === 'done'
+                    ? 'Preparing results...'
+                    : analysisStages[stageIndex]
+                }
+              </p>
+              {file && phase === 'uploading' && (
+                <p className="text-xs text-goose-text-muted mt-1">
+                  {(file.size / 1024 / 1024).toFixed(1)} MB
+                </p>
+              )}
             </div>
 
             {/* Progress bar */}
             <div className="w-full max-w-md">
               <div className="w-full h-2 bg-goose-border rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-goose-accent to-goose-success rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${((stageIndex + 1) / analysisStages.length) * 100}%` }}
+                  className="h-full bg-gradient-to-r from-goose-accent to-goose-success rounded-full transition-all duration-500 ease-out"
+                  style={{ width: phase === 'uploading'
+                    ? `${uploadPct * 0.4}%`
+                    : `${40 + ((stageIndex + 1) / analysisStages.length) * 60}%`
+                  }}
                 />
               </div>
               <div className="flex justify-between mt-1.5 text-[10px] text-goose-text-muted">
-                <span>17 plugins running</span>
-                <span>{Math.round(((stageIndex + 1) / analysisStages.length) * 100)}%</span>
+                <span>{phase === 'uploading' ? `Uploading (${uploadPct}%)` : '17 plugins running'}</span>
+                <span>{phase === 'uploading'
+                  ? `${Math.round(uploadPct * 0.4)}%`
+                  : `${Math.round(40 + ((stageIndex + 1) / analysisStages.length) * 60)}%`
+                }</span>
               </div>
             </div>
 

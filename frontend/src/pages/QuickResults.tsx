@@ -187,8 +187,8 @@ export function QuickResults() {
         </Card>
       )}
 
-      {/* Mini 3D Flight Path Widget */}
-      {currentAnalysis.flight_path && currentAnalysis.flight_path.lat && currentAnalysis.flight_path.lat.length > 0 && (
+      {/* Mini 3D Flight Path Widget — click to see full view */}
+      {currentAnalysis.flight_path && currentAnalysis.flight_path.lat && currentAnalysis.flight_path.lat.length > 10 && (
         <Card
           hover
           onClick={() => navigate(`/analyze/${currentAnalysis.quick_analysis_id}/flight-path`)}

@@ -37,7 +37,7 @@ def _make_evidence_item(ev_id: str = "EV-0001") -> EvidenceItem:
         sha512="b" * 128,
         source_acquisition_mode="upload",
         source_reference=None,
-        stored_path="/tmp/cases/CASE-2026-000001/evidence/EV-0001-flight.ulg",
+        stored_path="/tmp/cases/CASE-2026-000001/evidence/EV-0001-flight.ulg",  # noqa: S108
         acquired_at=NOW,
         acquired_by="gui",
     )

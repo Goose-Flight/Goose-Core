@@ -72,19 +72,6 @@ ignore = [
     "S607",   # partial executable path — acceptable
     "TRY003", # long exception messages — too noisy
     "TRY400", # use logging.exception — we prefer .warning + exc_info
-    "TRY300", # move to else block — style preference only
-    "TRY301", # abstract raise to inner function — too pedantic for route handlers
-    "BLE001", # blind exception catch — acceptable in resilience paths
-    # Pre-existing violations — tracked for future cleanup
-    "B904",   # raise-without-from inside except — needs systematic pass
-    "E402",   # module import not at top — intentional in some plugin loaders
-    "S108",   # insecure temp file — review separately
-    "S110",   # try-except-pass — review separately
-    "B008",   # function call in default arg — FastAPI Depends pattern
-    "E741",   # ambiguous variable name
-    "S105",   # possible hardcoded password — false positives in tests
-    "F811",   # redefinition of unused name
-    "B015",   # pointless comparison
 ]
 
 [tool.ruff.lint.per-file-ignores]

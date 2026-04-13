@@ -204,7 +204,7 @@ def _make_evidence_item() -> EvidenceItem:
         sha512=None,
         source_acquisition_mode="local_copy",
         source_reference=None,
-        stored_path="/tmp/test_integration.ulg",
+        stored_path="/tmp/test_integration.ulg",  # noqa: S108
         acquired_at=datetime(2026, 4, 9, 12, 0, 0),
         acquired_by="test",
     )

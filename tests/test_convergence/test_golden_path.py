@@ -460,7 +460,7 @@ class TestAnalyzerSweep:
             sha512=None,
             source_acquisition_mode="local_copy",
             source_reference=None,
-            stored_path="/tmp/test.ulg",
+            stored_path="/tmp/test.ulg",  # noqa: S108
             acquired_at=datetime.now(),
             acquired_by="test",
         )

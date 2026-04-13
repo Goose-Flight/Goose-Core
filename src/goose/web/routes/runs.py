@@ -31,8 +31,8 @@ async def list_runs(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     return JSONResponse({
         "ok": True,
@@ -48,8 +48,8 @@ async def get_run(case_id: str, run_id: str) -> JSONResponse:
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     run = next((r for r in case.analysis_runs if r.run_id == run_id), None)
     if run is None:
@@ -98,8 +98,8 @@ async def replay_run(case_id: str, run_id: str) -> JSONResponse:
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     # Verify source run exists
     source_run = next((r for r in case.analysis_runs if r.run_id == run_id), None)
@@ -124,8 +124,8 @@ async def get_replay_verification(case_id: str, run_id: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     exports_dir = svc.case_dir(case_id) / "exports"
     if not exports_dir.exists():
@@ -157,8 +157,8 @@ async def compare_runs_endpoint(case_id: str, body: CompareRunsRequest) -> JSONR
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
     try:
@@ -185,8 +185,8 @@ async def list_comparisons_endpoint(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
     entries = list_comparisons(case_dir)
@@ -202,8 +202,8 @@ async def get_comparison_endpoint(case_id: str, comparison_id: str) -> JSONRespo
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
     comparison = load_comparison(case_dir, comparison_id)

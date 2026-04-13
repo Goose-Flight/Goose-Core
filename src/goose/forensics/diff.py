@@ -24,9 +24,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from goose.forensics.replay import FindingDifference, _diff_findings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

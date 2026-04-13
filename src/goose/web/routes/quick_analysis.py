@@ -29,6 +29,12 @@ from typing import Any
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
+from goose import __version__
+from goose.forensics.profiles import get_profile
+from goose.parsers.detect import parse_file
+
+logger = logging.getLogger(__name__)
+
 
 def _sanitize(obj: Any) -> Any:
     """Recursively convert numpy/pandas scalars to JSON-safe Python types."""
@@ -54,12 +60,6 @@ def _sanitize(obj: Any) -> Any:
         return [_sanitize(v) for v in obj]
     return obj
 
-from goose import __version__
-from goose.forensics.profiles import get_profile
-from goose.parsers.detect import parse_file
-
-logger = logging.getLogger(__name__)
-
 router = APIRouter(tags=["quick_analysis"])
 
 
@@ -69,7 +69,7 @@ def _new_qa_id() -> str:
 
 @router.post("/api/quick-analysis")
 async def quick_analysis(
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008 — FastAPI Depends/File pattern
     profile: str = Form("default"),
 ) -> JSONResponse:
     """Run a session-only Quick Analysis.
@@ -102,11 +102,11 @@ async def quick_analysis(
     try:
         content = await file.read()
         if not content:
-            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")  # noqa: TRY301
 
         # Enforce upload size limit
         if len(content) > settings.max_upload_bytes:
-            raise HTTPException(
+            raise HTTPException(  # noqa: TRY301
                 status_code=413,
                 detail=f"File exceeds maximum upload size of {settings.max_upload_mb} MiB",
             )
@@ -119,18 +119,18 @@ async def quick_analysis(
 
         try:
             parse_result = parse_file(str(tmp_path))
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
             logger.exception("Quick analysis parse failed for %s", Path(file.filename).name)
             raise HTTPException(
                 status_code=422,
                 detail="Could not parse the uploaded file. Ensure it is a valid flight log.",
-            )
+            ) from exc
 
         if parse_result is None or not parse_result.success or parse_result.flight is None:
             errors = (
                 parse_result.diagnostics.errors if parse_result is not None else ["parser returned None"]
             )
-            raise HTTPException(
+            raise HTTPException(  # noqa: TRY301
                 status_code=422,
                 detail={
                     "message": f"Could not parse '{file.filename}'.",
@@ -288,7 +288,7 @@ async def quick_analysis(
 
 @router.post("/api/quick-analysis/save-as-case")
 async def save_quick_analysis_as_case(
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008 — FastAPI Depends/File pattern
     profile: str = Form("default"),
     notes: str = Form(""),
     created_by: str = Form("gui"),

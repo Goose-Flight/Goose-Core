@@ -39,7 +39,7 @@ class FindingSeverity(str, Enum):
     CRITICAL = "critical"
     WARNING = "warning"
     INFO = "info"
-    PASS = "pass"
+    PASS = "pass"  # noqa: S105 — not a password; "pass" is a finding severity value
 
 
 class HypothesisStatus(str, Enum):

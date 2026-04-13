@@ -36,8 +36,8 @@ async def analyze_case(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     if not case.evidence_items:
         raise HTTPException(
@@ -526,8 +526,8 @@ async def get_findings(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     findings_path = svc.case_dir(case_id) / "analysis" / "findings.json"
     if not findings_path.exists():
@@ -559,8 +559,8 @@ async def get_hypotheses(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     hyp_path = svc.case_dir(case_id) / "analysis" / "hypotheses.json"
     if not hyp_path.exists():
@@ -587,8 +587,8 @@ async def get_diagnostics(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     diag_path = svc.case_dir(case_id) / "parsed" / "parse_diagnostics.json"
     if not diag_path.exists():
@@ -614,8 +614,8 @@ async def get_audit_log(case_id: str) -> JSONResponse:
             "audit": [e.to_dict() for e in entries],
             "count": len(entries),
         })
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -627,8 +627,8 @@ async def get_plugins(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     from goose.plugins import get_all_plugins, get_plugin_manifests
     from goose.plugins.trust import TrustPolicy, fingerprint_plugin

@@ -230,8 +230,8 @@ async def get_case(case_id: str) -> JSONResponse:
             "case": detail,
             "profile_config": profile_cfg.to_dict(),
         })
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
     except Exception as exc:
         logger.exception("Failed to get case %s", case_id)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -250,8 +250,8 @@ async def get_case_completeness(case_id: str) -> JSONResponse:
         from goose.web.cases_api import get_service
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
     except Exception as exc:
         logger.exception("Failed to load case %s for completeness check", case_id)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -479,8 +479,8 @@ async def compare_runs_get(
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
     try:
@@ -538,18 +538,18 @@ async def update_case_status(case_id: str, body: UpdateStatusRequest) -> JSONRes
     """Update the status of a case."""
     try:
         status = CaseStatus(body.status)
-    except ValueError:
+    except ValueError as exc:
         valid = [s.value for s in CaseStatus]
         raise HTTPException(
             status_code=400,
             detail=f"Invalid status '{body.status}'. Valid values: {valid}",
-        )
+        ) from exc
     try:
         from goose.web.cases_api import get_service
         svc = get_service()
         case = svc.update_status(case_id, status, actor=body.actor)
         return JSONResponse({"ok": True, "case": _serialize_case_summary(case)})
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

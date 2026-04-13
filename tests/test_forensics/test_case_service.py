@@ -256,7 +256,7 @@ class TestAuditLog:
     def test_audit_log_is_jsonl(self, svc: CaseService):
         case = svc.create_case()
         audit_path = svc.case_dir(case.case_id) / "audit" / "audit_log.jsonl"
-        lines = [l.strip() for l in audit_path.read_text().splitlines() if l.strip()]
+        lines = [ln.strip() for ln in audit_path.read_text().splitlines() if ln.strip()]
         assert len(lines) >= 1
         for line in lines:
             # Each line must be valid JSON

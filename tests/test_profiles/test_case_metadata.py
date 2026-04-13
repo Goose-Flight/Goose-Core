@@ -156,7 +156,7 @@ class TestAttachmentModel:
             size_bytes=1234,
             sha256="a" * 64,
             attachment_type=AttachmentType.PHOTO,
-            stored_path="/tmp/x",
+            stored_path="/tmp/x",  # noqa: S108
             uploaded_at="2026-04-08T00:00:00",
         )
         defaults.update(kwargs)

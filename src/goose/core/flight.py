@@ -188,7 +188,7 @@ class Flight:
                 elif pitch_max > 75.0:
                     weights.append(0.90)
                     signals.append(f"extreme_attitude: pitch {pitch_max:.0f}°")
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 — resilience: never let signal extraction abort crash scoring
                 pass
 
         # ── Signal 2: motors cut abruptly while tilted (not a clean land) ─────
@@ -212,7 +212,7 @@ class Flight:
                                     if tilt > 15.0:  # raised from 10° to reduce false positives
                                         weights.append(0.75)
                                         signals.append(f"motor_cutoff: motors stopped at {cutoff_frac:.0%} of log, tilt={tilt:.0f}°")
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 — resilience: never let signal extraction abort crash scoring
                 pass
 
         # ── Signal 3: rapid altitude freefall (conservative thresholds) ───────
@@ -236,7 +236,7 @@ class Flight:
                                 if rate > 5.0 and drop > 3.0:  # raised from 3m/s & 2m
                                     weights.append(0.78)
                                     signals.append(f"altitude_freefall: {rate:.1f} m/s descent, {drop:.1f} m drop")
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 — resilience: never let signal extraction abort crash scoring
                 pass
 
         # ── Signal 4: high-g impact spike near end of log ─────────────────────
@@ -250,7 +250,7 @@ class Flight:
                     if peak_g > 6.0:  # raised from 4g to reduce false positives
                         weights.append(0.72)
                         signals.append(f"impact_spike: {peak_g:.1f}g in last 20% of log")
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 — resilience: never let signal extraction abort crash scoring
                 pass
 
         # ── Combine signals (independent evidence model) ───────────────────────

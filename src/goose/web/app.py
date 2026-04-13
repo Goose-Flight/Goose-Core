@@ -315,9 +315,9 @@ def create_app() -> FastAPI:
                 "count": len(all_runs[:limit]),
                 "limit": limit,
             })
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to list recent runs")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     @app.get("/api/plugins", dependencies=[Depends(verify_token)])
     async def list_plugins() -> JSONResponse:
@@ -337,9 +337,9 @@ def create_app() -> FastAPI:
                 ],
                 "count": len(plugins),
             })
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to list plugins")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     return app
 

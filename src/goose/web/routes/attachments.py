@@ -94,7 +94,7 @@ def _parse_attachment_type(raw: str) -> AttachmentType:
 @router.post("/{case_id}/attachments", status_code=201)
 async def upload_attachment(
     case_id: str,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008 — FastAPI Depends/File pattern
     attachment_type: str = Form("other"),
     notes: str = Form(""),
     related_evidence_id: str | None = Form(None),
@@ -110,17 +110,17 @@ async def upload_attachment(
 
     try:
         att_dir = _attachments_dir(case_id)
-    except (ValueError, FileNotFoundError):
-        raise HTTPException(status_code=404, detail="Case not found")
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail="Case not found") from exc
 
     try:
         content = await file.read()
         if not content:
-            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")  # noqa: TRY301
 
         # Enforce attachment size limit
         if len(content) > settings.max_attachment_bytes:
-            raise HTTPException(
+            raise HTTPException(  # noqa: TRY301
                 status_code=413,
                 detail=f"Attachment exceeds maximum size of {settings.max_attachment_mb} MiB",
             )
@@ -166,17 +166,17 @@ async def upload_attachment(
         return JSONResponse({"ok": True, "attachment": att.to_dict()}, status_code=201)
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
         logger.exception("Attachment upload failed for case %s", case_id)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/{case_id}/attachments")
 async def list_attachments(case_id: str) -> JSONResponse:
     try:
         _attachments_dir(case_id)
-    except (ValueError, FileNotFoundError):
-        raise HTTPException(status_code=404, detail="Case not found")
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail="Case not found") from exc
     entries = _load_manifest(case_id)
     # Strip stored_path from manifest entries before returning (H-1)
     safe_entries = [{k: v for k, v in e.items() if k != "stored_path"} for e in entries]
@@ -191,8 +191,8 @@ async def list_attachments(case_id: str) -> JSONResponse:
 async def get_attachment_metadata(case_id: str, attachment_id: str) -> JSONResponse:
     try:
         _attachments_dir(case_id)
-    except (ValueError, FileNotFoundError):
-        raise HTTPException(status_code=404, detail="Case not found")
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail="Case not found") from exc
     for entry in _load_manifest(case_id):
         if entry.get("attachment_id") == attachment_id:
             safe = {k: v for k, v in entry.items() if k != "stored_path"}
@@ -204,8 +204,8 @@ async def get_attachment_metadata(case_id: str, attachment_id: str) -> JSONRespo
 async def get_attachment_file(case_id: str, attachment_id: str) -> FileResponse:
     try:
         att_dir = _attachments_dir(case_id)
-    except (ValueError, FileNotFoundError):
-        raise HTTPException(status_code=404, detail="Case not found")
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail="Case not found") from exc
     for entry in _load_manifest(case_id):
         if entry.get("attachment_id") == attachment_id:
             stored_path = entry.get("stored_path")

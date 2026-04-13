@@ -37,7 +37,7 @@ def _serialize_evidence(ev: Any) -> dict[str, Any]:
 @router.post("/{case_id}/evidence", status_code=201)
 async def ingest_evidence(
     case_id: str,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008 — FastAPI Depends/File pattern
     notes: str = "",
 ) -> JSONResponse:
     """Ingest a file as immutable evidence into the case."""
@@ -58,19 +58,19 @@ async def ingest_evidence(
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid case identifier")
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Case not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid case identifier") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Case not found") from exc
 
     try:
         content = await file.read()
         if not content:
-            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")  # noqa: TRY301
 
         # Enforce upload size limit
         if len(content) > settings.max_upload_bytes:
-            raise HTTPException(
+            raise HTTPException(  # noqa: TRY301
                 status_code=413,
                 detail=f"File exceeds maximum upload size of {settings.max_upload_mb} MiB",
             )
@@ -88,9 +88,9 @@ async def ingest_evidence(
         )
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
         logger.exception("Evidence ingest failed for case %s", case_id)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/{case_id}/evidence")
@@ -105,10 +105,10 @@ async def list_evidence(case_id: str) -> JSONResponse:
             "evidence": [_serialize_evidence(ev) for ev in case.evidence_items],
             "count": len(case.evidence_items),
         })
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid case identifier")
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Case not found")
-    except Exception:
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid case identifier") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Case not found") from exc
+    except Exception as exc:  # noqa: BLE001
         logger.exception("Failed to list evidence for case %s", case_id)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc

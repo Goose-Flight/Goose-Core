@@ -147,7 +147,7 @@ class TestTimelineExtractsFailsafeEvents:
             f"all events: {[(e.event_type, e.label) for e in events]}"
         )
         labels = [e.label for e in fault_events]
-        assert any("Failsafe" in l or "failsafe" in l.lower() or "RC" in l or "Battery" in l for l in labels), (
+        assert any("Failsafe" in lbl or "failsafe" in lbl.lower() or "RC" in lbl or "Battery" in lbl for lbl in labels), (
             f"Failsafe labels not found: {labels}"
         )
 

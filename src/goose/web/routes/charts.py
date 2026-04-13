@@ -25,8 +25,8 @@ async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, e
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
 

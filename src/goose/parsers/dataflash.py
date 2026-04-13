@@ -14,8 +14,6 @@ from __future__ import annotations
 import logging
 import struct
 import time
-
-logger = logging.getLogger(__name__)
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -33,6 +31,8 @@ from goose.core.flight import (
 from goose.forensics.models import Provenance
 from goose.parsers.base import BaseParser
 from goose.parsers.diagnostics import ParseDiagnostics, ParseResult, StreamCoverage
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Binary format constants
@@ -89,14 +89,15 @@ def _parse_text_fmt_line(parts: list[str]) -> dict[str, Any] | None:
         name = parts[3].strip()
         fmt_chars = parts[4].strip()
         columns = [c.strip() for c in parts[5:]]
+    except (ValueError, IndexError):
+        return None
+    else:
         return {
             "type": msg_type,
             "name": name,
             "fmt_chars": fmt_chars,
             "columns": columns,
         }
-    except (ValueError, IndexError):
-        return None
 
 
 def _coerce_value(val_str: str) -> float | str:

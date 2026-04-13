@@ -96,8 +96,8 @@ async def get_exports(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     exports_dir = svc.case_dir(case_id) / "exports"
     export_files: list[dict[str, Any]] = []
@@ -143,8 +143,8 @@ async def create_export_bundle(
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
     exports_dir = case_dir / "exports"
@@ -297,8 +297,8 @@ async def get_export_file(case_id: str, filename: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     # Security: ensure the filename doesn't traverse directories
     if ".." in filename or "/" in filename or "\\" in filename:
@@ -325,8 +325,8 @@ async def get_tuning_profile(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     profile = TuningProfile.default()
     return JSONResponse({"ok": True, "tuning_profile": profile.to_dict()})
@@ -342,8 +342,8 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
     try:
         svc = get_service()
         svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     # Security check
     fn = body.bundle_filename
@@ -396,7 +396,6 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
     # Check for missing data
     has_findings = bundle.get("findings") is not None
     has_hypotheses = bundle.get("hypotheses") is not None
-    bundle.get("provenance") is not None
 
     if drifts:
         match_state = ReplayMatchState.VERSION_DRIFT
@@ -429,8 +428,8 @@ async def mission_summary_report(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
     run_id = ""
@@ -515,8 +514,8 @@ async def anomaly_report(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
     run_id = ""
@@ -565,8 +564,8 @@ async def crash_report(case_id: str) -> JSONResponse:
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
     case_dir = svc.case_dir(case_id)
     run_id = ""
@@ -640,8 +639,8 @@ def _resolve_case_and_run(case_id: str) -> tuple[Any, Any, str]:
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
     run_id = case.analysis_runs[-1].run_id if case.analysis_runs else ""
     return svc, case, run_id
 

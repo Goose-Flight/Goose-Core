@@ -438,7 +438,7 @@ class TestParserContractVersioning:
         result = parser.parse("nonexistent.ulg")
         assert result.diagnostics.parser_confidence == 0.0
 
-    def test_failed_parse_has_zero_confidence(self) -> None:
+    def test_dataflash_failed_parse_has_zero_confidence(self) -> None:
         """A completely unrecognisable file must have parser_confidence == 0.0."""
         from goose.parsers.dataflash import DataFlashParser
         parser = DataFlashParser()

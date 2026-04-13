@@ -28,11 +28,11 @@ from goose.plugins.base import Plugin
 from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Thresholds
-DEFAULT_RAPID_SWITCH_WINDOW_SEC = 10.0    # time window to look for multiple mode changes
-DEFAULT_RAPID_SWITCH_COUNT = 3             # mode changes in window = "rapid"
-DEFAULT_STICK_CHANGE_THRESHOLD = 0.5      # normalized 0-1 step change = "abrupt"
-DEFAULT_MIN_ALTITUDE_DISARM_M = 2.0       # altitude above this at disarm = flagged
-DEFAULT_FAILSAFE_ALTITUDE_M = 3.0         # failsafe below this = low-level (less concern)
+DEFAULT_RAPID_SWITCH_WINDOW_SEC = 10.0  # time window to look for multiple mode changes
+DEFAULT_RAPID_SWITCH_COUNT = 3  # mode changes in window = "rapid"
+DEFAULT_STICK_CHANGE_THRESHOLD = 0.5  # normalized 0-1 step change = "abrupt"
+DEFAULT_MIN_ALTITUDE_DISARM_M = 2.0  # altitude above this at disarm = flagged
+DEFAULT_FAILSAFE_ALTITUDE_M = 3.0  # failsafe below this = low-level (less concern)
 
 
 class OperatorActionSequencePlugin(Plugin):
@@ -44,10 +44,7 @@ class OperatorActionSequencePlugin(Plugin):
     """
 
     name = "operator_action_sequence"
-    description = (
-        "Analyzes RC input and mode switch sequences for anomalous operator action patterns. "
-        "Contributes to operator_action hypothesis theme."
-    )
+    description = "Analyzes RC input and mode switch sequences for anomalous operator action patterns. Contributes to operator_action hypothesis theme."
     version = "1.0.0"
     min_mode = "manual"
 
@@ -56,10 +53,7 @@ class OperatorActionSequencePlugin(Plugin):
         name="Operator Action Sequence",
         version="1.0.0",
         author="Goose Flight",
-        description=(
-            "Analyzes RC input and mode switch sequences for anomalous operator action patterns. "
-            "Contributes to operator_action hypothesis theme."
-        ),
+        description=("Analyzes RC input and mode switch sequences for anomalous operator action patterns. Contributes to operator_action hypothesis theme."),
         category=PluginCategory.RF_COMMS,
         supported_vehicle_types=["multirotor", "fixed_wing", "all"],
         required_streams=[],  # works with partial data
@@ -96,16 +90,15 @@ class OperatorActionSequencePlugin(Plugin):
         has_events = bool(getattr(flight, "events", []))
 
         if not has_rc and not has_mode_changes and not has_events:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="Insufficient data for operator action analysis",
-                severity="info",
-                score=50,
-                description=(
-                    "No RC input, mode change, or event data available. "
-                    "Operator action analysis requires at least one of these streams."
-                ),
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="Insufficient data for operator action analysis",
+                    severity="info",
+                    score=50,
+                    description=("No RC input, mode change, or event data available. Operator action analysis requires at least one of these streams."),
+                )
+            )
             return findings
 
         # 1. Rapid mode switches
@@ -129,22 +122,19 @@ class OperatorActionSequencePlugin(Plugin):
             findings.append(fs_finding)
 
         if not findings:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No anomalous operator action patterns detected",
-                severity="pass",
-                score=90,
-                description=(
-                    "RC input sequence and mode changes reviewed. "
-                    "No anomalous operator action patterns detected above threshold."
-                ),
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No anomalous operator action patterns detected",
+                    severity="pass",
+                    score=90,
+                    description=("RC input sequence and mode changes reviewed. No anomalous operator action patterns detected above threshold."),
+                )
+            )
 
         return findings
 
-    def _check_rapid_mode_switches(
-        self, flight: Flight, cfg: dict[str, Any]
-    ) -> Finding | None:
+    def _check_rapid_mode_switches(self, flight: Flight, cfg: dict[str, Any]) -> Finding | None:
         """Detect multiple mode switches in a short time window."""
         mode_changes = getattr(flight, "mode_changes", []) or []
         if len(mode_changes) < cfg["rapid_switch_count"]:
@@ -172,11 +162,7 @@ class OperatorActionSequencePlugin(Plugin):
         duration = t_end - t_start
 
         # List modes in the window
-        window_modes = [
-            f"{mc.from_mode}→{mc.to_mode}"
-            for mc in mode_changes
-            if t_start <= float(mc.timestamp) <= t_end
-        ]
+        window_modes = [f"{mc.from_mode}→{mc.to_mode}" for mc in mode_changes if t_start <= float(mc.timestamp) <= t_end]
 
         return Finding(
             plugin_name=self.name,
@@ -200,15 +186,10 @@ class OperatorActionSequencePlugin(Plugin):
             timestamp_end=t_end,
         )
 
-    def _check_disarm_while_airborne(
-        self, flight: Flight, cfg: dict[str, Any]
-    ) -> Finding | None:
+    def _check_disarm_while_airborne(self, flight: Flight, cfg: dict[str, Any]) -> Finding | None:
         """Detect if the vehicle was disarmed while still at altitude."""
         events = getattr(flight, "events", []) or []
-        disarm_events = [
-            e for e in events
-            if "disarm" in (e.message or "").lower()
-        ]
+        disarm_events = [e for e in events if "disarm" in (e.message or "").lower()]
         if not disarm_events:
             return None
 
@@ -224,10 +205,7 @@ class OperatorActionSequencePlugin(Plugin):
         for ev in disarm_events:
             t = float(ev.timestamp)
             # Find altitude near disarm time
-            pos_near = flight.position[
-                (flight.position["timestamp"] >= t - 1.0) &
-                (flight.position["timestamp"] <= t + 1.0)
-            ]
+            pos_near = flight.position[(flight.position["timestamp"] >= t - 1.0) & (flight.position["timestamp"] <= t + 1.0)]
             if pos_near.empty:
                 continue
 
@@ -254,9 +232,7 @@ class OperatorActionSequencePlugin(Plugin):
 
         return None
 
-    def _check_abrupt_stick_inputs(
-        self, flight: Flight, cfg: dict[str, Any]
-    ) -> list[Finding]:
+    def _check_abrupt_stick_inputs(self, flight: Flight, cfg: dict[str, Any]) -> list[Finding]:
         """Detect sudden large RC input changes that may indicate startle response."""
         findings: list[Finding] = []
         rc = flight.rc_input
@@ -294,37 +270,34 @@ class OperatorActionSequencePlugin(Plugin):
             max_step = float(big_steps.loc[max_step_idx])
             t_step = float(ts.loc[max_step_idx])
 
-            findings.append(Finding(
-                plugin_name=self.name,
-                title=f"Abrupt stick input on {col} ({max_step:.0%} change)",
-                severity="info",
-                score=60,
-                description=(
-                    f"RC {col} changed by {max_step:.0%} (normalized) in a single sample at t={t_step:.1f}s. "
-                    f"This may indicate a rapid corrective input, startle response, or stick stick glitch. "
-                    f"Threshold: >{threshold:.0%} change per sample."
-                ),
-                evidence={
-                    "channel": col,
-                    "step_magnitude_normalized": round(max_step, 3),
-                    "threshold": threshold,
-                    "timestamp": t_step,
-                },
-                timestamp_start=t_step,
-                timestamp_end=t_step,
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title=f"Abrupt stick input on {col} ({max_step:.0%} change)",
+                    severity="info",
+                    score=60,
+                    description=(
+                        f"RC {col} changed by {max_step:.0%} (normalized) in a single sample at t={t_step:.1f}s. "
+                        f"This may indicate a rapid corrective input, startle response, or stick stick glitch. "
+                        f"Threshold: >{threshold:.0%} change per sample."
+                    ),
+                    evidence={
+                        "channel": col,
+                        "step_magnitude_normalized": round(max_step, 3),
+                        "threshold": threshold,
+                        "timestamp": t_step,
+                    },
+                    timestamp_start=t_step,
+                    timestamp_end=t_step,
+                )
+            )
 
         return findings
 
-    def _check_failsafe_at_altitude(
-        self, flight: Flight, cfg: dict[str, Any]
-    ) -> Finding | None:
+    def _check_failsafe_at_altitude(self, flight: Flight, cfg: dict[str, Any]) -> Finding | None:
         """Detect failsafe events that occurred at significant altitude."""
         events = getattr(flight, "events", []) or []
-        fs_events = [
-            e for e in events
-            if "failsafe" in (e.event_type or "").lower() or "failsafe" in (e.message or "").lower()
-        ]
+        fs_events = [e for e in events if "failsafe" in (e.event_type or "").lower() or "failsafe" in (e.message or "").lower()]
         if not fs_events:
             return None
 
@@ -339,10 +312,7 @@ class OperatorActionSequencePlugin(Plugin):
 
         for ev in fs_events:
             t = float(ev.timestamp)
-            pos_near = flight.position[
-                (flight.position["timestamp"] >= t - 2.0) &
-                (flight.position["timestamp"] <= t + 2.0)
-            ]
+            pos_near = flight.position[(flight.position["timestamp"] >= t - 2.0) & (flight.position["timestamp"] <= t + 2.0)]
             if pos_near.empty:
                 continue
 

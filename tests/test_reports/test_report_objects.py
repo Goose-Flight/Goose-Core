@@ -55,22 +55,17 @@ def _write_analysis(case_dir: Path, *, findings=None, hypotheses=None, timeline=
     analysis = case_dir / "analysis"
     analysis.mkdir(exist_ok=True)
     if findings is not None:
-        (analysis / "findings.json").write_text(
-            json.dumps({"findings": findings}), encoding="utf-8"
-        )
+        (analysis / "findings.json").write_text(json.dumps({"findings": findings}), encoding="utf-8")
     if hypotheses is not None:
-        (analysis / "hypotheses.json").write_text(
-            json.dumps({"hypotheses": hypotheses}), encoding="utf-8"
-        )
+        (analysis / "hypotheses.json").write_text(json.dumps({"hypotheses": hypotheses}), encoding="utf-8")
     if timeline is not None:
-        (analysis / "timeline.json").write_text(
-            json.dumps({"events": timeline}), encoding="utf-8"
-        )
+        (analysis / "timeline.json").write_text(json.dumps({"events": timeline}), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
 # ForensicCaseReport
 # ---------------------------------------------------------------------------
+
 
 class TestForensicCaseReport:
     def test_to_dict_has_required_fields(self):
@@ -83,12 +78,23 @@ class TestForensicCaseReport:
         )
         d = report.to_dict()
         required = {
-            "report_type", "report_version", "generated_at", "case_id",
-            "run_id", "profile", "engine_version", "case_summary",
-            "evidence_inventory", "parser_diagnostics_summary",
-            "findings_inventory", "hypotheses_inventory", "timeline_summary",
-            "plugin_execution_summary", "trust_tuning_context",
-            "limitations", "export_replay_context",
+            "report_type",
+            "report_version",
+            "generated_at",
+            "case_id",
+            "run_id",
+            "profile",
+            "engine_version",
+            "case_summary",
+            "evidence_inventory",
+            "parser_diagnostics_summary",
+            "findings_inventory",
+            "hypotheses_inventory",
+            "timeline_summary",
+            "plugin_execution_summary",
+            "trust_tuning_context",
+            "limitations",
+            "export_replay_context",
         }
         assert required.issubset(set(d.keys()))
         assert d["report_type"] == "forensic_case_report"
@@ -144,6 +150,7 @@ class TestForensicCaseReport:
 # EvidenceManifestReport
 # ---------------------------------------------------------------------------
 
+
 class TestEvidenceManifestReport:
     def test_builds_from_empty_case_directory_gracefully(self, svc: CaseService):
         case = svc.create_case(created_by="test")
@@ -181,6 +188,7 @@ class TestEvidenceManifestReport:
 # ---------------------------------------------------------------------------
 # ServiceRepairSummary
 # ---------------------------------------------------------------------------
+
 
 class TestServiceRepairSummary:
     def test_handles_none_customer_name_and_ticket_id(self, svc: CaseService):
@@ -232,6 +240,7 @@ class TestServiceRepairSummary:
 # QAValidationReport
 # ---------------------------------------------------------------------------
 
+
 class TestQAValidationReport:
     def test_pass_disposition_with_no_findings(self, svc: CaseService):
         case = svc.create_case(created_by="test")
@@ -276,6 +285,7 @@ class TestQAValidationReport:
 # QuickAnalysisSummary
 # ---------------------------------------------------------------------------
 
+
 class TestQuickAnalysisSummary:
     def test_to_dict_roundtrip(self):
         report = QuickAnalysisSummary(
@@ -318,6 +328,7 @@ class TestQuickAnalysisSummary:
 # ---------------------------------------------------------------------------
 # Extended Mission / Anomaly / Crash reports — backward compat
 # ---------------------------------------------------------------------------
+
 
 class TestExtendedReportFields:
     def test_mission_summary_to_dict_has_v11_fields(self):
@@ -370,6 +381,7 @@ class TestExtendedReportFields:
 # ---------------------------------------------------------------------------
 # API routes
 # ---------------------------------------------------------------------------
+
 
 class TestReportRoutes:
     def test_forensic_case_report_route(self, client: TestClient, svc: CaseService):
@@ -431,9 +443,11 @@ class TestReportRoutes:
 # Feature tier matrix
 # ---------------------------------------------------------------------------
 
+
 class TestFeatureTierMatrix:
     def test_matrix_is_populated(self):
         from goose.features import FEATURE_TIER_MATRIX, EntitlementLevel
+
         assert "quick_analysis" in FEATURE_TIER_MATRIX
         assert FEATURE_TIER_MATRIX["quick_analysis"] == EntitlementLevel.OSS_CORE
         assert FEATURE_TIER_MATRIX["advanced_reports"] == EntitlementLevel.LOCAL_PRO
@@ -442,10 +456,12 @@ class TestFeatureTierMatrix:
 
     def test_is_feature_enabled_defaults_to_true_for_unknown(self):
         from goose.features import is_feature_enabled
+
         assert is_feature_enabled("something_not_in_matrix") is True
 
     def test_is_feature_enabled_gates_on_level(self):
         from goose.features import EntitlementLevel, FeatureGate, is_feature_enabled
+
         FeatureGate.set_level(EntitlementLevel.OSS_CORE)
         try:
             assert is_feature_enabled("quick_analysis") is True

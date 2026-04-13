@@ -28,6 +28,7 @@ from typing import Any
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class FindingSeverity(str, Enum):
     """Severity levels for forensic findings.
 
@@ -36,6 +37,7 @@ class FindingSeverity(str, Enum):
     INFO     — observation, no immediate risk
     PASS     — check passed, no issue found
     """
+
     CRITICAL = "critical"
     WARNING = "warning"
     INFO = "info"
@@ -44,18 +46,20 @@ class FindingSeverity(str, Enum):
 
 class HypothesisStatus(str, Enum):
     """The evaluation state of a root-cause hypothesis."""
-    CANDIDATE = "candidate"       # proposed, not yet evaluated
-    SUPPORTED = "supported"       # more supporting than contradicting findings
-    REFUTED = "refuted"           # contradicting evidence outweighs support
-    INCONCLUSIVE = "inconclusive" # insufficient evidence to decide
+
+    CANDIDATE = "candidate"  # proposed, not yet evaluated
+    SUPPORTED = "supported"  # more supporting than contradicting findings
+    REFUTED = "refuted"  # contradicting evidence outweighs support
+    INCONCLUSIVE = "inconclusive"  # insufficient evidence to decide
 
 
 class ConfidenceBand(str, Enum):
     """Qualitative confidence band derived from a float confidence score."""
-    HIGH = "high"       # >= 0.80
-    MEDIUM = "medium"   # >= 0.50
-    LOW = "low"         # >= 0.25
-    UNKNOWN = "unknown" # < 0.25 or not computed
+
+    HIGH = "high"  # >= 0.80
+    MEDIUM = "medium"  # >= 0.50
+    LOW = "low"  # >= 0.25
+    UNKNOWN = "unknown"  # < 0.25 or not computed
 
     @classmethod
     def from_score(cls, score: float) -> ConfidenceBand:
@@ -72,6 +76,7 @@ class ConfidenceBand(str, Enum):
 # SignalQuality
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SignalQuality:
     """Quality representation for a single telemetry stream.
@@ -85,8 +90,8 @@ class SignalQuality:
     """
 
     stream_name: str
-    completeness: float = 1.0       # 0.0–1.0
-    continuity: float = 1.0         # 0.0–1.0
+    completeness: float = 1.0  # 0.0–1.0
+    continuity: float = 1.0  # 0.0–1.0
     corruption_detected: bool = False
     reliability_estimate: float = 1.0  # 0.0–1.0
     row_count: int = 0
@@ -125,6 +130,7 @@ class SignalQuality:
 # ---------------------------------------------------------------------------
 # EvidenceReference
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class EvidenceReference:
@@ -194,16 +200,16 @@ class ForensicFinding:
     """
 
     finding_id: str
-    plugin_id: str                          # plugin.name
+    plugin_id: str  # plugin.name
     plugin_version: str
     title: str
     description: str
     severity: FindingSeverity
-    score: int                              # 0–100 (100 = perfect/pass)
-    confidence: float                       # 0.0–1.0, finding analytical confidence
+    score: int  # 0–100 (100 = perfect/pass)
+    confidence: float  # 0.0–1.0, finding analytical confidence
     confidence_scope: str = "finding_analysis"  # explicit — not parser or hypothesis confidence
     phase: str | None = None
-    start_time: float | None = None         # seconds from log start
+    start_time: float | None = None  # seconds from log start
     end_time: float | None = None
     evidence_references: list[EvidenceReference] = field(default_factory=list)
     supporting_metrics: dict[str, Any] = field(default_factory=dict)
@@ -248,9 +254,7 @@ class ForensicFinding:
     def from_dict(cls, d: dict[str, Any]) -> ForensicFinding:
         d = dict(d)
         d["severity"] = FindingSeverity(d.get("severity", "info"))
-        d["evidence_references"] = [
-            EvidenceReference.from_dict(r) for r in d.get("evidence_references", [])
-        ]
+        d["evidence_references"] = [EvidenceReference.from_dict(r) for r in d.get("evidence_references", [])]
         if "generated_at" in d and d["generated_at"]:
             d["generated_at"] = datetime.fromisoformat(d["generated_at"])
         else:
@@ -272,6 +276,7 @@ class ForensicFinding:
 # ---------------------------------------------------------------------------
 # Hypothesis
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Hypothesis:
@@ -296,12 +301,12 @@ class Hypothesis:
     """
 
     hypothesis_id: str
-    statement: str                              # plain-language root cause claim
+    statement: str  # plain-language root cause claim
     supporting_finding_ids: list[str] = field(default_factory=list)
     contradicting_finding_ids: list[str] = field(default_factory=list)
     # Structured contradicting findings: list of dicts with finding_id, title, severity
     contradicting_findings: list[dict[str, Any]] = field(default_factory=list)
-    confidence: float = 0.0                     # 0.0–1.0, root-cause confidence
+    confidence: float = 0.0  # 0.0–1.0, root-cause confidence
     confidence_scope: str = "hypothesis_root_cause"  # explicit — not parser confidence
     status: HypothesisStatus = HypothesisStatus.CANDIDATE
     unresolved_questions: list[str] = field(default_factory=list)
@@ -310,10 +315,10 @@ class Hypothesis:
     run_id: str | None = None
     theme: str = ""  # e.g. "power", "crash", "navigation", "control"
     # v11 Strategy Sprint additions
-    category: str = ""                          # e.g. "propulsion / motor issue"
+    category: str = ""  # e.g. "propulsion / motor issue"
     related_timeline_events: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
-    generated_by: str = "system"                # "system" or "user"
+    generated_by: str = "system"  # "system" or "user"
     # Sprint 2 — scoring transparency
     supporting_metrics: dict[str, Any] = field(default_factory=dict)
 

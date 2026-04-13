@@ -50,6 +50,7 @@ def fake_ulg() -> bytes:
 # GET /api/cases/{id}/timeline
 # ---------------------------------------------------------------------------
 
+
 class TestTimeline:
     def test_timeline_returns_ok(self, client: TestClient, case_id: str):
         res = client.get(f"/api/cases/{case_id}/timeline")
@@ -103,6 +104,7 @@ class TestTimeline:
 # GET /api/cases/{id}/charts/data
 # ---------------------------------------------------------------------------
 
+
 class TestChartsData:
     def test_charts_data_returns_ok(self, client: TestClient, case_id: str):
         res = client.get(f"/api/cases/{case_id}/charts/data")
@@ -126,6 +128,7 @@ class TestChartsData:
 # GET /api/cases/{id}/exports
 # ---------------------------------------------------------------------------
 
+
 class TestExports:
     def test_exports_returns_ok(self, client: TestClient, case_id: str):
         res = client.get(f"/api/cases/{case_id}/exports")
@@ -143,6 +146,7 @@ class TestExports:
 # ---------------------------------------------------------------------------
 # POST /api/cases/{id}/exports/bundle
 # ---------------------------------------------------------------------------
+
 
 class TestExportBundle:
     def test_bundle_creates_file(self, client: TestClient, case_id: str, tmp_case_service: CaseService):
@@ -186,6 +190,7 @@ class TestExportBundle:
 # GET /api/cases/{id}/plugins
 # ---------------------------------------------------------------------------
 
+
 class TestPluginsRoute:
     def test_plugins_returns_manifests(self, client: TestClient, case_id: str):
         res = client.get(f"/api/cases/{case_id}/plugins")
@@ -201,9 +206,7 @@ class TestPluginsRoute:
         assert "required_streams" in m
         assert "category" in m
 
-    def test_plugins_includes_run_info_when_available(
-        self, client: TestClient, case_id: str, tmp_case_service: CaseService
-    ):
+    def test_plugins_includes_run_info_when_available(self, client: TestClient, case_id: str, tmp_case_service: CaseService):
         """Plugin run info should be included if analysis was run."""
         case_dir = tmp_case_service.case_dir(case_id)
         analysis_dir = case_dir / "analysis"
@@ -224,9 +227,7 @@ class TestPluginsRoute:
                 }
             ],
         }
-        (analysis_dir / "plugin_diagnostics.json").write_text(
-            json.dumps(pd_data), encoding="utf-8"
-        )
+        (analysis_dir / "plugin_diagnostics.json").write_text(json.dumps(pd_data), encoding="utf-8")
 
         res = client.get(f"/api/cases/{case_id}/plugins")
         data = res.json()
@@ -240,10 +241,9 @@ class TestPluginsRoute:
 # GET /api/cases/{id}/findings — shape verification
 # ---------------------------------------------------------------------------
 
+
 class TestFindingsShape:
-    def test_findings_include_forensic_fields(
-        self, client: TestClient, case_id: str, tmp_case_service: CaseService
-    ):
+    def test_findings_include_forensic_fields(self, client: TestClient, case_id: str, tmp_case_service: CaseService):
         """Findings should include plugin_id, plugin_version, evidence_references."""
         case_dir = tmp_case_service.case_dir(case_id)
         analysis_dir = case_dir / "analysis"

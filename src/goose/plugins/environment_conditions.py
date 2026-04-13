@@ -21,8 +21,8 @@ from goose.plugins.contract import PluginCategory, PluginManifest
 DEFAULT_HIGH_HDOP_THRESHOLD = 2.0
 DEFAULT_MIN_SATELLITES_FOR_MULTIPATH = 8
 DEFAULT_VIBRATION_ENV_THRESHOLD = 25.0  # m/s² RMS
-DEFAULT_ATTITUDE_BIAS_THRESHOLD = 5.0   # degrees sustained bias
-DEFAULT_SAT_DROP_THRESHOLD = 4          # satellites lost in window
+DEFAULT_ATTITUDE_BIAS_THRESHOLD = 5.0  # degrees sustained bias
+DEFAULT_SAT_DROP_THRESHOLD = 4  # satellites lost in window
 DEFAULT_SAT_DROP_WINDOW_SEC = 5.0
 
 
@@ -30,10 +30,7 @@ class EnvironmentConditionsPlugin(Plugin):
     """Assess environmental factors that may have contributed to flight anomalies."""
 
     name = "environment_conditions"
-    description = (
-        "Assesses environmental indicators (GPS multipath, wind, interference) "
-        "that may have contributed to flight anomalies"
-    )
+    description = "Assesses environmental indicators (GPS multipath, wind, interference) that may have contributed to flight anomalies"
     version = "1.0.0"
     min_mode = "manual"
 
@@ -42,10 +39,7 @@ class EnvironmentConditionsPlugin(Plugin):
         name="Environment Conditions Assessment",
         version="1.0.0",
         author="Goose Flight",
-        description=(
-            "Assesses environmental indicators (GPS multipath, wind, interference) "
-            "that may have contributed to flight anomalies"
-        ),
+        description=("Assesses environmental indicators (GPS multipath, wind, interference) that may have contributed to flight anomalies"),
         category=PluginCategory.HEALTH,
         supported_vehicle_types=["multirotor", "fixed_wing", "all"],
         required_streams=["gps"],
@@ -73,33 +67,19 @@ class EnvironmentConditionsPlugin(Plugin):
         cfg = config or {}
 
         high_hdop = float(cfg.get("high_hdop_threshold", DEFAULT_HIGH_HDOP_THRESHOLD))
-        min_sats_multipath = int(
-            cfg.get("min_satellites_for_multipath", DEFAULT_MIN_SATELLITES_FOR_MULTIPATH)
-        )
-        vib_env_threshold = float(
-            cfg.get("vibration_env_threshold", DEFAULT_VIBRATION_ENV_THRESHOLD)
-        )
-        attitude_bias_threshold = float(
-            cfg.get("attitude_bias_threshold", DEFAULT_ATTITUDE_BIAS_THRESHOLD)
-        )
-        sat_drop_threshold = int(
-            cfg.get("sat_drop_threshold", DEFAULT_SAT_DROP_THRESHOLD)
-        )
-        sat_drop_window_sec = float(
-            cfg.get("sat_drop_window_sec", DEFAULT_SAT_DROP_WINDOW_SEC)
-        )
+        min_sats_multipath = int(cfg.get("min_satellites_for_multipath", DEFAULT_MIN_SATELLITES_FOR_MULTIPATH))
+        vib_env_threshold = float(cfg.get("vibration_env_threshold", DEFAULT_VIBRATION_ENV_THRESHOLD))
+        attitude_bias_threshold = float(cfg.get("attitude_bias_threshold", DEFAULT_ATTITUDE_BIAS_THRESHOLD))
+        sat_drop_threshold = int(cfg.get("sat_drop_threshold", DEFAULT_SAT_DROP_THRESHOLD))
+        sat_drop_window_sec = float(cfg.get("sat_drop_window_sec", DEFAULT_SAT_DROP_WINDOW_SEC))
 
         # Check GPS multipath
-        multipath = self._check_gps_multipath(
-            flight, high_hdop, min_sats_multipath
-        )
+        multipath = self._check_gps_multipath(flight, high_hdop, min_sats_multipath)
         if multipath:
             findings.append(multipath)
 
         # Check GPS interference (satellite count drop)
-        interference = self._check_gps_interference(
-            flight, sat_drop_threshold, sat_drop_window_sec
-        )
+        interference = self._check_gps_interference(flight, sat_drop_threshold, sat_drop_window_sec)
         if interference:
             findings.append(interference)
 
@@ -130,12 +110,8 @@ class EnvironmentConditionsPlugin(Plugin):
         if gps.empty:
             return None
 
-        hdop_col = next(
-            (c for c in ("hdop", "h_dop", "eph") if c in gps.columns), None
-        )
-        sat_col = next(
-            (c for c in ("satellites_used", "num_sats", "sats") if c in gps.columns), None
-        )
+        hdop_col = next((c for c in ("hdop", "h_dop", "eph") if c in gps.columns), None)
+        sat_col = next((c for c in ("satellites_used", "num_sats", "sats") if c in gps.columns), None)
 
         if hdop_col is None or sat_col is None:
             return None
@@ -181,10 +157,8 @@ class EnvironmentConditionsPlugin(Plugin):
                 "hdop_threshold": high_hdop,
                 "min_satellites_threshold": min_sats,
                 "assumptions": [
-                    "High DOP with adequate satellites is consistent with multipath "
-                    "— direct confirmation requires RF analysis.",
-                    "Low satellite count (not multipath) is an alternative explanation "
-                    "if satellite visibility was momentarily obstructed.",
+                    "High DOP with adequate satellites is consistent with multipath — direct confirmation requires RF analysis.",
+                    "Low satellite count (not multipath) is an alternative explanation if satellite visibility was momentarily obstructed.",
                 ],
             },
             timestamp_start=float(ts_col.iloc[0]) if ts_col is not None else None,
@@ -206,9 +180,7 @@ class EnvironmentConditionsPlugin(Plugin):
         if gps.empty:
             return None
 
-        sat_col = next(
-            (c for c in ("satellites_used", "num_sats", "sats") if c in gps.columns), None
-        )
+        sat_col = next((c for c in ("satellites_used", "num_sats", "sats") if c in gps.columns), None)
         if sat_col is None or "timestamp" not in gps.columns:
             return None
 
@@ -230,12 +202,14 @@ class EnvironmentConditionsPlugin(Plugin):
                 continue
             sat_drop = float(window_sats.max()) - float(sats[i])
             if sat_drop >= sat_drop_threshold:
-                events.append({
-                    "timestamp": float(ts[i]),
-                    "sats_before": float(window_sats.max()),
-                    "sats_after": float(sats[i]),
-                    "drop": float(sat_drop),
-                })
+                events.append(
+                    {
+                        "timestamp": float(ts[i]),
+                        "sats_before": float(window_sats.max()),
+                        "sats_after": float(sats[i]),
+                        "drop": float(sat_drop),
+                    }
+                )
 
         if not events:
             return None
@@ -275,9 +249,7 @@ class EnvironmentConditionsPlugin(Plugin):
     # Vibration environment indicator
     # ------------------------------------------------------------------
 
-    def _check_vibration_environment(
-        self, flight: Flight, threshold: float
-    ) -> Finding | None:
+    def _check_vibration_environment(self, flight: Flight, threshold: float) -> Finding | None:
         """Elevated vibration outside takeoff suggests turbulent conditions."""
         if flight.vibration.empty:
             return None
@@ -297,7 +269,7 @@ class EnvironmentConditionsPlugin(Plugin):
             return None
 
         total_accel = np.sqrt(sum(vib[c] ** 2 for c in accel_cols))
-        rms = float(np.sqrt(np.mean(total_accel ** 2)))
+        rms = float(np.sqrt(np.mean(total_accel**2)))
 
         if rms < threshold:
             return None
@@ -310,10 +282,7 @@ class EnvironmentConditionsPlugin(Plugin):
                 tail = flight.motors.tail(20)
                 outputs = [float(tail[c].mean()) for c in motor_cols]
                 if max(outputs) - min(outputs) < 0.1:
-                    note = (
-                        " Motor outputs appear balanced, which leans toward "
-                        "environmental turbulence rather than mechanical imbalance."
-                    )
+                    note = " Motor outputs appear balanced, which leans toward environmental turbulence rather than mechanical imbalance."
 
         return Finding(
             plugin_name=self.name,
@@ -340,9 +309,7 @@ class EnvironmentConditionsPlugin(Plugin):
     # Wind loading indicator
     # ------------------------------------------------------------------
 
-    def _check_wind_loading(
-        self, flight: Flight, bias_threshold_deg: float
-    ) -> Finding | None:
+    def _check_wind_loading(self, flight: Flight, bias_threshold_deg: float) -> Finding | None:
         """Sustained directional attitude bias suggests wind load."""
         if flight.attitude.empty or flight.attitude_setpoint.empty:
             return None
@@ -362,9 +329,7 @@ class EnvironmentConditionsPlugin(Plugin):
 
             merged = pd.merge_asof(
                 att[["timestamp", axis]].sort_values("timestamp"),
-                sp[["timestamp", sp_col]].sort_values("timestamp").rename(
-                    columns={sp_col: f"{axis}_sp"}
-                ),
+                sp[["timestamp", sp_col]].sort_values("timestamp").rename(columns={sp_col: f"{axis}_sp"}),
                 on="timestamp",
                 direction="nearest",
                 tolerance=0.5,
@@ -387,10 +352,7 @@ class EnvironmentConditionsPlugin(Plugin):
 
             return Finding(
                 plugin_name=self.name,
-                title=(
-                    f"Wind loading indicator: sustained {axis} bias "
-                    f"{mean_bias:+.1f} deg"
-                ),
+                title=(f"Wind loading indicator: sustained {axis} bias {mean_bias:+.1f} deg"),
                 severity="info",
                 score=42,
                 description=(
@@ -407,8 +369,7 @@ class EnvironmentConditionsPlugin(Plugin):
                     "setpoint_std_deg": round(sp_std, 2),
                     "bias_threshold_deg": bias_threshold_deg,
                     "assumptions": [
-                        "Sustained attitude bias is consistent with wind loading "
-                        "— trim offset or CG imbalance are alternative explanations.",
+                        "Sustained attitude bias is consistent with wind loading — trim offset or CG imbalance are alternative explanations.",
                         "Correlation with maneuvers was not checked exhaustively.",
                     ],
                 },

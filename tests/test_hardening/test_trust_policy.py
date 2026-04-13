@@ -87,6 +87,7 @@ class TestTrustPolicyAllowlistOnly:
 class TestFingerprintPlugin:
     def test_returns_nonempty_for_real_plugin(self):
         from goose.plugins import PLUGIN_REGISTRY
+
         plugin = next(iter(PLUGIN_REGISTRY.values()))
         fp = fingerprint_plugin(plugin)
         assert isinstance(fp, str)
@@ -94,6 +95,7 @@ class TestFingerprintPlugin:
 
     def test_returns_consistent_fingerprint(self):
         from goose.plugins import PLUGIN_REGISTRY
+
         plugin = next(iter(PLUGIN_REGISTRY.values()))
         fp1 = fingerprint_plugin(plugin)
         fp2 = fingerprint_plugin(plugin)

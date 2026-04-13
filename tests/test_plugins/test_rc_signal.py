@@ -16,6 +16,7 @@ from goose.plugins.rc_signal import RcSignalPlugin
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_metadata(duration: float = 60.0) -> FlightMetadata:
     return FlightMetadata(
         source_file="test.ulg",
@@ -86,6 +87,7 @@ def _rc_with_stuck_channel() -> pd.DataFrame:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def plugin() -> RcSignalPlugin:
     return RcSignalPlugin()
@@ -125,6 +127,7 @@ def empty_rc_flight() -> Flight:
 # Interface tests
 # ---------------------------------------------------------------------------
 
+
 class TestRcSignalPluginInterface:
     def test_has_required_attributes(self, plugin: RcSignalPlugin) -> None:
         assert plugin.name == "rc_signal"
@@ -163,6 +166,7 @@ class TestRcSignalPluginInterface:
 # Empty data
 # ---------------------------------------------------------------------------
 
+
 class TestRcSignalEmptyData:
     def test_empty_rc_returns_info(self, plugin: RcSignalPlugin, empty_rc_flight: Flight) -> None:
         findings = plugin.analyze(empty_rc_flight, {})
@@ -183,6 +187,7 @@ class TestRcSignalEmptyData:
 # Good signal
 # ---------------------------------------------------------------------------
 
+
 class TestRcSignalGoodFlight:
     def test_produces_findings(self, plugin: RcSignalPlugin, good_flight: Flight) -> None:
         assert len(plugin.analyze(good_flight, {})) >= 1
@@ -202,6 +207,7 @@ class TestRcSignalGoodFlight:
 # RSSI degradation
 # ---------------------------------------------------------------------------
 
+
 class TestRcSignalWeakRssi:
     def test_warning_severity(self, plugin: RcSignalPlugin, weak_rssi_flight: Flight) -> None:
         findings = plugin.analyze(weak_rssi_flight, {})
@@ -210,9 +216,7 @@ class TestRcSignalWeakRssi:
 
     def test_evidence_contains_rssi_values(self, plugin: RcSignalPlugin, weak_rssi_flight: Flight) -> None:
         findings = plugin.analyze(weak_rssi_flight, {})
-        rssi_finding = next(
-            (f for f in findings if "rssi" in f.title.lower() or "signal" in f.title.lower()), None
-        )
+        rssi_finding = next((f for f in findings if "rssi" in f.title.lower() or "signal" in f.title.lower()), None)
         assert rssi_finding is not None
         assert "min_rssi_pct" in rssi_finding.evidence
 
@@ -232,6 +236,7 @@ class TestRcSignalCriticalRssi:
 # ---------------------------------------------------------------------------
 # Dropout detection
 # ---------------------------------------------------------------------------
+
 
 class TestRcSignalDropouts:
     def test_dropout_finding_produced(self, plugin: RcSignalPlugin, dropout_flight: Flight) -> None:
@@ -255,6 +260,7 @@ class TestRcSignalDropouts:
 # ---------------------------------------------------------------------------
 # Stuck channel detection
 # ---------------------------------------------------------------------------
+
 
 class TestRcSignalStuckChannel:
     def test_stuck_finding_produced(self, plugin: RcSignalPlugin, stuck_channel_flight: Flight) -> None:

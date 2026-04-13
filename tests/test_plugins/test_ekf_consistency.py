@@ -16,6 +16,7 @@ from goose.plugins.ekf_consistency import EkfConsistencyPlugin
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_metadata(duration: float = 60.0) -> FlightMetadata:
     return FlightMetadata(
         source_file="test.ulg",
@@ -43,16 +44,18 @@ def _good_ekf(n: int = 300) -> pd.DataFrame:
     """EKF data with all innovations well within limits."""
     ts = np.linspace(0.0, 60.0, n)
     rng = np.random.default_rng(42)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "vel_innov_x": rng.normal(0.0, 0.2, n),
-        "vel_innov_y": rng.normal(0.0, 0.2, n),
-        "vel_innov_z": rng.normal(0.0, 0.2, n),
-        "pos_innov_x": rng.normal(0.0, 0.3, n),
-        "pos_innov_y": rng.normal(0.0, 0.3, n),
-        "pos_innov_z": rng.normal(0.0, 0.3, n),
-        "ekf_fault_flags": np.zeros(n, dtype=int),
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "vel_innov_x": rng.normal(0.0, 0.2, n),
+            "vel_innov_y": rng.normal(0.0, 0.2, n),
+            "vel_innov_z": rng.normal(0.0, 0.2, n),
+            "pos_innov_x": rng.normal(0.0, 0.3, n),
+            "pos_innov_y": rng.normal(0.0, 0.3, n),
+            "pos_innov_z": rng.normal(0.0, 0.3, n),
+            "ekf_fault_flags": np.zeros(n, dtype=int),
+        }
+    )
 
 
 def _warning_ekf(n: int = 300) -> pd.DataFrame:
@@ -60,13 +63,15 @@ def _warning_ekf(n: int = 300) -> pd.DataFrame:
     ts = np.linspace(0.0, 60.0, n)
     rng = np.random.default_rng(7)
     vel = np.full(n, 0.85)  # above warning threshold 0.8
-    return pd.DataFrame({
-        "timestamp": ts,
-        "vel_innov_x": vel,
-        "vel_innov_y": rng.normal(0.0, 0.1, n),
-        "vel_innov_z": rng.normal(0.0, 0.1, n),
-        "ekf_fault_flags": np.zeros(n, dtype=int),
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "vel_innov_x": vel,
+            "vel_innov_y": rng.normal(0.0, 0.1, n),
+            "vel_innov_z": rng.normal(0.0, 0.1, n),
+            "ekf_fault_flags": np.zeros(n, dtype=int),
+        }
+    )
 
 
 def _critical_ekf(n: int = 300) -> pd.DataFrame:
@@ -74,13 +79,15 @@ def _critical_ekf(n: int = 300) -> pd.DataFrame:
     ts = np.linspace(0.0, 60.0, n)
     np.random.default_rng(13)
     vel = np.full(n, 1.2)  # above critical threshold 1.0
-    return pd.DataFrame({
-        "timestamp": ts,
-        "vel_innov_x": vel,
-        "vel_innov_y": vel,
-        "vel_innov_z": vel,
-        "ekf_fault_flags": np.zeros(n, dtype=int),
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "vel_innov_x": vel,
+            "vel_innov_y": vel,
+            "vel_innov_z": vel,
+            "ekf_fault_flags": np.zeros(n, dtype=int),
+        }
+    )
 
 
 def _faulted_ekf(n: int = 300) -> pd.DataFrame:
@@ -89,11 +96,13 @@ def _faulted_ekf(n: int = 300) -> pd.DataFrame:
     rng = np.random.default_rng(99)
     flags = np.zeros(n, dtype=int)
     flags[100:200] = 1  # fault for a portion of the flight (>5% triggers critical)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "vel_innov_x": rng.normal(0.0, 0.2, n),
-        "ekf_fault_flags": flags,
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "vel_innov_x": rng.normal(0.0, 0.2, n),
+            "ekf_fault_flags": flags,
+        }
+    )
 
 
 def _partial_fault_ekf(n: int = 300) -> pd.DataFrame:
@@ -102,16 +111,19 @@ def _partial_fault_ekf(n: int = 300) -> pd.DataFrame:
     rng = np.random.default_rng(55)
     flags = np.zeros(n, dtype=int)
     flags[5:10] = 1  # only ~1.7% faulted
-    return pd.DataFrame({
-        "timestamp": ts,
-        "vel_innov_x": rng.normal(0.0, 0.2, n),
-        "ekf_fault_flags": flags,
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "vel_innov_x": rng.normal(0.0, 0.2, n),
+            "ekf_fault_flags": flags,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def plugin() -> EkfConsistencyPlugin:
@@ -146,6 +158,7 @@ def empty_ekf_flight() -> Flight:
 # ---------------------------------------------------------------------------
 # Interface tests
 # ---------------------------------------------------------------------------
+
 
 class TestEkfConsistencyPluginInterface:
     def test_has_required_attributes(self, plugin: EkfConsistencyPlugin) -> None:
@@ -182,6 +195,7 @@ class TestEkfConsistencyPluginInterface:
 # Empty data
 # ---------------------------------------------------------------------------
 
+
 class TestEkfConsistencyEmptyData:
     def test_empty_ekf_returns_info(self, plugin: EkfConsistencyPlugin, empty_ekf_flight: Flight) -> None:
         findings = plugin.analyze(empty_ekf_flight, {})
@@ -198,6 +212,7 @@ class TestEkfConsistencyEmptyData:
 # ---------------------------------------------------------------------------
 # Good EKF
 # ---------------------------------------------------------------------------
+
 
 class TestEkfConsistencyGoodFlight:
     def test_produces_findings(self, plugin: EkfConsistencyPlugin, good_flight: Flight) -> None:
@@ -220,6 +235,7 @@ class TestEkfConsistencyGoodFlight:
 # Warning-level innovations
 # ---------------------------------------------------------------------------
 
+
 class TestEkfConsistencyWarning:
     def test_warning_severity_present(self, plugin: EkfConsistencyPlugin, warning_flight: Flight) -> None:
         findings = plugin.analyze(warning_flight, {})
@@ -237,6 +253,7 @@ class TestEkfConsistencyWarning:
 # Critical-level innovations
 # ---------------------------------------------------------------------------
 
+
 class TestEkfConsistencyCritical:
     def test_critical_severity(self, plugin: EkfConsistencyPlugin, critical_flight: Flight) -> None:
         findings = plugin.analyze(critical_flight, {})
@@ -251,6 +268,7 @@ class TestEkfConsistencyCritical:
 # ---------------------------------------------------------------------------
 # Fault flags
 # ---------------------------------------------------------------------------
+
 
 class TestEkfConsistencyFaultFlags:
     def test_fault_finding_produced(self, plugin: EkfConsistencyPlugin, faulted_flight: Flight) -> None:

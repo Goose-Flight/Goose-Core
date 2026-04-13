@@ -27,6 +27,7 @@ from goose.parsers.diagnostics import ParseDiagnostics
 # Helper fixture
 # ---------------------------------------------------------------------------
 
+
 def make_finding(**kwargs) -> ForensicFinding:
     defaults = dict(
         finding_id="F-001",
@@ -45,6 +46,7 @@ def make_finding(**kwargs) -> ForensicFinding:
 # ---------------------------------------------------------------------------
 # TestFindingSeverityEnum
 # ---------------------------------------------------------------------------
+
 
 class TestFindingSeverityEnum:
     def test_all_values_exist(self):
@@ -70,6 +72,7 @@ class TestFindingSeverityEnum:
 # TestHypothesisStatusEnum
 # ---------------------------------------------------------------------------
 
+
 class TestHypothesisStatusEnum:
     def test_all_values_exist(self):
         assert HypothesisStatus.CANDIDATE
@@ -87,6 +90,7 @@ class TestHypothesisStatusEnum:
 # ---------------------------------------------------------------------------
 # TestConfidenceBand
 # ---------------------------------------------------------------------------
+
 
 class TestConfidenceBand:
     def test_high(self):
@@ -114,6 +118,7 @@ class TestConfidenceBand:
 # ---------------------------------------------------------------------------
 # TestSignalQuality
 # ---------------------------------------------------------------------------
+
 
 class TestSignalQuality:
     def test_default_fields(self):
@@ -161,6 +166,7 @@ class TestSignalQuality:
 
     def test_from_stream_coverage_present(self):
         from goose.parsers.diagnostics import StreamCoverage
+
         sc = StreamCoverage(stream_name="battery", present=True, row_count=300)
         sq = SignalQuality.from_stream_coverage(sc)
         assert sq.reliability_estimate == 1.0
@@ -170,6 +176,7 @@ class TestSignalQuality:
 
     def test_from_stream_coverage_not_present(self):
         from goose.parsers.diagnostics import StreamCoverage
+
         sc = StreamCoverage(stream_name="rc_input", present=False, row_count=0)
         sq = SignalQuality.from_stream_coverage(sc)
         assert sq.reliability_estimate == 0.0
@@ -180,6 +187,7 @@ class TestSignalQuality:
 # ---------------------------------------------------------------------------
 # TestEvidenceReference
 # ---------------------------------------------------------------------------
+
 
 class TestEvidenceReference:
     def test_required_field_evidence_id(self):
@@ -236,6 +244,7 @@ class TestEvidenceReference:
 # ---------------------------------------------------------------------------
 # TestForensicFinding
 # ---------------------------------------------------------------------------
+
 
 class TestForensicFinding:
     def test_required_fields_present(self):
@@ -322,6 +331,7 @@ class TestForensicFinding:
 # TestHypothesis
 # ---------------------------------------------------------------------------
 
+
 class TestHypothesis:
     def _make_hypothesis(self, **kwargs) -> Hypothesis:
         defaults = dict(
@@ -387,6 +397,7 @@ class TestHypothesis:
 # TestConfidenceScopeDistinction
 # ---------------------------------------------------------------------------
 
+
 class TestConfidenceScopeDistinction:
     """Verify that the three confidence scopes in the system are explicit and distinct.
 
@@ -411,6 +422,4 @@ class TestConfidenceScopeDistinction:
         f = make_finding()
         h = Hypothesis(hypothesis_id="H-X", statement="Test hypothesis.")
         scopes = {diag.confidence_scope, f.confidence_scope, h.confidence_scope}
-        assert len(scopes) == 3, (
-            f"Expected 3 distinct confidence scopes, got {len(scopes)}: {scopes}"
-        )
+        assert len(scopes) == 3, f"Expected 3 distinct confidence scopes, got {len(scopes)}: {scopes}"

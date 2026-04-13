@@ -78,6 +78,7 @@ def _run_analysis_with_profile(
 # Profile config validation
 # ---------------------------------------------------------------------------
 
+
 class TestProfileConfigCompleteness:
     def test_all_7_profiles_registered(self):
         assert set(PROFILE_CONFIGS.keys()) == set(ALL_PROFILES)
@@ -114,6 +115,7 @@ class TestProfileConfigCompleteness:
         for _pid, cfg in PROFILE_CONFIGS.items():
             d = cfg.to_dict()
             from goose.forensics.profiles import ProfileConfig
+
             restored = ProfileConfig.from_dict(d)
             assert restored.profile_id == cfg.profile_id
             assert restored.wording.workflow_label == cfg.wording.workflow_label
@@ -123,6 +125,7 @@ class TestProfileConfigCompleteness:
 # Analysis sweep: every profile must complete without crashing
 # ---------------------------------------------------------------------------
 
+
 class TestProfileAnalysisSweep:
     """Run analysis with each of the 7 profiles on the vibration crash fixture."""
 
@@ -131,10 +134,7 @@ class TestProfileAnalysisSweep:
         if not VIBRATION_CRASH.exists():
             pytest.skip("Fixture not found")
         out = _run_analysis_with_profile(client, VIBRATION_CRASH, profile)
-        assert out["analyze_res"].status_code == 200, (
-            f"Profile {profile!r} analysis failed ({out['analyze_res'].status_code}): "
-            f"{out['analyze_res'].text[:300]}"
-        )
+        assert out["analyze_res"].status_code == 200, f"Profile {profile!r} analysis failed ({out['analyze_res'].status_code}): {out['analyze_res'].text[:300]}"
 
     @pytest.mark.parametrize("profile", ALL_PROFILES)
     def test_analysis_returns_findings_with_profile(self, client: TestClient, profile: str):
@@ -181,15 +181,13 @@ class TestProfileAnalysisSweep:
         if not NORMAL_FLIGHT.exists():
             pytest.skip("Fixture not found")
         out = _run_analysis_with_profile(client, NORMAL_FLIGHT, profile)
-        assert out["analyze_res"].status_code == 200, (
-            f"Profile {profile!r} analysis failed on normal flight: "
-            f"{out['analyze_res'].text[:300]}"
-        )
+        assert out["analyze_res"].status_code == 200, f"Profile {profile!r} analysis failed on normal flight: {out['analyze_res'].text[:300]}"
 
 
 # ---------------------------------------------------------------------------
 # Profile API endpoint sweep
 # ---------------------------------------------------------------------------
+
 
 class TestProfileAPIEndpoints:
     @pytest.mark.parametrize("profile", ALL_PROFILES)
@@ -220,6 +218,7 @@ class TestProfileAPIEndpoints:
 # ---------------------------------------------------------------------------
 # Profile wording distinctiveness
 # ---------------------------------------------------------------------------
+
 
 class TestProfileWordingDistinctiveness:
     """Ensure profile wording is distinct enough to differentiate user classes."""
@@ -262,6 +261,4 @@ class TestProfileWordingDistinctiveness:
 
     def test_all_profile_wordings_have_report_sections(self):
         for pid, cfg in PROFILE_CONFIGS.items():
-            assert isinstance(cfg.wording.report_sections, dict), (
-                f"{pid} report_sections is not a dict"
-            )
+            assert isinstance(cfg.wording.report_sections, dict), f"{pid} report_sections is not a dict"

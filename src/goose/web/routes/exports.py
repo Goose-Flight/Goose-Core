@@ -51,6 +51,7 @@ def _load_json_file(path: Any, label: str = "") -> Any:
 # Request models
 # ---------------------------------------------------------------------------
 
+
 class VerifyReplayRequest(BaseModel):
     bundle_filename: str
 
@@ -62,6 +63,7 @@ class CreateBundleRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Serializers (shared with cases module)
 # ---------------------------------------------------------------------------
+
 
 def _serialize_evidence(ev: Any) -> dict[str, Any]:
     return {
@@ -82,6 +84,7 @@ def _serialize_evidence(ev: Any) -> dict[str, Any]:
 
 def _serialize_case_detail(case: Any) -> dict[str, Any]:
     from goose.web.routes.cases import _serialize_case_detail as _detail
+
     return _detail(case)
 
 
@@ -89,10 +92,12 @@ def _serialize_case_detail(case: Any) -> dict[str, Any]:
 # Existing routes (migrated from cases_api.py)
 # ---------------------------------------------------------------------------
 
+
 @router.get("/{case_id}/exports")
 async def get_exports(case_id: str) -> JSONResponse:
     """Return export history from exports/ directory and case metadata."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -105,18 +110,22 @@ async def get_exports(case_id: str) -> JSONResponse:
         for f in sorted(exports_dir.iterdir()):
             if f.is_file():
                 stat = f.stat()
-                export_files.append({
-                    "filename": f.name,
-                    "size_bytes": stat.st_size,
-                    "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                })
+                export_files.append(
+                    {
+                        "filename": f.name,
+                        "size_bytes": stat.st_size,
+                        "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    }
+                )
 
-    return JSONResponse({
-        "ok": True,
-        "exports": export_files,
-        "count": len(export_files),
-        "case_id": case_id,
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "exports": export_files,
+            "count": len(export_files),
+            "case_id": case_id,
+        }
+    )
 
 
 @router.post("/{case_id}/exports/bundle")
@@ -140,6 +149,7 @@ async def create_export_bundle(
     listed in FEATURE_TIER_MATRIX as a future Pro boundary.
     """
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)
@@ -172,10 +182,9 @@ async def create_export_bundle(
 
     # Include evidence manifest
     manifest_path = case_dir / "manifests" / "evidence_manifest.json"
-    bundle["evidence_manifest"] = (
-        _load_json_file(manifest_path, "evidence_manifest") if manifest_path.exists()
-        else None
-    ) or [_serialize_evidence(ev) for ev in case.evidence_items]
+    bundle["evidence_manifest"] = (_load_json_file(manifest_path, "evidence_manifest") if manifest_path.exists() else None) or [
+        _serialize_evidence(ev) for ev in case.evidence_items
+    ]
 
     # Include parse diagnostics
     pd_parse_path = case_dir / "parsed" / "parse_diagnostics.json"
@@ -221,7 +230,7 @@ async def create_export_bundle(
         "tuning_profile": "default",
     }
 
-    include_evidence = (body.include_evidence if body is not None else False)
+    include_evidence = body.include_evidence if body is not None else False
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     short_id = bundle_id.replace("BDL-", "").lower()
@@ -236,14 +245,16 @@ async def create_export_bundle(
     if include_evidence:
         # Build a ZIP archive: bundle JSON + original evidence file(s)
         import zipfile
+
         zip_filename = f"bundle_{ts}_{short_id}.zip"
         zip_filepath = exports_dir / zip_filename
         with zipfile.ZipFile(str(zip_filepath), "w", zipfile.ZIP_DEFLATED) as zf:
             zf.write(str(json_filepath), arcname=json_filename)
             # Include evidence files referenced in the manifest
-            for ev_item in (case.evidence_items or []):
+            for ev_item in case.evidence_items or []:
                 ev_path_str = getattr(ev_item, "stored_path", None) or ""
                 from pathlib import Path as _Path
+
                 ev_path = _Path(ev_path_str)
                 if ev_path.exists() and ev_path.is_file():
                     zf.write(str(ev_path), arcname=f"evidence/{ev_item.filename}")
@@ -264,36 +275,42 @@ async def create_export_bundle(
     svc.save_case(case)
 
     # Audit
-    svc._append_audit(case_id, AuditEntry(
-        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
-        timestamp=datetime.now(),
-        actor="api",
-        action=AuditAction.CASE_EXPORTED,
-        object_type="export",
-        object_id=bundle_id,
-        details={
+    svc._append_audit(
+        case_id,
+        AuditEntry(
+            event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+            timestamp=datetime.now(),
+            actor="api",
+            action=AuditAction.CASE_EXPORTED,
+            object_type="export",
+            object_id=bundle_id,
+            details={
+                "filename": output_filename,
+                "bundle_version": "1.0",
+                "bundle_format": bundle_format,
+                "include_evidence": include_evidence,
+            },
+        ),
+    )
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "bundle_id": bundle_id,
             "filename": output_filename,
-            "bundle_version": "1.0",
+            # "path" deliberately excluded — would expose server filesystem path (H-1)
+            "size_bytes": output_path.stat().st_size,
             "bundle_format": bundle_format,
             "include_evidence": include_evidence,
-        },
-    ))
-
-    return JSONResponse({
-        "ok": True,
-        "bundle_id": bundle_id,
-        "filename": output_filename,
-        # "path" deliberately excluded — would expose server filesystem path (H-1)
-        "size_bytes": output_path.stat().st_size,
-        "bundle_format": bundle_format,
-        "include_evidence": include_evidence,
-    })
+        }
+    )
 
 
 @router.get("/{case_id}/exports/files/{filename}")
 async def get_export_file(case_id: str, filename: str) -> JSONResponse:
     """Serve an export file from the exports/ directory."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -309,12 +326,14 @@ async def get_export_file(case_id: str, filename: str) -> JSONResponse:
         raise HTTPException(status_code=404, detail=f"Export file not found: {filename}")
 
     from fastapi.responses import FileResponse
+
     return FileResponse(str(filepath), media_type="application/json", filename=filename)
 
 
 # ---------------------------------------------------------------------------
 # New routes — Replay verification and report generation
 # ---------------------------------------------------------------------------
+
 
 @router.get("/{case_id}/tuning-profile")
 async def get_tuning_profile(case_id: str) -> JSONResponse:
@@ -339,6 +358,7 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
     Returns a ReplayVerificationReport.
     """
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -367,6 +387,7 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
 
     # Get current versions
     from goose.plugins import PLUGIN_REGISTRY
+
     current_plugins: dict[str, str] = {}
     for _pid, p in PLUGIN_REGISTRY.items():
         current_plugins[p.name] = getattr(p, "version", "unknown")
@@ -375,6 +396,7 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
     # Try to get parser version from installed module
     try:
         from goose.parsers.ulog import UlogParser
+
         current_parser = getattr(UlogParser, "VERSION", "")
     except (ImportError, AttributeError):
         pass
@@ -425,6 +447,7 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
 async def mission_summary_report(case_id: str) -> JSONResponse:
     """Generate and return a MissionSummaryReport from current case analysis data."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)
@@ -511,6 +534,7 @@ async def mission_summary_report(case_id: str) -> JSONResponse:
 async def anomaly_report(case_id: str) -> JSONResponse:
     """Generate and return an AnomalyReport (WARNING+ findings, confident hypotheses)."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)
@@ -561,6 +585,7 @@ async def anomaly_report(case_id: str) -> JSONResponse:
 async def crash_report(case_id: str) -> JSONResponse:
     """Generate and return a CrashMishapReport."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)
@@ -590,12 +615,7 @@ async def crash_report(case_id: str) -> JSONResponse:
         title = (f.get("title", "") or "").lower()
         desc = (f.get("description", "") or "").lower()
         plugin = (f.get("plugin_id", "") or "").lower()
-        is_crash = (
-            any(kw in title for kw in crash_keywords)
-            or any(kw in desc for kw in crash_keywords)
-            or "crash" in plugin
-            or f.get("severity") == "critical"
-        )
+        is_crash = any(kw in title for kw in crash_keywords) or any(kw in desc for kw in crash_keywords) or "crash" in plugin or f.get("severity") == "critical"
         if is_crash:
             crash_findings.append(f)
             for ref in f.get("evidence_references", []):
@@ -633,9 +653,11 @@ async def crash_report(case_id: str) -> JSONResponse:
 # v11 Strategy Sprint — extended report routes
 # ---------------------------------------------------------------------------
 
+
 def _resolve_case_and_run(case_id: str) -> tuple[Any, Any, str]:
     """Resolve case_id to (svc, case, run_id) or raise HTTPException 404."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)
@@ -650,7 +672,9 @@ async def forensic_case_report(case_id: str) -> JSONResponse:
     """Return a full ForensicCaseReport built from case artifacts."""
     svc, _case, run_id = _resolve_case_and_run(case_id)
     report = generate_forensic_case_report(
-        svc.case_dir(case_id), run_id=run_id, engine_version=__version__,
+        svc.case_dir(case_id),
+        run_id=run_id,
+        engine_version=__version__,
     )
     return JSONResponse({"ok": True, "report": report.to_dict()})
 

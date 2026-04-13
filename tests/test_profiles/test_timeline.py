@@ -34,9 +34,7 @@ def _make_finding(
         confidence=0.8,
         start_time=start_time,
         end_time=end_time,
-        evidence_references=[
-            EvidenceReference(evidence_id="EV-1", support_summary="x")
-        ],
+        evidence_references=[EvidenceReference(evidence_id="EV-1", support_summary="x")],
     )
 
 

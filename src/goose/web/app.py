@@ -20,17 +20,23 @@ _FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend" / "dist"
 
 # Timeseries extraction shared with Quick Analysis cockpit
 
+
 # Keep private aliases for any call sites inside this module
 def _downsample(arr: list, max_points: int = 2000) -> list:
     from goose.web.timeseries_utils import downsample
+
     return downsample(arr, max_points)
+
 
 def _safe_val(v: Any) -> Any:
     from goose.web.timeseries_utils import safe_val
+
     return safe_val(v)
+
 
 def _df_to_series(df: Any, columns: list[str] | None = None, max_points: int = 2000) -> dict[str, list] | None:
     from goose.web.timeseries_utils import df_to_series
+
     return df_to_series(df, columns, max_points)
 
 
@@ -42,6 +48,7 @@ def _finding_to_dict(finding: Any) -> dict[str, Any]:
     for k, v in evidence.items():
         try:
             import json
+
             json.dumps(v)
             safe_evidence[k] = v
         except (TypeError, ValueError):
@@ -63,6 +70,7 @@ def _finding_to_dict(finding: Any) -> dict[str, Any]:
 def _compute_overall_score(findings: list[Any]) -> int:
     """Compute a weighted overall score (0-100) from all findings."""
     from goose.core.scoring import compute_overall_score
+
     return compute_overall_score(findings)
 
 
@@ -123,8 +131,7 @@ def create_app() -> FastAPI:
     else:
         _session_token = _secrets.token_urlsafe(32)
         print(  # noqa: T201 — intentional console output at startup
-            f"\n  Goose session token: {_session_token}\n"
-            f"  (Set GOOSE_API_TOKEN env var to use a fixed token)\n"
+            f"\n  Goose session token: {_session_token}\n  (Set GOOSE_API_TOKEN env var to use a fixed token)\n"
         )
     # Store token in settings so verify_token() can read it
     settings.api_token = _session_token
@@ -146,6 +153,7 @@ def create_app() -> FastAPI:
         # StaticFiles would serve it without window.GOOSE_TOKEN, breaking auth.
         if request.url.path in ("/static/index.html", "/static/index.htm"):
             from fastapi.responses import RedirectResponse
+
             return RedirectResponse(url="/", status_code=302)
         response = await call_next(request)
         for header, value in _SECURITY_HEADERS.items():
@@ -172,6 +180,7 @@ def create_app() -> FastAPI:
     # CORS — explicit localhost-only policy (no allow_origins=["*"])
     # ------------------------------------------------------------------
     from fastapi.middleware.cors import CORSMiddleware
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -201,18 +210,22 @@ def create_app() -> FastAPI:
     # Case-oriented routes (Sprint 2+)
     # ------------------------------------------------------------------
     from goose.web.cases_api import router as cases_router
+
     app.include_router(cases_router, dependencies=[Depends(verify_token)])
 
     # Validation harness routes
     from goose.web.routes.validation import router as validation_router
+
     app.include_router(validation_router, dependencies=[Depends(verify_token)])
 
     # Profile + feature-gate routes
     from goose.web.routes.profiles import router as profiles_router
+
     app.include_router(profiles_router, dependencies=[Depends(verify_token)])
 
     # Quick Analysis (session-only triage flow)
     from goose.web.routes.quick_analysis import router as quick_analysis_router
+
     app.include_router(quick_analysis_router, dependencies=[Depends(verify_token)])
 
     # ------------------------------------------------------------------
@@ -229,6 +242,7 @@ def create_app() -> FastAPI:
     def _serve_spa(html_path: Path) -> Response:
         """Serve an SPA index.html with session token injected."""
         from fastapi.responses import HTMLResponse
+
         if not html_path.exists():
             raise HTTPException(status_code=404, detail="index.html not found")
         html = html_path.read_text(encoding="utf-8")
@@ -256,6 +270,7 @@ def create_app() -> FastAPI:
 
     # SPA catch-all — serves React index.html for all client-side routes
     if _use_react:
+
         @app.get("/{full_path:path}", include_in_schema=False)
         async def spa_catchall(full_path: str) -> Response:
             # Don't catch API routes or static assets
@@ -285,36 +300,36 @@ def create_app() -> FastAPI:
                 if not case_id:
                     continue
 
-                case_name = (
-                    getattr(case, "case_name", None)
-                    or getattr(case, "title", None)
-                    or case_id
-                )
+                case_name = getattr(case, "case_name", None) or getattr(case, "title", None) or case_id
                 profile = getattr(case, "profile", "default") or "default"
 
                 for run in case.analysis_runs:
-                    all_runs.append({
-                        "case_id": case_id,
-                        "case_name": case_name,
-                        "run_id": run.run_id,
-                        "profile": run.profile_id or profile,
-                        "started_at": run.started_at.isoformat(),
-                        "status": run.status,
-                        "findings_count": run.findings_count,
-                        "critical_count": run.critical_count,
-                        "warning_count": run.warning_count,
-                        "hypotheses_count": run.hypotheses_count,
-                        "engine_version": run.engine_version,
-                        "parser_name": run.parser_name,
-                    })
+                    all_runs.append(
+                        {
+                            "case_id": case_id,
+                            "case_name": case_name,
+                            "run_id": run.run_id,
+                            "profile": run.profile_id or profile,
+                            "started_at": run.started_at.isoformat(),
+                            "status": run.status,
+                            "findings_count": run.findings_count,
+                            "critical_count": run.critical_count,
+                            "warning_count": run.warning_count,
+                            "hypotheses_count": run.hypotheses_count,
+                            "engine_version": run.engine_version,
+                            "parser_name": run.parser_name,
+                        }
+                    )
 
             all_runs.sort(key=lambda r: r.get("started_at", ""), reverse=True)
-            return JSONResponse({
-                "ok": True,
-                "runs": all_runs[:limit],
-                "count": len(all_runs[:limit]),
-                "limit": limit,
-            })
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "runs": all_runs[:limit],
+                    "count": len(all_runs[:limit]),
+                    "limit": limit,
+                }
+            )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to list recent runs")
             raise HTTPException(status_code=500, detail="Internal server error") from exc
@@ -324,19 +339,22 @@ def create_app() -> FastAPI:
         """Return metadata for all discovered plugins."""
         try:
             from goose.plugins.registry import load_plugins
+
             plugins = load_plugins()
-            return JSONResponse({
-                "plugins": [
-                    {
-                        "name": p.name,
-                        "description": p.description,
-                        "version": p.version,
-                        "min_mode": p.min_mode,
-                    }
-                    for p in plugins
-                ],
-                "count": len(plugins),
-            })
+            return JSONResponse(
+                {
+                    "plugins": [
+                        {
+                            "name": p.name,
+                            "description": p.description,
+                            "version": p.version,
+                            "min_mode": p.min_mode,
+                        }
+                        for p in plugins
+                    ],
+                    "count": len(plugins),
+                }
+            )
         except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to list plugins")
             raise HTTPException(status_code=500, detail="Internal server error") from exc

@@ -61,24 +61,16 @@ def discover_pro_plugins() -> list[Plugin]:
     """
     plugins: list[Plugin] = []
     eps = entry_points()
-    group = (
-        eps.get(ENTRY_POINT_GROUP, [])
-        if isinstance(eps, dict)
-        else eps.select(group=ENTRY_POINT_GROUP)
-    )
+    group = eps.get(ENTRY_POINT_GROUP, []) if isinstance(eps, dict) else eps.select(group=ENTRY_POINT_GROUP)
     for ep in group:
         try:
             plugin_cls = ep.load()
             if isinstance(plugin_cls, type) and issubclass(plugin_cls, Plugin):
                 plugins.append(plugin_cls())
             else:
-                logger.debug(
-                    "Entry point %s did not resolve to a Plugin subclass — skipped.", ep.name
-                )
+                logger.debug("Entry point %s did not resolve to a Plugin subclass — skipped.", ep.name)
         except Exception as exc:  # noqa: BLE001
-            logger.debug(
-                "Failed to load entry-point plugin %s: %s — skipped.", ep.name, exc
-            )
+            logger.debug("Failed to load entry-point plugin %s: %s — skipped.", ep.name, exc)
     return plugins
 
 
@@ -94,6 +86,7 @@ def load_plugins() -> list[Plugin]:
     (registry insertion order) followed by Pro plugins (entry_point scan order).
     """
     from goose.plugins import get_all_plugins
+
     return list(get_all_plugins().values())
 
 

@@ -43,6 +43,7 @@ def fake_ulg() -> bytes:
 # POST /api/cases
 # ---------------------------------------------------------------------------
 
+
 class TestCreateCase:
     def test_create_returns_201(self, client: TestClient):
         res = client.post("/api/cases", json={"created_by": "test", "tags": [], "notes": ""})
@@ -68,6 +69,7 @@ class TestCreateCase:
 # ---------------------------------------------------------------------------
 # GET /api/cases
 # ---------------------------------------------------------------------------
+
 
 class TestListCases:
     def test_empty_list(self, client: TestClient):
@@ -97,6 +99,7 @@ class TestListCases:
 # GET /api/cases/{case_id}
 # ---------------------------------------------------------------------------
 
+
 class TestGetCase:
     def test_get_existing_case(self, client: TestClient):
         case_id = client.post("/api/cases", json={}).json()["case"]["case_id"]
@@ -119,6 +122,7 @@ class TestGetCase:
 # ---------------------------------------------------------------------------
 # POST /api/cases/{case_id}/evidence
 # ---------------------------------------------------------------------------
+
 
 class TestIngestEvidence:
     def test_upload_returns_201(self, client: TestClient, fake_ulg: bytes):
@@ -178,6 +182,7 @@ class TestIngestEvidence:
 # GET /api/cases/{case_id}/evidence
 # ---------------------------------------------------------------------------
 
+
 class TestListEvidence:
     def test_empty_evidence_list(self, client: TestClient):
         case_id = client.post("/api/cases", json={}).json()["case"]["case_id"]
@@ -192,6 +197,7 @@ class TestListEvidence:
 # ---------------------------------------------------------------------------
 # GET /api/cases/{case_id}/audit
 # ---------------------------------------------------------------------------
+
 
 class TestAuditLog:
     def test_audit_has_create_entry(self, client: TestClient):
@@ -222,6 +228,7 @@ class TestAuditLog:
 # PATCH /api/cases/{case_id}/status
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateStatus:
     def test_update_status(self, client: TestClient):
         case_id = client.post("/api/cases", json={}).json()["case"]["case_id"]
@@ -246,6 +253,7 @@ class TestUpdateStatus:
 # ---------------------------------------------------------------------------
 # POST /api/analyze — backward-compatibility shim
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyzeEndpointDeprecated:
     """POST /api/analyze was removed in Convergence Sprint 1.

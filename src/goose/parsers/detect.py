@@ -72,9 +72,7 @@ def register_parser(parser_instance: BaseParser) -> None:
         TypeError: If ``parser_instance`` is not a ``BaseParser`` instance.
     """
     if not isinstance(parser_instance, BaseParser):
-        raise TypeError(
-            f"register_parser() requires a BaseParser instance, got {type(parser_instance).__name__}"
-        )
+        raise TypeError(f"register_parser() requires a BaseParser instance, got {type(parser_instance).__name__}")
     _ALL_PARSERS.append(parser_instance)
     # Rebuild the implemented cache in-place
     _IMPLEMENTED_PARSERS.clear()
@@ -128,11 +126,7 @@ def parse_file(filepath: str | Path) -> ParseResult:
 
     # Completely unknown format
     diag = ParseDiagnostics.unsupported(ext)
-    diag.errors = [
-        f"Unknown file format '{ext}'. "
-        "Supported formats: .ulg (PX4 ULog). "
-        "Not yet implemented: .bin/.log (DataFlash), .tlog (MAVLink), .csv."
-    ]
+    diag.errors = [f"Unknown file format '{ext}'. Supported formats: .ulg (PX4 ULog). Not yet implemented: .bin/.log (DataFlash), .tlog (MAVLink), .csv."]
     return ParseResult.failure(diag)
 
 
@@ -144,10 +138,12 @@ def supported_formats() -> list[dict[str, object]]:
         if parser.format_name in seen:
             continue
         seen.add(parser.format_name)
-        result.append({
-            "format_name": parser.format_name,
-            "extensions": parser.file_extensions,
-            "implemented": parser.implemented,
-            "parser_class": type(parser).__name__,
-        })
+        result.append(
+            {
+                "format_name": parser.format_name,
+                "extensions": parser.file_extensions,
+                "implemented": parser.implemented,
+                "parser_class": type(parser).__name__,
+            }
+        )
     return result

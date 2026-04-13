@@ -33,8 +33,12 @@ class ExpectedParserBehavior:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> ExpectedParserBehavior:
         known = {
-            "should_succeed", "expected_format", "min_parser_confidence",
-            "expected_warnings", "expected_missing_streams", "expected_corruption",
+            "should_succeed",
+            "expected_format",
+            "min_parser_confidence",
+            "expected_warnings",
+            "expected_missing_streams",
+            "expected_corruption",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -91,12 +95,17 @@ class CorpusCase:
     def from_dict(cls, d: dict[str, Any]) -> CorpusCase:
         d = dict(d)
         d["expected_parser"] = ExpectedParserBehavior.from_dict(d.get("expected_parser", {}))
-        d["expected_analyzers"] = [
-            ExpectedAnalyzerBehavior.from_dict(a) for a in d.get("expected_analyzers", [])
-        ]
+        d["expected_analyzers"] = [ExpectedAnalyzerBehavior.from_dict(a) for a in d.get("expected_analyzers", [])]
         known = {
-            "corpus_id", "description", "category", "evidence_filename",
-            "expected_parser", "expected_analyzers", "notes", "active", "profile",
+            "corpus_id",
+            "description",
+            "category",
+            "evidence_filename",
+            "expected_parser",
+            "expected_analyzers",
+            "notes",
+            "active",
+            "profile",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 

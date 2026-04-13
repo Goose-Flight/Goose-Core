@@ -173,9 +173,7 @@ class TestULogMotorFailure:
     def test_metadata_complete(self, flight: Flight) -> None:
         assert flight.metadata.duration_sec > 0
         assert flight.metadata.firmware_version != ""
-        assert flight.metadata.vehicle_type in (
-            "quadcopter", "hexcopter", "octocopter", "fixedwing", "vtol"
-        )
+        assert flight.metadata.vehicle_type in ("quadcopter", "hexcopter", "octocopter", "fixedwing", "vtol")
 
     def test_position_data(self, flight: Flight) -> None:
         assert not flight.position.empty
@@ -209,10 +207,21 @@ class TestULogVibrationCrash:
     def test_all_dataframe_fields_have_timestamp(self, flight: Flight) -> None:
         """Every non-empty DataFrame should have a timestamp column."""
         df_names = [
-            "position", "position_setpoint", "velocity", "velocity_setpoint",
-            "attitude", "attitude_setpoint", "attitude_rate",
-            "attitude_rate_setpoint", "battery", "gps", "motors",
-            "vibration", "rc_input", "ekf", "cpu",
+            "position",
+            "position_setpoint",
+            "velocity",
+            "velocity_setpoint",
+            "attitude",
+            "attitude_setpoint",
+            "attitude_rate",
+            "attitude_rate_setpoint",
+            "battery",
+            "gps",
+            "motors",
+            "vibration",
+            "rc_input",
+            "ekf",
+            "cpu",
         ]
         for name in df_names:
             df: pd.DataFrame = getattr(flight, name)

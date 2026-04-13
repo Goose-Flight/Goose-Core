@@ -57,6 +57,7 @@ NORMAL_ULG = FIXTURE_DIR / "px4_normal_flight.ulg"
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def tmp_svc(tmp_path: Path) -> CaseService:
     return CaseService(base_dir=tmp_path / "cases")
@@ -102,6 +103,7 @@ def analyzed_case(client: TestClient, tmp_svc: CaseService) -> tuple[str, str]:
 # ===========================================================================
 # Class 1: TestWelcomeAndHealth
 # ===========================================================================
+
 
 class TestWelcomeAndHealth:
     """Basic health endpoints — confirm the app is wired up correctly."""
@@ -192,6 +194,7 @@ class TestWelcomeAndHealth:
 # Class 2: TestQuickAnalysisFlow
 # ===========================================================================
 
+
 class TestQuickAnalysisFlow:
     """Quick Analysis session-only triage flow (no persistent case created)."""
 
@@ -257,6 +260,7 @@ class TestQuickAnalysisFlow:
 # ===========================================================================
 # Class 3: TestInvestigationCaseFlow — THE GOLDEN PATH
 # ===========================================================================
+
 
 class TestInvestigationCaseFlow:
     """Full investigation case lifecycle from creation to analysis to findings retrieval."""
@@ -435,6 +439,7 @@ class TestInvestigationCaseFlow:
 # Class 4: TestChartEndpoints
 # ===========================================================================
 
+
 class TestChartEndpoints:
     """Chart time-series data endpoints."""
 
@@ -476,6 +481,7 @@ class TestChartEndpoints:
 # ===========================================================================
 # Class 5: TestExportFlow
 # ===========================================================================
+
 
 class TestExportFlow:
     """Export bundle creation and listing."""
@@ -556,6 +562,7 @@ class TestExportFlow:
 # ===========================================================================
 # Class 6: TestErrorAndEmptyStates
 # ===========================================================================
+
 
 class TestErrorAndEmptyStates:
     """Error handling and empty/missing resource states."""
@@ -670,6 +677,7 @@ class TestErrorAndEmptyStates:
 # Class 7: TestOpenRecentFlow
 # ===========================================================================
 
+
 class TestOpenRecentFlow:
     """Open Recent UX flow — /api/runs/recent returns sorted run list."""
 
@@ -727,6 +735,7 @@ class TestOpenRecentFlow:
 # ===========================================================================
 # Class 8: TestRunDetailEndpoints
 # ===========================================================================
+
 
 class TestRunDetailEndpoints:
     """Run-level detail endpoints."""

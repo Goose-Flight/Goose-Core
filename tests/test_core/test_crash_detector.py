@@ -44,13 +44,15 @@ def _make_flight(crashed: bool = False, **kwargs: object) -> Flight:
         n = 100
         timestamps = [float(i) for i in range(n)]
         altitudes = [50.0] * 90 + [50.0 - i * 6 for i in range(10)]
-        flight.position = pd.DataFrame({
-            "timestamp": timestamps,
-            "lat": [47.0] * n,
-            "lon": [8.0] * n,
-            "alt_msl": [400.0] * n,
-            "alt_rel": altitudes,
-        })
+        flight.position = pd.DataFrame(
+            {
+                "timestamp": timestamps,
+                "lat": [47.0] * n,
+                "lon": [8.0] * n,
+                "alt_msl": [400.0] * n,
+                "alt_rel": altitudes,
+            }
+        )
     return flight
 
 

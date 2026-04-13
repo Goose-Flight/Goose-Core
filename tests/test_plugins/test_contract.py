@@ -20,6 +20,7 @@ from goose.plugins.contract import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _empty_df() -> pd.DataFrame:
     return pd.DataFrame()
 
@@ -62,6 +63,7 @@ def _make_parse_diagnostics() -> ParseDiagnostics:
 # ---------------------------------------------------------------------------
 # PluginManifest serialization
 # ---------------------------------------------------------------------------
+
 
 class TestPluginManifest:
     def test_to_dict_roundtrip(self):
@@ -116,6 +118,7 @@ class TestPluginManifest:
 # PluginDiagnostics serialization
 # ---------------------------------------------------------------------------
 
+
 class TestPluginDiagnostics:
     def test_to_dict(self):
         pd_obj = PluginDiagnostics(
@@ -154,35 +157,27 @@ class TestPluginDiagnostics:
 # All 12 plugins have valid manifests
 # ---------------------------------------------------------------------------
 
+
 class TestAllPluginManifests:
     def test_all_plugins_have_manifests(self):
         from goose.plugins import PLUGIN_REGISTRY
 
         # 14 original plugins + 3 advanced analyzers (environment_conditions, damage_impact_classification, link_telemetry_health)
-        assert len(PLUGIN_REGISTRY) == 17, (
-            f"Expected 17 plugins, got {len(PLUGIN_REGISTRY)}: "
-            f"{list(PLUGIN_REGISTRY.keys())}"
-        )
+        assert len(PLUGIN_REGISTRY) == 17, f"Expected 17 plugins, got {len(PLUGIN_REGISTRY)}: {list(PLUGIN_REGISTRY.keys())}"
 
         for plugin_id, plugin in PLUGIN_REGISTRY.items():
             m = plugin.manifest
             assert m.plugin_id, f"Plugin {plugin_id} has empty plugin_id"
             assert m.name, f"Plugin {plugin_id} has empty name"
             assert m.version, f"Plugin {plugin_id} has empty version"
-            assert isinstance(m.category, PluginCategory), (
-                f"Plugin {plugin_id} has invalid category type"
-            )
-            assert isinstance(m.trust_state, PluginTrustState), (
-                f"Plugin {plugin_id} has invalid trust_state type"
-            )
+            assert isinstance(m.category, PluginCategory), f"Plugin {plugin_id} has invalid category type"
+            assert isinstance(m.trust_state, PluginTrustState), f"Plugin {plugin_id} has invalid trust_state type"
 
     def test_plugin_ids_match(self):
         from goose.plugins import PLUGIN_REGISTRY
 
         for plugin_id, plugin in PLUGIN_REGISTRY.items():
-            assert plugin.manifest.plugin_id == plugin_id, (
-                f"Registry key '{plugin_id}' != manifest plugin_id '{plugin.manifest.plugin_id}'"
-            )
+            assert plugin.manifest.plugin_id == plugin_id, f"Registry key '{plugin_id}' != manifest plugin_id '{plugin.manifest.plugin_id}'"
 
     def test_manifest_serialization_roundtrip(self):
         from goose.plugins import PLUGIN_REGISTRY
@@ -198,26 +193,33 @@ class TestAllPluginManifests:
 # forensic_analyze returns correct types
 # ---------------------------------------------------------------------------
 
+
 class TestForensicAnalyze:
     def test_analyze_returns_correct_types_with_data(self):
         """Test that forensic_analyze returns (list[ForensicFinding], PluginDiagnostics)."""
         from goose.plugins import PLUGIN_REGISTRY
 
         # Build a minimal flight with position data so crash_detection can run
-        pos = pd.DataFrame({
-            "timestamp": [float(i) for i in range(100)],
-            "lat": [47.0 + i * 0.0001 for i in range(100)],
-            "lon": [8.0 + i * 0.0001 for i in range(100)],
-            "alt_rel": [10.0] * 100,
-            "alt_msl": [500.0] * 100,
-        })
+        pos = pd.DataFrame(
+            {
+                "timestamp": [float(i) for i in range(100)],
+                "lat": [47.0 + i * 0.0001 for i in range(100)],
+                "lon": [8.0 + i * 0.0001 for i in range(100)],
+                "alt_rel": [10.0] * 100,
+                "alt_msl": [500.0] * 100,
+            }
+        )
         flight = _make_minimal_flight(position=pos)
         parse_diag = _make_parse_diagnostics()
 
         # Test with log_health (no required streams — always runs)
         plugin = PLUGIN_REGISTRY["log_health"]
         findings, diag = plugin.forensic_analyze(
-            flight, "EV-TEST-001", "RUN-TEST-001", {}, parse_diag,
+            flight,
+            "EV-TEST-001",
+            "RUN-TEST-001",
+            {},
+            parse_diag,
         )
 
         assert isinstance(findings, list)
@@ -227,9 +229,7 @@ class TestForensicAnalyze:
         assert diag.skipped is False
 
         for f in findings:
-            assert isinstance(f, ForensicFinding), (
-                f"Expected ForensicFinding, got {type(f)}"
-            )
+            assert isinstance(f, ForensicFinding), f"Expected ForensicFinding, got {type(f)}"
             assert f.confidence_scope == "finding_analysis"
             assert f.run_id == "RUN-TEST-001"
             assert len(f.evidence_references) > 0
@@ -245,7 +245,11 @@ class TestForensicAnalyze:
         parse_diag = _make_parse_diagnostics()
 
         findings, diag = plugin.forensic_analyze(
-            flight, "EV-TEST-002", "RUN-TEST-002", {}, parse_diag,
+            flight,
+            "EV-TEST-002",
+            "RUN-TEST-002",
+            {},
+            parse_diag,
         )
 
         assert findings == []
@@ -263,7 +267,11 @@ class TestForensicAnalyze:
         parse_diag = _make_parse_diagnostics()
 
         findings, diag = plugin.forensic_analyze(
-            flight, "EV-TEST-003", "RUN-TEST-003", {}, parse_diag,
+            flight,
+            "EV-TEST-003",
+            "RUN-TEST-003",
+            {},
+            parse_diag,
         )
 
         assert diag.skipped is True
@@ -278,7 +286,11 @@ class TestForensicAnalyze:
         parse_diag = _make_parse_diagnostics()
 
         findings, diag = plugin.forensic_analyze(
-            flight, "EV-TEST-004", "RUN-TEST-004", {}, parse_diag,
+            flight,
+            "EV-TEST-004",
+            "RUN-TEST-004",
+            {},
+            parse_diag,
         )
 
         assert diag.executed is True
@@ -296,35 +308,41 @@ class TestForensicAnalyze:
 
         for plugin_id, plugin in PLUGIN_REGISTRY.items():
             result = plugin.forensic_analyze(
-                flight, "EV-ALL", "RUN-ALL", {}, parse_diag,
+                flight,
+                "EV-ALL",
+                "RUN-ALL",
+                {},
+                parse_diag,
             )
             assert isinstance(result, tuple), f"{plugin_id} did not return tuple"
             assert len(result) == 2, f"{plugin_id} returned {len(result)}-tuple"
             findings, diag = result
             assert isinstance(findings, list), f"{plugin_id} findings is not a list"
-            assert isinstance(diag, PluginDiagnostics), (
-                f"{plugin_id} diag is not PluginDiagnostics"
-            )
+            assert isinstance(diag, PluginDiagnostics), f"{plugin_id} diag is not PluginDiagnostics"
 
 
 # ---------------------------------------------------------------------------
 # Registry access functions
 # ---------------------------------------------------------------------------
 
+
 class TestRegistryFunctions:
     def test_get_plugin_manifests(self):
         from goose.plugins import get_plugin_manifests
+
         manifests = get_plugin_manifests()
         assert len(manifests) == 17
         assert all(isinstance(m, PluginManifest) for m in manifests)
 
     def test_get_plugin(self):
         from goose.plugins import get_plugin
+
         p = get_plugin("crash_detection")
         assert p is not None
         assert p.manifest.plugin_id == "crash_detection"
 
     def test_get_plugin_missing(self):
         from goose.plugins import get_plugin
+
         p = get_plugin("nonexistent_plugin")
         assert p is None

@@ -41,22 +41,16 @@ def motor_failure_flight(motor_failure_path: Path) -> Flight:
 class TestVibrationNormalFlight:
     """Verify vibration levels correctly classified for normal flight."""
 
-    def test_produces_findings(
-        self, plugin: VibrationPlugin, normal_flight: Flight
-    ) -> None:
+    def test_produces_findings(self, plugin: VibrationPlugin, normal_flight: Flight) -> None:
         findings = plugin.analyze(normal_flight, {})
         assert len(findings) >= 1
 
-    def test_overall_classification_not_missing(
-        self, plugin: VibrationPlugin, normal_flight: Flight
-    ) -> None:
+    def test_overall_classification_not_missing(self, plugin: VibrationPlugin, normal_flight: Flight) -> None:
         findings = plugin.analyze(normal_flight, {})
         overall = findings[0]
         assert overall.severity in ("pass", "warning", "critical", "info")
 
-    def test_has_axis_evidence(
-        self, plugin: VibrationPlugin, normal_flight: Flight
-    ) -> None:
+    def test_has_axis_evidence(self, plugin: VibrationPlugin, normal_flight: Flight) -> None:
         findings = plugin.analyze(normal_flight, {})
         overall = findings[0]
         if overall.evidence:
@@ -72,22 +66,16 @@ class TestVibrationNormalFlight:
 class TestVibrationCrashFlight:
     """Verify vibration analysis runs on vibration_crash fixture."""
 
-    def test_produces_findings(
-        self, plugin: VibrationPlugin, vibration_crash_flight: Flight
-    ) -> None:
+    def test_produces_findings(self, plugin: VibrationPlugin, vibration_crash_flight: Flight) -> None:
         findings = plugin.analyze(vibration_crash_flight, {})
         assert len(findings) >= 1
 
-    def test_classification_valid(
-        self, plugin: VibrationPlugin, vibration_crash_flight: Flight
-    ) -> None:
+    def test_classification_valid(self, plugin: VibrationPlugin, vibration_crash_flight: Flight) -> None:
         findings = plugin.analyze(vibration_crash_flight, {})
         overall = findings[0]
         assert overall.severity in ("pass", "warning", "critical", "info")
 
-    def test_has_axis_evidence(
-        self, plugin: VibrationPlugin, vibration_crash_flight: Flight
-    ) -> None:
+    def test_has_axis_evidence(self, plugin: VibrationPlugin, vibration_crash_flight: Flight) -> None:
         findings = plugin.analyze(vibration_crash_flight, {})
         overall = findings[0]
         if overall.evidence and "axes" in overall.evidence:
@@ -99,15 +87,11 @@ class TestVibrationCrashFlight:
 class TestVibrationMotorFailure:
     """Verify vibration analysis handles motor failure logs."""
 
-    def test_produces_findings(
-        self, plugin: VibrationPlugin, motor_failure_flight: Flight
-    ) -> None:
+    def test_produces_findings(self, plugin: VibrationPlugin, motor_failure_flight: Flight) -> None:
         findings = plugin.analyze(motor_failure_flight, {})
         assert len(findings) >= 1
 
-    def test_returns_finding_objects(
-        self, plugin: VibrationPlugin, motor_failure_flight: Flight
-    ) -> None:
+    def test_returns_finding_objects(self, plugin: VibrationPlugin, motor_failure_flight: Flight) -> None:
         findings = plugin.analyze(motor_failure_flight, {})
         assert all(isinstance(f, Finding) for f in findings)
 
@@ -120,14 +104,10 @@ class TestVibrationPluginInterface:
         assert plugin.version
         assert plugin.description
 
-    def test_applicable_for_manual_mode(
-        self, plugin: VibrationPlugin, normal_flight: Flight
-    ) -> None:
+    def test_applicable_for_manual_mode(self, plugin: VibrationPlugin, normal_flight: Flight) -> None:
         assert plugin.applicable(normal_flight)
 
-    def test_rms_and_peak_are_positive(
-        self, plugin: VibrationPlugin, normal_flight: Flight
-    ) -> None:
+    def test_rms_and_peak_are_positive(self, plugin: VibrationPlugin, normal_flight: Flight) -> None:
         findings = plugin.analyze(normal_flight, {})
         overall = findings[0]
         if overall.evidence and "axes" in overall.evidence:

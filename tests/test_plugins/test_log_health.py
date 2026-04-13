@@ -31,10 +31,12 @@ def _make_metadata(duration: float = 60.0) -> FlightMetadata:
 def _make_dense_stream(n: int = 600, duration: float = 60.0) -> pd.DataFrame:
     """Create a dense DataFrame with timestamp and dummy data."""
     ts = np.linspace(0, duration, n)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "value": np.random.randn(n),
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "value": np.random.randn(n),
+        }
+    )
 
 
 def _make_flight_all_streams() -> Flight:
@@ -97,12 +99,14 @@ def _make_flight_with_dropout() -> Flight:
     ts_after = np.linspace(30, 60, 300)
     ts = np.concatenate([ts_before, ts_after])
 
-    pos = pd.DataFrame({
-        "timestamp": ts,
-        "lat": 47.3 + np.random.randn(len(ts)) * 1e-6,
-        "lon": 8.5 + np.random.randn(len(ts)) * 1e-6,
-        "alt_rel": 50.0 + np.random.randn(len(ts)) * 0.1,
-    })
+    pos = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": 47.3 + np.random.randn(len(ts)) * 1e-6,
+            "lon": 8.5 + np.random.randn(len(ts)) * 1e-6,
+            "alt_rel": 50.0 + np.random.randn(len(ts)) * 0.1,
+        }
+    )
     att = _make_dense_stream(600, duration)
     bat = _make_dense_stream(60, duration)
     gps = _make_dense_stream(60, duration)
@@ -290,9 +294,7 @@ class TestLogHealthDuration:
         assert dur_findings, "Expected a duration finding"
         assert dur_findings[0].severity == "pass"
 
-    def test_mismatch_duration_is_warning_or_critical(
-        self, plugin: LogHealthPlugin
-    ) -> None:
+    def test_mismatch_duration_is_warning_or_critical(self, plugin: LogHealthPlugin) -> None:
         flight = _make_flight_duration_mismatch()
         findings = plugin.analyze(flight, {})
         dur_findings = [f for f in findings if "duration" in f.title.lower()]

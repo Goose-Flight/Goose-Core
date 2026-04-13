@@ -60,6 +60,7 @@ def doctor(fix: bool) -> None:
     console.print("  Plugins:", style="bold")
     try:
         from goose.plugins.registry import load_plugins
+
         found = load_plugins()
         console.print(f"  [green]OK[/green] {len(found)} plugin(s) discovered")
         for p in found:
@@ -85,6 +86,7 @@ def doctor(fix: bool) -> None:
         if fix:
             console.print("  Attempting auto-fix...")
             import subprocess
+
             pip_modules = [m for m in issues if m not in ("plugin-discovery", "ulog-parser")]
             if pip_modules:
                 subprocess.check_call([sys.executable, "-m", "pip", "install"] + pip_modules)

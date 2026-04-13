@@ -60,6 +60,7 @@ def _sanitize(obj: Any) -> Any:
         return [_sanitize(v) for v in obj]
     return obj
 
+
 router = APIRouter(tags=["quick_analysis"])
 
 
@@ -111,9 +112,7 @@ async def quick_analysis(
                 detail=f"File exceeds maximum upload size of {settings.max_upload_mb} MiB",
             )
 
-        with tempfile.NamedTemporaryFile(
-            prefix="goose_qa_", suffix=suffix, delete=False
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(prefix="goose_qa_", suffix=suffix, delete=False) as tmp:
             tmp.write(content)
             tmp_path = Path(tmp.name)
 
@@ -127,17 +126,13 @@ async def quick_analysis(
             ) from exc
 
         if parse_result is None or not parse_result.success or parse_result.flight is None:
-            errors = (
-                parse_result.diagnostics.errors if parse_result is not None else ["parser returned None"]
-            )
+            errors = parse_result.diagnostics.errors if parse_result is not None else ["parser returned None"]
             raise HTTPException(  # noqa: TRY301
                 status_code=422,
                 detail={
                     "message": f"Could not parse '{file.filename}'.",
                     "errors": errors,
-                    "supported": (
-                        parse_result.diagnostics.supported if parse_result else False
-                    ),
+                    "supported": (parse_result.diagnostics.supported if parse_result else False),
                 },
             )
 
@@ -149,16 +144,14 @@ async def quick_analysis(
 
         available_ids = {p.manifest.plugin_id for p in PLUGIN_REGISTRY.values()}
         wanted_ids: list[str] = []
-        for pid in (cfg.default_plugins or []):
+        for pid in cfg.default_plugins or []:
             if pid in available_ids:
                 wanted_ids.append(pid)
         if not wanted_ids:
             # Advanced profile or unknown plugin_ids — run everything registered.
             wanted_ids = list(available_ids)
 
-        plugins_to_run = [
-            PLUGIN_REGISTRY[pid] for pid in wanted_ids if pid in PLUGIN_REGISTRY
-        ]
+        plugins_to_run = [PLUGIN_REGISTRY[pid] for pid in wanted_ids if pid in PLUGIN_REGISTRY]
 
         # Execute plugins. Quick Analysis uses a synthetic evidence_id since
         # no real EvidenceItem exists; this keeps the forensic contract intact
@@ -173,7 +166,11 @@ async def quick_analysis(
             plugin_versions[plugin.name] = getattr(plugin, "version", "unknown")
             try:
                 ff_list, _p_diag = plugin.forensic_analyze(
-                    flight, synthetic_evidence_id, qa_id, {}, parse_result.diagnostics,
+                    flight,
+                    synthetic_evidence_id,
+                    qa_id,
+                    {},
+                    parse_result.diagnostics,
                 )
                 forensic_findings.extend(ff_list)
                 thin = plugin.analyze(flight, {})
@@ -189,7 +186,9 @@ async def quick_analysis(
 
         overall_score = compute_overall_score(thin_findings)
         hypotheses = generate_hypotheses(
-            forensic_findings, run_id=qa_id, parse_diag=parse_result.diagnostics,
+            forensic_findings,
+            run_id=qa_id,
+            parse_diag=parse_result.diagnostics,
         )
         signal_quality = build_signal_quality(parse_result.diagnostics)
         timeline_events = build_full_timeline(flight, forensic_findings, qa_id)
@@ -219,59 +218,59 @@ async def quick_analysis(
         params_sorted = dict(sorted(flight.parameters.items())[:500])
 
         # Flight modes used
-        modes_used = list(dict.fromkeys(
-            [mc.to_mode for mc in flight.mode_changes if mc.to_mode]
-        ))
+        modes_used = list(dict.fromkeys([mc.to_mode for mc in flight.mode_changes if mc.to_mode]))
 
         completed_at = datetime.now()
 
-        payload = _sanitize({
-            "ok": True,
-            "quick_analysis_id": qa_id,
-            "profile": cfg.to_dict(),
-            "engine_version": __version__,
-            "started_at": started_at.isoformat(),
-            "completed_at": completed_at.isoformat(),
-            "persisted": False,
-            "overall_score": overall_score,
-            "metadata": {
-                "filename": file.filename,
-                "autopilot": meta.autopilot,
-                "vehicle_type": meta.vehicle_type,
-                "firmware_version": meta.firmware_version,
-                "frame_type": meta.frame_type,
-                "hardware": meta.hardware,
-                "motor_count": meta.motor_count,
-                "log_format": meta.log_format,
-                "duration_sec": round(meta.duration_sec, 1),
-                "start_time_utc": meta.start_time_utc.isoformat() if meta.start_time_utc else None,
-                "primary_mode": flight.primary_mode,
-                "modes_used": modes_used,
-                "crashed": flight.crashed,
-                "crash_confidence": flight.crash_confidence,
-                "crash_signals": flight.crash_signals,
-            },
-            "summary": {
-                "total_findings": len(forensic_findings),
-                "by_severity": findings_by_severity,
-                "plugins_run": len(plugins_to_run),
-                "plugin_errors": plugin_errors,
-                "hypotheses_count": len(hypotheses),
-                "phases_count": len(phases_out),
-                "parameters_count": len(flight.parameters),
-                "events_count": len(flight.events),
-            },
-            "findings": [f.to_dict() for f in forensic_findings],
-            "hypotheses": [h.to_dict() for h in hypotheses],
-            "signal_quality": [sq.to_dict() for sq in signal_quality],
-            "timeline": [e.to_dict() for e in timeline_events],
-            "phases": phases_out,
-            "parameters": params_sorted,
-            "timeseries": timeseries,
-            "flight_path": flight_path,
-            "setpoint_path": setpoint_path,
-            "parse_diagnostics": parse_result.diagnostics.to_dict(),
-        })
+        payload = _sanitize(
+            {
+                "ok": True,
+                "quick_analysis_id": qa_id,
+                "profile": cfg.to_dict(),
+                "engine_version": __version__,
+                "started_at": started_at.isoformat(),
+                "completed_at": completed_at.isoformat(),
+                "persisted": False,
+                "overall_score": overall_score,
+                "metadata": {
+                    "filename": file.filename,
+                    "autopilot": meta.autopilot,
+                    "vehicle_type": meta.vehicle_type,
+                    "firmware_version": meta.firmware_version,
+                    "frame_type": meta.frame_type,
+                    "hardware": meta.hardware,
+                    "motor_count": meta.motor_count,
+                    "log_format": meta.log_format,
+                    "duration_sec": round(meta.duration_sec, 1),
+                    "start_time_utc": meta.start_time_utc.isoformat() if meta.start_time_utc else None,
+                    "primary_mode": flight.primary_mode,
+                    "modes_used": modes_used,
+                    "crashed": flight.crashed,
+                    "crash_confidence": flight.crash_confidence,
+                    "crash_signals": flight.crash_signals,
+                },
+                "summary": {
+                    "total_findings": len(forensic_findings),
+                    "by_severity": findings_by_severity,
+                    "plugins_run": len(plugins_to_run),
+                    "plugin_errors": plugin_errors,
+                    "hypotheses_count": len(hypotheses),
+                    "phases_count": len(phases_out),
+                    "parameters_count": len(flight.parameters),
+                    "events_count": len(flight.events),
+                },
+                "findings": [f.to_dict() for f in forensic_findings],
+                "hypotheses": [h.to_dict() for h in hypotheses],
+                "signal_quality": [sq.to_dict() for sq in signal_quality],
+                "timeline": [e.to_dict() for e in timeline_events],
+                "phases": phases_out,
+                "parameters": params_sorted,
+                "timeseries": timeseries,
+                "flight_path": flight_path,
+                "setpoint_path": setpoint_path,
+                "parse_diagnostics": parse_result.diagnostics.to_dict(),
+            }
+        )
         return JSONResponse(payload)
     except HTTPException:
         raise
@@ -310,6 +309,7 @@ async def save_quick_analysis_as_case(
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.create_case(created_by=created_by, tags=[], notes=notes)
@@ -329,10 +329,13 @@ async def save_quick_analysis_as_case(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     # Return enough for the GUI to pivot into the case view.
-    return JSONResponse({
-        "ok": True,
-        "case_id": case.case_id,
-        "profile": cfg.profile_id,
-        "evidence_id": ev.evidence_id,
-        "message": "Case created. Call POST /api/cases/{case_id}/analyze to run the full pipeline.",
-    }, status_code=201)
+    return JSONResponse(
+        {
+            "ok": True,
+            "case_id": case.case_id,
+            "profile": cfg.profile_id,
+            "evidence_id": ev.evidence_id,
+            "message": "Case created. Call POST /api/cases/{case_id}/analyze to run the full pipeline.",
+        },
+        status_code=201,
+    )

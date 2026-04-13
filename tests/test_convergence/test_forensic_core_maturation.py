@@ -28,6 +28,7 @@ from goose.forensics.canonical import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_metadata(**overrides: Any) -> FlightMetadata:
     defaults = dict(
         source_file="test.ulg",
@@ -56,13 +57,15 @@ def _make_crash_flight() -> Flight:
     # Altitude: steady at 50m for 80% of flight, then sharp drop
     altitudes = [50.0] * 160 + [50.0 - i * 12.0 for i in range(40)]
 
-    flight.position = pd.DataFrame({
-        "timestamp": timestamps,
-        "lat": [47.0] * n,
-        "lon": [8.0] * n,
-        "alt_msl": [450.0] * n,
-        "alt_rel": altitudes,
-    })
+    flight.position = pd.DataFrame(
+        {
+            "timestamp": timestamps,
+            "lat": [47.0] * n,
+            "lon": [8.0] * n,
+            "alt_msl": [450.0] * n,
+            "alt_rel": altitudes,
+        }
+    )
 
     # Vibration with a high-g spike near end (impact signature)
     vib_n = 200
@@ -77,12 +80,14 @@ def _make_crash_flight() -> Flight:
         accel_y[i] = 50.0
         accel_z[i] = 50.0
 
-    flight.vibration = pd.DataFrame({
-        "timestamp": vib_ts,
-        "accel_x": accel_x,
-        "accel_y": accel_y,
-        "accel_z": accel_z,
-    })
+    flight.vibration = pd.DataFrame(
+        {
+            "timestamp": vib_ts,
+            "accel_x": accel_x,
+            "accel_y": accel_y,
+            "accel_z": accel_z,
+        }
+    )
 
     return flight
 
@@ -105,12 +110,14 @@ def _make_vibration_flight(bad: bool = True) -> Flight:
         accel_y = [1.5] * n
         accel_z = [9.81] * n
 
-    flight.vibration = pd.DataFrame({
-        "timestamp": timestamps,
-        "accel_x": accel_x,
-        "accel_y": accel_y,
-        "accel_z": accel_z,
-    })
+    flight.vibration = pd.DataFrame(
+        {
+            "timestamp": timestamps,
+            "accel_x": accel_x,
+            "accel_y": accel_y,
+            "accel_z": accel_z,
+        }
+    )
 
     return flight
 
@@ -131,9 +138,7 @@ def _make_forensic_finding(
         severity=severity,
         score=50,
         confidence=0.5,
-        evidence_references=[
-            EvidenceReference(evidence_id="EV-001", stream_name="test")
-        ],
+        evidence_references=[EvidenceReference(evidence_id="EV-001", stream_name="test")],
         start_time=start_time,
         end_time=end_time,
     )
@@ -143,8 +148,8 @@ def _make_forensic_finding(
 # A1: Native ForensicFinding emission — crash_detection
 # ---------------------------------------------------------------------------
 
-class TestCrashDetectionNativeForensicEmission:
 
+class TestCrashDetectionNativeForensicEmission:
     def test_crash_detection_native_forensic_emission(self):
         """forensic_analyze_native() should return ForensicFinding with non-empty assumptions
         and non-None start_time/end_time when crash signals are detected."""
@@ -168,9 +173,7 @@ class TestCrashDetectionNativeForensicEmission:
 
         # The primary crash finding
         crash_finding = next(
-            (f for f in findings if "crash" in f.title.lower() and f.severity in (
-                FindingSeverity.CRITICAL, FindingSeverity.WARNING
-            )),
+            (f for f in findings if "crash" in f.title.lower() and f.severity in (FindingSeverity.CRITICAL, FindingSeverity.WARNING)),
             None,
         )
         assert crash_finding is not None, "Expected a crash finding with CRITICAL or WARNING severity"
@@ -244,17 +247,15 @@ class TestCrashDetectionNativeForensicEmission:
         )
         assert crash_finding is not None
         # Native emission sets assumptions; bridge path leaves them empty
-        assert len(crash_finding.assumptions) > 0, (
-            "Native dispatch should produce non-empty assumptions"
-        )
+        assert len(crash_finding.assumptions) > 0, "Native dispatch should produce non-empty assumptions"
 
 
 # ---------------------------------------------------------------------------
 # A1: Native ForensicFinding emission — vibration
 # ---------------------------------------------------------------------------
 
-class TestVibrationNativeForensicEmission:
 
+class TestVibrationNativeForensicEmission:
     def test_vibration_native_forensic_emission(self):
         """forensic_analyze_native() for vibration returns ForensicFinding with
         non-None start_time/end_time from the vibration window."""
@@ -347,10 +348,11 @@ class TestVibrationNativeForensicEmission:
 # A2: Evidence timestamp enrichment
 # ---------------------------------------------------------------------------
 
-class TestLiftFindingUsesTimestamps:
 
+class TestLiftFindingUsesTimestamps:
     def _make_evidence_item(self) -> Any:
         from goose.forensics.models import EvidenceItem
+
         return EvidenceItem(
             evidence_id="EV-LIFT-001",
             filename="test.ulg",
@@ -431,8 +433,8 @@ class TestLiftFindingUsesTimestamps:
 # A3: Replay diff summary descriptiveness
 # ---------------------------------------------------------------------------
 
-class TestReplayDiffSummaryDescriptive:
 
+class TestReplayDiffSummaryDescriptive:
     def _make_run_comparison(
         self,
         findings_a: list[dict[str, Any]],
@@ -475,14 +477,8 @@ class TestReplayDiffSummaryDescriptive:
         elif severity_improvements:
             risk_assessment = "improvement"
 
-        added_titles = [
-            next((f.get("title", fid) for f in findings_b if f.get("finding_id", f.get("title")) == fid), fid)
-            for fid in added
-        ]
-        removed_titles = [
-            next((f.get("title", fid) for f in findings_a if f.get("finding_id", f.get("title")) == fid), fid)
-            for fid in removed
-        ]
+        added_titles = [next((f.get("title", fid) for f in findings_b if f.get("finding_id", f.get("title")) == fid), fid) for fid in added]
+        removed_titles = [next((f.get("title", fid) for f in findings_a if f.get("finding_id", f.get("title")) == fid), fid) for fid in removed]
 
         parts: list[str] = []
         if severity_escalations:
@@ -506,18 +502,22 @@ class TestReplayDiffSummaryDescriptive:
 
     def test_summary_mentions_finding_title_on_severity_change(self):
         """When severity escalates, summary must mention the finding title."""
-        findings_a = [{
-            "finding_id": "FND-AAAA0001",
-            "title": "Crash detected: unknown",
-            "severity": "warning",
-            "confidence": 0.4,
-        }]
-        findings_b = [{
-            "finding_id": "FND-AAAA0001",
-            "title": "Crash detected: unknown",
-            "severity": "critical",
-            "confidence": 0.8,
-        }]
+        findings_a = [
+            {
+                "finding_id": "FND-AAAA0001",
+                "title": "Crash detected: unknown",
+                "severity": "warning",
+                "confidence": 0.4,
+            }
+        ]
+        findings_b = [
+            {
+                "finding_id": "FND-AAAA0001",
+                "title": "Crash detected: unknown",
+                "severity": "critical",
+                "confidence": 0.8,
+            }
+        ]
 
         comparison = self._make_run_comparison(findings_a, findings_b)
 
@@ -529,63 +529,73 @@ class TestReplayDiffSummaryDescriptive:
     def test_summary_mentions_added_finding_title(self):
         """When a new finding is added, its title should appear in the summary."""
         findings_a: list[dict[str, Any]] = []
-        findings_b = [{
-            "finding_id": "FND-NEW00001",
-            "title": "Excessive vibration detected",
-            "severity": "critical",
-            "confidence": 0.9,
-        }]
+        findings_b = [
+            {
+                "finding_id": "FND-NEW00001",
+                "title": "Excessive vibration detected",
+                "severity": "critical",
+                "confidence": 0.9,
+            }
+        ]
 
         comparison = self._make_run_comparison(findings_a, findings_b)
 
-        assert "Excessive vibration detected" in comparison.summary, (
-            f"Added finding title must appear in summary; got: {comparison.summary!r}"
-        )
+        assert "Excessive vibration detected" in comparison.summary, f"Added finding title must appear in summary; got: {comparison.summary!r}"
 
     def test_risk_assessment_regression_when_severity_escalates(self):
         """risk_assessment must be 'regression' when finding severity increases."""
-        findings_a = [{
-            "finding_id": "FND-RISK0001",
-            "title": "Motor anomaly",
-            "severity": "info",
-            "confidence": 0.3,
-        }]
-        findings_b = [{
-            "finding_id": "FND-RISK0001",
-            "title": "Motor anomaly",
-            "severity": "critical",
-            "confidence": 0.9,
-        }]
+        findings_a = [
+            {
+                "finding_id": "FND-RISK0001",
+                "title": "Motor anomaly",
+                "severity": "info",
+                "confidence": 0.3,
+            }
+        ]
+        findings_b = [
+            {
+                "finding_id": "FND-RISK0001",
+                "title": "Motor anomaly",
+                "severity": "critical",
+                "confidence": 0.9,
+            }
+        ]
 
         comparison = self._make_run_comparison(findings_a, findings_b)
         assert comparison.risk_assessment == "regression"
 
     def test_risk_assessment_improvement_when_severity_decreases(self):
         """risk_assessment must be 'improvement' when finding severity decreases."""
-        findings_a = [{
-            "finding_id": "FND-IMPR0001",
-            "title": "High vibration",
-            "severity": "critical",
-            "confidence": 0.9,
-        }]
-        findings_b = [{
-            "finding_id": "FND-IMPR0001",
-            "title": "High vibration",
-            "severity": "warning",
-            "confidence": 0.5,
-        }]
+        findings_a = [
+            {
+                "finding_id": "FND-IMPR0001",
+                "title": "High vibration",
+                "severity": "critical",
+                "confidence": 0.9,
+            }
+        ]
+        findings_b = [
+            {
+                "finding_id": "FND-IMPR0001",
+                "title": "High vibration",
+                "severity": "warning",
+                "confidence": 0.5,
+            }
+        ]
 
         comparison = self._make_run_comparison(findings_a, findings_b)
         assert comparison.risk_assessment == "improvement"
 
     def test_risk_assessment_stable_when_no_changes(self):
         """risk_assessment must be 'stable' when no differences found."""
-        findings = [{
-            "finding_id": "FND-SAME0001",
-            "title": "No crash detected",
-            "severity": "pass",
-            "confidence": 1.0,
-        }]
+        findings = [
+            {
+                "finding_id": "FND-SAME0001",
+                "title": "No crash detected",
+                "severity": "pass",
+                "confidence": 1.0,
+            }
+        ]
 
         comparison = self._make_run_comparison(findings, findings)
         assert comparison.risk_assessment == "stable"
@@ -611,6 +621,7 @@ class TestReplayDiffSummaryDescriptive:
 # E1: Case completeness endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestCaseCompletenessEndpoint:
     """Integration tests for GET /api/cases/{case_id}/completeness."""
 
@@ -618,6 +629,7 @@ class TestCaseCompletenessEndpoint:
         from fastapi.testclient import TestClient
 
         from goose.web.app import create_app
+
         return TestClient(create_app(), raise_server_exceptions=False)
 
     def _create_case(self, client, profile: str = "default") -> str:
@@ -660,9 +672,7 @@ class TestCaseCompletenessEndpoint:
         body = resp.json()
 
         # Empty case: no evidence, no analysis, no attachments, etc.
-        assert body["completeness_score"] == 0, (
-            f"Empty case should score 0; got {body['completeness_score']}"
-        )
+        assert body["completeness_score"] == 0, f"Empty case should score 0; got {body['completeness_score']}"
 
     def test_case_completeness_404_for_unknown_case(self):
         client = self._make_client()
@@ -703,6 +713,7 @@ class TestCaseCompletenessEndpoint:
 # ---------------------------------------------------------------------------
 # E1: Score increases after evidence/analysis
 # ---------------------------------------------------------------------------
+
 
 class TestCompletenessScoreIncreasesAfterAnalysis:
     """Verify that score increases when evidence is present."""
@@ -756,6 +767,7 @@ class TestCompletenessScoreIncreasesAfterAnalysis:
 # E2: Multi-run comparison GET endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestMultiRunCompareEndpoint:
     """Smoke tests for GET /api/cases/{case_id}/runs/compare."""
 
@@ -763,6 +775,7 @@ class TestMultiRunCompareEndpoint:
         from fastapi.testclient import TestClient
 
         from goose.web.app import create_app
+
         return TestClient(create_app(), raise_server_exceptions=False)
 
     def _create_case(self, client) -> str:

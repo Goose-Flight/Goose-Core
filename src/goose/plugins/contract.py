@@ -43,6 +43,7 @@ class PluginCategory(str, Enum):
     MISSION_RULES   — mission phase checks, operator action sequencing
     REPORTING       — report generation (not currently used by analyzer plugins)
     """
+
     HEALTH = "health"
     CRASH = "crash"
     FLIGHT_DYNAMICS = "flight_dynamics"
@@ -68,6 +69,7 @@ class PluginTrustState(str, Enum):
     ENTERPRISE_TRUSTED — signed and verified against an enterprise key store
     BLOCKED           — explicitly blocked; plugin will not execute
     """
+
     BUILTIN_TRUSTED = "builtin_trusted"
     LOCAL_UNSIGNED = "local_unsigned"
     LOCAL_SIGNED = "local_signed"
@@ -211,5 +213,4 @@ class AnalyzerPlugin(Protocol):
         run_id: str,
         config: dict[str, Any],
         parse_diagnostics: ParseDiagnostics,
-    ) -> tuple[list[ForensicFinding], PluginDiagnostics]:
-        ...
+    ) -> tuple[list[ForensicFinding], PluginDiagnostics]: ...

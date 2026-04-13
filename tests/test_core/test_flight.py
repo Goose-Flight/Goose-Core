@@ -118,13 +118,15 @@ class TestFlight:
         alt = np.concatenate([np.full(90, 50.0), np.linspace(50.0, 0.0, 10)])
         flight = Flight(
             metadata=_make_metadata(),
-            position=pd.DataFrame({
-                "timestamp": np.linspace(0, 100, n),
-                "lat": np.zeros(n),
-                "lon": np.zeros(n),
-                "alt_msl": alt,
-                "alt_rel": alt,
-            }),
+            position=pd.DataFrame(
+                {
+                    "timestamp": np.linspace(0, 100, n),
+                    "lat": np.zeros(n),
+                    "lon": np.zeros(n),
+                    "alt_msl": alt,
+                    "alt_rel": alt,
+                }
+            ),
         )
         assert flight.crashed is True
 
@@ -135,12 +137,14 @@ class TestFlight:
         alt = np.full(n, 50.0)
         flight = Flight(
             metadata=_make_metadata(),
-            position=pd.DataFrame({
-                "timestamp": np.linspace(0, 100, n),
-                "lat": np.zeros(n),
-                "lon": np.zeros(n),
-                "alt_msl": alt,
-                "alt_rel": alt,
-            }),
+            position=pd.DataFrame(
+                {
+                    "timestamp": np.linspace(0, 100, n),
+                    "lat": np.zeros(n),
+                    "lon": np.zeros(n),
+                    "alt_msl": alt,
+                    "alt_rel": alt,
+                }
+            ),
         )
         assert flight.crashed is False

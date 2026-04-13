@@ -32,12 +32,14 @@ def _make_flight_no_setpoints() -> Flight:
     """Flight with no position setpoints."""
     n = 100
     ts = np.linspace(0, 60, n)
-    pos = pd.DataFrame({
-        "timestamp": ts,
-        "lat": 47.3 + np.random.randn(n) * 1e-5,
-        "lon": 8.5 + np.random.randn(n) * 1e-5,
-        "alt_rel": 50.0 + np.random.randn(n) * 0.1,
-    })
+    pos = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": 47.3 + np.random.randn(n) * 1e-5,
+            "lon": 8.5 + np.random.randn(n) * 1e-5,
+            "alt_rel": 50.0 + np.random.randn(n) * 0.1,
+        }
+    )
     return Flight(
         metadata=_make_metadata(),
         position=pos,
@@ -54,18 +56,22 @@ def _make_flight_good_tracking() -> Flight:
     alt_base = 50.0 + np.zeros(n)
 
     # Small noise so error is well below 3m
-    pos = pd.DataFrame({
-        "timestamp": ts,
-        "lat": lat_base + np.random.randn(n) * 1e-6,
-        "lon": lon_base + np.random.randn(n) * 1e-6,
-        "alt_rel": alt_base + np.random.randn(n) * 0.1,
-    })
-    sp = pd.DataFrame({
-        "timestamp": ts,
-        "lat": lat_base,
-        "lon": lon_base,
-        "alt_rel": alt_base,
-    })
+    pos = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": lat_base + np.random.randn(n) * 1e-6,
+            "lon": lon_base + np.random.randn(n) * 1e-6,
+            "alt_rel": alt_base + np.random.randn(n) * 0.1,
+        }
+    )
+    sp = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": lat_base,
+            "lon": lon_base,
+            "alt_rel": alt_base,
+        }
+    )
     return Flight(
         metadata=_make_metadata(),
         position=pos,
@@ -83,18 +89,22 @@ def _make_flight_poor_tracking() -> Flight:
     alt_base = 50.0 + np.zeros(n)
 
     # Offset actual position by ~0.001 degrees lat ≈ 111m — clearly critical
-    pos = pd.DataFrame({
-        "timestamp": ts,
-        "lat": lat_base + 0.001,
-        "lon": lon_base,
-        "alt_rel": alt_base,
-    })
-    sp = pd.DataFrame({
-        "timestamp": ts,
-        "lat": lat_base,
-        "lon": lon_base,
-        "alt_rel": alt_base,
-    })
+    pos = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": lat_base + 0.001,
+            "lon": lon_base,
+            "alt_rel": alt_base,
+        }
+    )
+    sp = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": lat_base,
+            "lon": lon_base,
+            "alt_rel": alt_base,
+        }
+    )
     return Flight(
         metadata=_make_metadata(),
         position=pos,
@@ -112,18 +122,22 @@ def _make_flight_warning_tracking() -> Flight:
     alt_base = 50.0 + np.zeros(n)
 
     # ~5m offset (0.0001 deg ≈ 11m, use smaller value for ~5m)
-    pos = pd.DataFrame({
-        "timestamp": ts,
-        "lat": lat_base + 0.00005,  # ~5.5m
-        "lon": lon_base,
-        "alt_rel": alt_base,
-    })
-    sp = pd.DataFrame({
-        "timestamp": ts,
-        "lat": lat_base,
-        "lon": lon_base,
-        "alt_rel": alt_base,
-    })
+    pos = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": lat_base + 0.00005,  # ~5.5m
+            "lon": lon_base,
+            "alt_rel": alt_base,
+        }
+    )
+    sp = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": lat_base,
+            "lon": lon_base,
+            "alt_rel": alt_base,
+        }
+    )
     return Flight(
         metadata=_make_metadata(),
         position=pos,
@@ -189,9 +203,7 @@ class TestPositionTrackingNoSetpoints:
         assert findings[0].severity == "info"
         assert findings[0].score == 50
 
-    def test_info_finding_title_mentions_setpoint(
-        self, plugin: PositionTrackingPlugin
-    ) -> None:
+    def test_info_finding_title_mentions_setpoint(self, plugin: PositionTrackingPlugin) -> None:
         flight = _make_flight_no_setpoints()
         findings = plugin.analyze(flight, {})
         assert "setpoint" in findings[0].title.lower()

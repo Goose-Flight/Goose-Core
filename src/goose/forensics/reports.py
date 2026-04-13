@@ -42,11 +42,12 @@ from goose.forensics.profiles import WordingPack, get_profile
 # Replay verification
 # ---------------------------------------------------------------------------
 
+
 class ReplayMatchState(str, Enum):
-    EXACT = "exact"                    # all versions match
-    VERSION_DRIFT = "version_drift"    # engine/plugin versions differ
-    PARTIAL = "partial"                # some data missing from bundle
-    INCOMPATIBLE = "incompatible"      # cannot replay
+    EXACT = "exact"  # all versions match
+    VERSION_DRIFT = "version_drift"  # engine/plugin versions differ
+    PARTIAL = "partial"  # some data missing from bundle
+    INCOMPATIBLE = "incompatible"  # cannot replay
 
 
 @dataclass
@@ -93,6 +94,7 @@ class ReplayVerificationReport:
 # Shared helpers for generators
 # ---------------------------------------------------------------------------
 
+
 def _load_json(path: Path) -> Any:
     """Load JSON if present; return None on any error (graceful)."""
     if not path.exists():
@@ -101,10 +103,12 @@ def _load_json(path: Path) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         import logging
+
         logging.getLogger(__name__).warning("Corrupt JSON at %s: %s", path, exc)
         return None
     except OSError as exc:
         import logging
+
         logging.getLogger(__name__).warning("Cannot read %s: %s", path, exc)
         return None
 
@@ -120,6 +124,7 @@ def _keep(d: dict[str, Any], keys: set[str]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # MissionSummaryReport
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MissionSummaryReport:
@@ -196,6 +201,7 @@ class MissionSummaryReport:
 # AnomalyReport
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AnomalyReport:
     """Report containing WARNING+ findings and confident hypotheses."""
@@ -259,6 +265,7 @@ class AnomalyReport:
 # ---------------------------------------------------------------------------
 # CrashMishapReport
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CrashMishapReport:
@@ -335,6 +342,7 @@ class CrashMishapReport:
 # ForensicCaseReport
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ForensicCaseReport:
     """Full case snapshot — everything needed to audit or deep-review a case."""
@@ -393,6 +401,7 @@ class ForensicCaseReport:
 # EvidenceManifestReport
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EvidenceManifestReport:
     """Evidence and attachment chain-of-custody summary."""
@@ -431,6 +440,7 @@ class EvidenceManifestReport:
 # ---------------------------------------------------------------------------
 # QuickAnalysisSummary
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class QuickAnalysisSummary:
@@ -476,6 +486,7 @@ class QuickAnalysisSummary:
 # ---------------------------------------------------------------------------
 # ServiceRepairSummary
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ServiceRepairSummary:
@@ -528,6 +539,7 @@ class ServiceRepairSummary:
 # QAValidationReport
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class QAValidationReport:
     """Factory/QA profile report — acceptance criteria and disposition."""
@@ -572,6 +584,7 @@ class QAValidationReport:
 # ---------------------------------------------------------------------------
 # Generator functions — build reports from a case directory
 # ---------------------------------------------------------------------------
+
 
 def _load_case_summary(case_dir: Path) -> dict[str, Any]:
     case_json = _load_json(case_dir / "case.json")
@@ -736,17 +749,16 @@ def generate_mission_summary_report(
     mission_meta = {
         k: case.get(k)
         for k in (
-            "mission_id", "sortie_id", "operation_type",
-            "date_time_start", "date_time_end", "location_name",
+            "mission_id",
+            "sortie_id",
+            "operation_type",
+            "date_time_start",
+            "date_time_end",
+            "location_name",
         )
     }
-    platform_meta = {
-        k: case.get(k)
-        for k in ("platform_name", "platform_type", "serial_number", "firmware_version")
-    }
-    operator_meta = {
-        k: case.get(k) for k in ("operator_name", "team_name", "unit_name")
-    }
+    platform_meta = {k: case.get(k) for k in ("platform_name", "platform_type", "serial_number", "firmware_version")}
+    operator_meta = {k: case.get(k) for k in ("operator_name", "team_name", "unit_name")}
 
     return MissionSummaryReport(
         case_id=case_id,
@@ -800,10 +812,20 @@ def generate_forensic_case_report(
     evidence = _load_evidence_manifest(case_dir)
 
     case_summary = {
-        k: case.get(k) for k in (
-            "case_id", "status", "created_at", "created_by", "tags", "notes",
-            "profile", "event_classification", "event_severity",
-            "mission_id", "platform_name", "operator_name",
+        k: case.get(k)
+        for k in (
+            "case_id",
+            "status",
+            "created_at",
+            "created_by",
+            "tags",
+            "notes",
+            "profile",
+            "event_classification",
+            "event_severity",
+            "mission_id",
+            "platform_name",
+            "operator_name",
         )
     }
 
@@ -965,10 +987,12 @@ def generate_evidence_manifest_report(case_dir: Path, profile_id: str = "default
             for f in sorted(d.iterdir()):
                 if f.is_file():
                     try:
-                        derived.append({
-                            "path": f"{sub}/{f.name}",
-                            "size_bytes": f.stat().st_size,
-                        })
+                        derived.append(
+                            {
+                                "path": f"{sub}/{f.name}",
+                                "size_bytes": f.stat().st_size,
+                            }
+                        )
                     except OSError:
                         continue
 
@@ -1010,19 +1034,12 @@ def generate_service_repair_summary(
         likely_conf = None
 
     # contributing issues: secondary findings beyond top 1
-    contributing = [
-        f for f in findings
-        if str(f.get("severity", "")).lower() in ("warning", "critical")
-    ][:5]
+    contributing = [f for f in findings if str(f.get("severity", "")).lower() in ("warning", "critical")][:5]
 
     # Customer-friendly plain-language summary
     critical_n = sum(1 for f in findings if str(f.get("severity", "")).lower() == "critical")
     warning_n = sum(1 for f in findings if str(f.get("severity", "")).lower() == "warning")
-    customer_summary = (
-        f"We analyzed your flight log and found {critical_n} critical issue(s) "
-        f"and {warning_n} warning(s). "
-        f"Most likely cause: {likely_cause}."
-    )
+    customer_summary = f"We analyzed your flight log and found {critical_n} critical issue(s) and {warning_n} warning(s). Most likely cause: {likely_cause}."
 
     # Recommended inspection steps derived from top findings
     steps: list[str] = []
@@ -1075,10 +1092,7 @@ def generate_qa_validation_report(
     else:
         disposition = "PASS"
 
-    out_of_tol = [
-        f for f in findings
-        if str(f.get("severity", "")).lower() in ("critical", "warning")
-    ]
+    out_of_tol = [f for f in findings if str(f.get("severity", "")).lower() in ("critical", "warning")]
 
     acceptance_results = [
         {
@@ -1174,10 +1188,7 @@ def generate_anomaly_report(
 
     # --- C3b: anomaly_windows — time windows where 2+ ANOMALY events cluster ---
     timeline = _load_timeline(case_dir)
-    anomaly_events = [
-        ev for ev in timeline
-        if ev.get("event_category") == "anomaly"
-    ]
+    anomaly_events = [ev for ev in timeline if ev.get("event_category") == "anomaly"]
     anomaly_windows: list[dict[str, Any]] = []
     if len(anomaly_events) >= 2:
         sorted_anoms = sorted(anomaly_events, key=lambda e: float(e.get("start_time", 0) or 0))
@@ -1195,12 +1206,14 @@ def generate_anomaly_report(
                 else:
                     break
             if len(group) >= 2:
-                anomaly_windows.append({
-                    "start": float(group[0].get("start_time", 0) or 0),
-                    "end": float(group[-1].get("start_time", 0) or 0),
-                    "event_count": len(group),
-                    "labels": [ev.get("label", "") for ev in group],
-                })
+                anomaly_windows.append(
+                    {
+                        "start": float(group[0].get("start_time", 0) or 0),
+                        "end": float(group[-1].get("start_time", 0) or 0),
+                        "event_count": len(group),
+                        "labels": [ev.get("label", "") for ev in group],
+                    }
+                )
             i = j if j > i + 1 else i + 1
 
     # --- C3b: dominant_theme — hypothesis category with highest confidence ---
@@ -1249,12 +1262,7 @@ def generate_crash_mishap_report(
         title = (f.get("title", "") or "").lower()
         desc = (f.get("description", "") or "").lower()
         plugin = (f.get("plugin_id", "") or "").lower()
-        is_crash = (
-            any(kw in title for kw in crash_keywords)
-            or any(kw in desc for kw in crash_keywords)
-            or "crash" in plugin
-            or f.get("severity") == "critical"
-        )
+        is_crash = any(kw in title for kw in crash_keywords) or any(kw in desc for kw in crash_keywords) or "crash" in plugin or f.get("severity") == "critical"
         if is_crash:
             crash_findings.append(f)
             for ref in f.get("evidence_references", []):
@@ -1262,9 +1270,7 @@ def generate_crash_mishap_report(
 
     all_hypotheses = _load_hypotheses(case_dir)
     crash_hypotheses = [
-        h for h in all_hypotheses
-        if any(kw in (h.get("statement", "") or "").lower() for kw in crash_keywords)
-        or float(h.get("confidence", 0) or 0) >= 0.7
+        h for h in all_hypotheses if any(kw in (h.get("statement", "") or "").lower() for kw in crash_keywords) or float(h.get("confidence", 0) or 0) >= 0.7
     ]
 
     crash_detected = len(crash_findings) > 0

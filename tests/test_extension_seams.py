@@ -18,11 +18,13 @@ import pytest
 # Plugin seam tests
 # ---------------------------------------------------------------------------
 
+
 class TestGetAllPlugins:
     """get_all_plugins() returns Core built-ins and merges Pro extension plugins."""
 
     def test_returns_all_core_plugins(self):
         from goose.plugins import PLUGIN_REGISTRY, get_all_plugins
+
         result = get_all_plugins()
         # Must contain every Core plugin
         for pid in PLUGIN_REGISTRY:
@@ -30,6 +32,7 @@ class TestGetAllPlugins:
 
     def test_core_plugin_count(self):
         from goose.plugins import get_all_plugins
+
         result = get_all_plugins()
         # 17 Core built-ins at minimum
         assert len(result) >= 17
@@ -37,6 +40,7 @@ class TestGetAllPlugins:
     def test_returns_dict_of_plugin_instances(self):
         from goose.plugins import get_all_plugins
         from goose.plugins.base import Plugin
+
         result = get_all_plugins()
         assert isinstance(result, dict)
         for pid, plugin in result.items():
@@ -46,6 +50,7 @@ class TestGetAllPlugins:
     def test_returns_new_dict_each_call(self):
         """Callers may mutate the returned dict safely."""
         from goose.plugins import get_all_plugins
+
         a = get_all_plugins()
         b = get_all_plugins()
         assert a is not b
@@ -88,6 +93,7 @@ class TestGetAllPlugins:
 
         # Monkeypatch discover_pro_plugins to return our fake
         import goose.plugins.registry as reg_mod
+
         monkeypatch.setattr(reg_mod, "discover_pro_plugins", lambda: [fake_pro_instance])
 
         result = get_all_plugins()
@@ -126,6 +132,7 @@ class TestGetAllPlugins:
         fake_unique = FakeUniqueProPlugin()
 
         import goose.plugins.registry as reg_mod
+
         monkeypatch.setattr(reg_mod, "discover_pro_plugins", lambda: [fake_unique])
 
         result = get_all_plugins()
@@ -134,17 +141,17 @@ class TestGetAllPlugins:
 
     def test_all_core_plugins_have_manifests(self):
         from goose.plugins import get_all_plugins
+
         result = get_all_plugins()
         for pid, plugin in result.items():
             assert hasattr(plugin, "manifest"), f"Plugin '{pid}' missing manifest"
-            assert plugin.manifest.plugin_id == pid, (
-                f"Plugin '{pid}' manifest.plugin_id mismatch: {plugin.manifest.plugin_id}"
-            )
+            assert plugin.manifest.plugin_id == pid, f"Plugin '{pid}' manifest.plugin_id mismatch: {plugin.manifest.plugin_id}"
 
 
 # ---------------------------------------------------------------------------
 # Parser seam tests
 # ---------------------------------------------------------------------------
+
 
 class TestRegisterParser:
     """register_parser() makes a parser available in detection."""
@@ -152,16 +159,16 @@ class TestRegisterParser:
     def setup_method(self):
         """Snapshot _ALL_PARSERS length before each test for cleanup."""
         from goose.parsers import detect
+
         self._orig_count = len(detect._ALL_PARSERS)
 
     def teardown_method(self):
         """Remove any parsers added during the test."""
         from goose.parsers import detect
-        del detect._ALL_PARSERS[self._orig_count:]
+
+        del detect._ALL_PARSERS[self._orig_count :]
         detect._IMPLEMENTED_PARSERS.clear()
-        detect._IMPLEMENTED_PARSERS.extend(
-            p for p in detect._ALL_PARSERS if p.implemented
-        )
+        detect._IMPLEMENTED_PARSERS.extend(p for p in detect._ALL_PARSERS if p.implemented)
 
     def test_register_parser_adds_to_all_parsers(self):
         from goose.parsers.base import BaseParser
@@ -177,6 +184,7 @@ class TestRegisterParser:
 
             def parse(self, path):
                 from goose.parsers.diagnostics import ParseDiagnostics, ParseResult
+
                 diag = ParseDiagnostics(
                     parser_selected="FakeParser",
                     detected_format="fake_test_format",
@@ -206,6 +214,7 @@ class TestRegisterParser:
 
             def parse(self, path):
                 from goose.parsers.diagnostics import ParseDiagnostics, ParseResult
+
                 diag = ParseDiagnostics(
                     parser_selected="ImplementedFakeParser",
                     detected_format="implemented_fake",
@@ -235,6 +244,7 @@ class TestRegisterParser:
 
             def parse(self, path):
                 from goose.parsers.diagnostics import ParseDiagnostics, ParseResult
+
                 return ParseResult(diagnostics=ParseDiagnostics(), flight=None)
 
         stub = StubFakeParser()
@@ -245,6 +255,7 @@ class TestRegisterParser:
 
     def test_register_parser_raises_on_non_parser(self):
         from goose.parsers.detect import register_parser
+
         with pytest.raises(TypeError, match="BaseParser"):
             register_parser("not_a_parser")  # type: ignore[arg-type]
 
@@ -264,6 +275,7 @@ class TestRegisterParser:
 
             def parse(self, path):
                 from goose.parsers.diagnostics import ParseDiagnostics, ParseResult
+
                 return ParseResult(diagnostics=ParseDiagnostics(), flight=None)
 
         register_parser(LastFakeParser())
@@ -275,11 +287,13 @@ class TestRegisterParser:
 # Report registry tests
 # ---------------------------------------------------------------------------
 
+
 class TestReportRegistry:
     """Report registry has Core generators registered and supports extension."""
 
     def test_core_generators_registered(self):
         from goose.forensics.report_registry import list_core_formats
+
         core_formats = list_core_formats()
         assert "json_findings" in core_formats
         assert "json_hypotheses" in core_formats
@@ -287,6 +301,7 @@ class TestReportRegistry:
 
     def test_list_report_formats_returns_dicts(self):
         from goose.forensics.report_registry import list_report_formats
+
         formats = list_report_formats()
         assert isinstance(formats, list)
         for entry in formats:
@@ -296,12 +311,14 @@ class TestReportRegistry:
 
     def test_get_report_generator_returns_callable(self):
         from goose.forensics.report_registry import get_report_generator
+
         gen = get_report_generator("json_findings")
         assert gen is not None
         assert callable(gen)
 
     def test_get_report_generator_returns_none_for_unknown(self):
         from goose.forensics.report_registry import get_report_generator
+
         assert get_report_generator("__nonexistent_format__") is None
 
     def test_register_extension_generator(self):
@@ -330,17 +347,20 @@ class TestReportRegistry:
 
     def test_register_generator_raises_on_empty_name(self):
         from goose.forensics.report_registry import register_report_generator
+
         with pytest.raises(ValueError, match="non-empty"):
             register_report_generator("", lambda d, r: {})
 
     def test_register_generator_raises_on_non_callable(self):
         from goose.forensics.report_registry import register_report_generator
+
         with pytest.raises(TypeError, match="callable"):
             register_report_generator("bad_format", "not_callable")  # type: ignore[arg-type]
 
     def test_core_generators_are_callable_on_missing_dir(self, tmp_path):
         """Core generators handle missing artifacts gracefully (no raise)."""
         from goose.forensics.report_registry import get_report_generator
+
         for fmt in ("json_findings", "json_hypotheses", "timeline"):
             gen = get_report_generator(fmt)
             assert gen is not None
@@ -352,15 +372,18 @@ class TestReportRegistry:
 # Capability / feature seam tests
 # ---------------------------------------------------------------------------
 
+
 class TestCapabilitySystem:
     """Capability system supports Pro tier and extensible capability registration."""
 
     def test_oss_core_tier_is_default(self):
         from goose.features import EntitlementLevel, FeatureGate
+
         assert FeatureGate.current_level() == EntitlementLevel.OSS_CORE
 
     def test_set_level_to_local_pro(self):
         from goose.features import EntitlementLevel, FeatureGate
+
         original = FeatureGate.current_level()
         try:
             FeatureGate.set_level(EntitlementLevel.LOCAL_PRO)
@@ -370,6 +393,7 @@ class TestCapabilitySystem:
 
     def test_local_pro_features_unlocked_at_local_pro(self):
         from goose.features import EntitlementLevel, FeatureGate, is_feature_enabled
+
         original = FeatureGate.current_level()
         try:
             FeatureGate.set_level(EntitlementLevel.LOCAL_PRO)
@@ -380,6 +404,7 @@ class TestCapabilitySystem:
 
     def test_local_pro_features_not_available_at_oss_core(self):
         from goose.features import EntitlementLevel, FeatureGate, is_feature_enabled
+
         original = FeatureGate.current_level()
         try:
             FeatureGate.set_level(EntitlementLevel.OSS_CORE)
@@ -389,6 +414,7 @@ class TestCapabilitySystem:
 
     def test_all_four_tiers_exist(self):
         from goose.features import EntitlementLevel
+
         tiers = [e.value for e in EntitlementLevel]
         assert "oss_core" in tiers
         assert "local_pro" in tiers
@@ -404,6 +430,7 @@ class TestCapabilitySystem:
 
         original = None
         from goose.features import FeatureGate
+
         original = FeatureGate.current_level()
         try:
             FeatureGate.set_level(EntitlementLevel.OSS_CORE)
@@ -417,11 +444,13 @@ class TestCapabilitySystem:
 
     def test_unknown_feature_defaults_to_enabled(self):
         from goose.features import is_feature_enabled
+
         # Unknown features default to enabled so legacy call sites work
         assert is_feature_enabled("__definitely_unknown_feature__") is True
 
     def test_feature_gate_to_dict_includes_features(self):
         from goose.features import FeatureGate
+
         d = FeatureGate.to_dict()
         assert "current_level" in d
         assert "capabilities" in d

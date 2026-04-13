@@ -153,11 +153,13 @@ class ULogParser(BaseParser):
         for topic, label in STREAM_MAP.items():
             df = _topic_to_df(ulog, topic)
             if df is not None:
-                coverage.append(StreamCoverage(
-                    stream_name=label,
-                    present=True,
-                    row_count=len(df),
-                ))
+                coverage.append(
+                    StreamCoverage(
+                        stream_name=label,
+                        present=True,
+                        row_count=len(df),
+                    )
+                )
             else:
                 coverage.append(StreamCoverage(stream_name=label, present=False))
                 missing.append(label)
@@ -179,35 +181,22 @@ class ULogParser(BaseParser):
         duration_us = ulog.last_timestamp - ulog.start_timestamp
         duration_sec = duration_us / 1e6
         if duration_sec < 1.0:
-            diag.timebase_anomalies.append(
-                f"Log duration is very short ({duration_sec:.2f}s). "
-                "Timestamps may be unreliable."
-            )
+            diag.timebase_anomalies.append(f"Log duration is very short ({duration_sec:.2f}s). Timestamps may be unreliable.")
         if ulog.start_timestamp == 0:
-            diag.timebase_anomalies.append(
-                "Log start timestamp is 0 — absolute time reference unavailable."
-            )
+            diag.timebase_anomalies.append("Log start timestamp is 0 — absolute time reference unavailable.")
 
         # --- Corruption / logged errors ------------------------------------
         for msg in ulog.logged_messages:
             log_level = msg.log_level if hasattr(msg, "log_level") else 6
             if isinstance(log_level, int) and log_level <= 3:
-                diag.corruption_indicators.append(
-                    f"Critical log message at {(msg.timestamp - start_us)/1e6:.1f}s: {msg.message}"
-                )
+                diag.corruption_indicators.append(f"Critical log message at {(msg.timestamp - start_us) / 1e6:.1f}s: {msg.message}")
             elif isinstance(log_level, str) and log_level.lower() in ("emergency", "alert", "critical"):
-                diag.corruption_indicators.append(
-                    f"Critical log message: {msg.message}"
-                )
+                diag.corruption_indicators.append(f"Critical log message: {msg.message}")
 
         # --- Assumptions ---------------------------------------------------
-        diag.assumptions.append(
-            "Timestamps are assumed monotonically increasing from log start."
-        )
+        diag.assumptions.append("Timestamps are assumed monotonically increasing from log start.")
         if "gps" in missing and "gps (alt)" not in missing:
-            diag.assumptions.append(
-                "Using sensor_gps as GPS source (vehicle_gps_position not present)."
-            )
+            diag.assumptions.append("Using sensor_gps as GPS source (vehicle_gps_position not present).")
 
         # --- Extract all streams -------------------------------------------
         try:
@@ -362,9 +351,7 @@ class ULogParser(BaseParser):
             utc_vals = gps_df["time_utc_usec"]
             valid = utc_vals[utc_vals > 0]
             if len(valid) > 0:
-                start_time_utc = datetime.fromtimestamp(
-                    int(valid.iloc[0]) / 1e6, tz=timezone.utc
-                )
+                start_time_utc = datetime.fromtimestamp(int(valid.iloc[0]) / 1e6, tz=timezone.utc)
 
         # Firmware version
         fw_version = "unknown"
@@ -506,9 +493,7 @@ class ULogParser(BaseParser):
                 2.0 * (q0 * q1 + q2 * q3),
                 1.0 - 2.0 * (q1 * q1 + q2 * q2),
             )
-            result["pitch"] = np.arcsin(
-                np.clip(2.0 * (q0 * q2 - q3 * q1), -1.0, 1.0)
-            )
+            result["pitch"] = np.arcsin(np.clip(2.0 * (q0 * q2 - q3 * q1), -1.0, 1.0))
             result["yaw"] = np.arctan2(
                 2.0 * (q0 * q3 + q1 * q2),
                 1.0 - 2.0 * (q2 * q2 + q3 * q3),
@@ -538,9 +523,7 @@ class ULogParser(BaseParser):
                 2.0 * (q0 * q1 + q2 * q3),
                 1.0 - 2.0 * (q1 * q1 + q2 * q2),
             )
-            result["pitch"] = np.arcsin(
-                np.clip(2.0 * (q0 * q2 - q3 * q1), -1.0, 1.0)
-            )
+            result["pitch"] = np.arcsin(np.clip(2.0 * (q0 * q2 - q3 * q1), -1.0, 1.0))
             result["yaw"] = np.arctan2(
                 2.0 * (q0 * q3 + q1 * q2),
                 1.0 - 2.0 * (q2 * q2 + q3 * q3),
@@ -600,12 +583,8 @@ class ULogParser(BaseParser):
 
         result = pd.DataFrame()
         result["timestamp"] = (df["timestamp"] - start_us) / 1e6
-        result["voltage"] = df["voltage_v"] if "voltage_v" in df.columns else (
-            df["voltage_filtered_v"] if "voltage_filtered_v" in df.columns else np.nan
-        )
-        result["current"] = df["current_a"] if "current_a" in df.columns else (
-            df["current_filtered_a"] if "current_filtered_a" in df.columns else np.nan
-        )
+        result["voltage"] = df["voltage_v"] if "voltage_v" in df.columns else (df["voltage_filtered_v"] if "voltage_filtered_v" in df.columns else np.nan)
+        result["current"] = df["current_a"] if "current_a" in df.columns else (df["current_filtered_a"] if "current_filtered_a" in df.columns else np.nan)
         result["remaining_pct"] = df["remaining"] * 100.0 if "remaining" in df.columns else np.nan
         return result
 
@@ -634,17 +613,11 @@ class ULogParser(BaseParser):
             else:
                 result["lon"] = lon_vals
 
-        result["alt"] = df["alt"] / 1e3 if "alt" in df.columns and df["alt"].abs().max() > 10000 else (
-            df.get("alt", pd.Series(dtype=float))
-        )
+        result["alt"] = df["alt"] / 1e3 if "alt" in df.columns and df["alt"].abs().max() > 10000 else (df.get("alt", pd.Series(dtype=float)))
         result["fix_type"] = df.get("fix_type", pd.Series(dtype=float))
         result["satellites"] = df.get("satellites_used", pd.Series(dtype=float))
-        result["hdop"] = df["hdop"] if "hdop" in df.columns else (
-            df["eph"] / 100.0 if "eph" in df.columns else np.nan
-        )
-        result["vdop"] = df["vdop"] if "vdop" in df.columns else (
-            df["epv"] / 100.0 if "epv" in df.columns else np.nan
-        )
+        result["hdop"] = df["hdop"] if "hdop" in df.columns else (df["eph"] / 100.0 if "eph" in df.columns else np.nan)
+        result["vdop"] = df["vdop"] if "vdop" in df.columns else (df["epv"] / 100.0 if "epv" in df.columns else np.nan)
         return result
 
     def _extract_motors(self, ulog: ULog, start_us: int, motor_count: int) -> pd.DataFrame:
@@ -747,9 +720,7 @@ class ULogParser(BaseParser):
             return pd.DataFrame()
         df = _us_to_sec(df, start_us)
         cols: dict[str, Any] = {}
-        for raw, name in [
-            ("x", "x"), ("y", "y"), ("r", "r"), ("z", "z"), ("throttle", "z")
-        ]:
+        for raw, name in [("x", "x"), ("y", "y"), ("r", "r"), ("z", "z"), ("throttle", "z")]:
             if raw in df.columns and name not in cols:
                 cols[name] = df[raw]
         if not cols:
@@ -959,11 +930,13 @@ class ULogParser(BaseParser):
             mode_name = PX4_MODES.get(mode_val, f"unknown_{mode_val}")
             if mode_name != prev_mode:
                 timestamp = (row["timestamp"] - start_us) / 1e6
-                changes.append(ModeChange(
-                    timestamp=timestamp,
-                    from_mode=prev_mode if prev_mode else "none",
-                    to_mode=mode_name,
-                ))
+                changes.append(
+                    ModeChange(
+                        timestamp=timestamp,
+                        from_mode=prev_mode if prev_mode else "none",
+                        to_mode=mode_name,
+                    )
+                )
                 prev_mode = mode_name
 
         return changes
@@ -994,12 +967,14 @@ class ULogParser(BaseParser):
                     severity = "warning"
                     event_type = "warning"
 
-            events.append(FlightEvent(
-                timestamp=timestamp,
-                event_type=event_type,
-                severity=severity,
-                message=msg.message,
-            ))
+            events.append(
+                FlightEvent(
+                    timestamp=timestamp,
+                    event_type=event_type,
+                    severity=severity,
+                    message=msg.message,
+                )
+            )
 
         return events
 
@@ -1035,9 +1010,7 @@ class ULogParser(BaseParser):
         df = _us_to_sec(df, start_us)
         cols: dict[str, Any] = {}
         # PX4 field name for motor failure varies: fd_motor or fd_motor_failure
-        fd_motor_col = next(
-            (c for c in ["fd_motor_failure", "fd_motor"] if c in df.columns), None
-        )
+        fd_motor_col = next((c for c in ["fd_motor_failure", "fd_motor"] if c in df.columns), None)
         for raw, name in [
             ("fd_roll", "fd_roll"),
             ("fd_pitch", "fd_pitch"),

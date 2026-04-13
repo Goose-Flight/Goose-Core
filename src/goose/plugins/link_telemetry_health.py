@@ -16,7 +16,7 @@ from goose.plugins.base import Plugin
 from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Configurable thresholds
-DEFAULT_RSSI_MARGINAL_THRESHOLD = 0.1    # fraction of range from failsafe
+DEFAULT_RSSI_MARGINAL_THRESHOLD = 0.1  # fraction of range from failsafe
 DEFAULT_RC_LOSS_DURATION_SEC = 1.0
 DEFAULT_TELEMETRY_GAP_MULTIPLIER = 2.0
 DEFAULT_LINK_RECOVERY_COUNT = 3
@@ -26,10 +26,7 @@ class LinkTelemetryHealthPlugin(Plugin):
     """Assess RC link quality, telemetry dropouts, and GCS communication health."""
 
     name = "link_telemetry_health"
-    description = (
-        "Assesses RC link quality, telemetry dropouts, and GCS communication "
-        "health indicators"
-    )
+    description = "Assesses RC link quality, telemetry dropouts, and GCS communication health indicators"
     version = "1.0.0"
     min_mode = "manual"
 
@@ -38,10 +35,7 @@ class LinkTelemetryHealthPlugin(Plugin):
         name="Link and Telemetry Health",
         version="1.0.0",
         author="Goose Flight",
-        description=(
-            "Assesses RC link quality, telemetry dropouts, and GCS "
-            "communication health indicators"
-        ),
+        description=("Assesses RC link quality, telemetry dropouts, and GCS communication health indicators"),
         category=PluginCategory.HEALTH,
         supported_vehicle_types=["multirotor", "fixed_wing", "all"],
         # rc_input is the actual Flight attribute; rc_channels is the display name
@@ -67,18 +61,10 @@ class LinkTelemetryHealthPlugin(Plugin):
         findings: list[Finding] = []
         cfg = config or {}
 
-        rssi_marginal_frac = float(
-            cfg.get("rssi_marginal_threshold", DEFAULT_RSSI_MARGINAL_THRESHOLD)
-        )
-        rc_loss_sec = float(
-            cfg.get("rc_loss_duration_sec", DEFAULT_RC_LOSS_DURATION_SEC)
-        )
-        telem_gap_mult = float(
-            cfg.get("telemetry_gap_multiplier", DEFAULT_TELEMETRY_GAP_MULTIPLIER)
-        )
-        recovery_count = int(
-            cfg.get("link_recovery_count", DEFAULT_LINK_RECOVERY_COUNT)
-        )
+        rssi_marginal_frac = float(cfg.get("rssi_marginal_threshold", DEFAULT_RSSI_MARGINAL_THRESHOLD))
+        rc_loss_sec = float(cfg.get("rc_loss_duration_sec", DEFAULT_RC_LOSS_DURATION_SEC))
+        telem_gap_mult = float(cfg.get("telemetry_gap_multiplier", DEFAULT_TELEMETRY_GAP_MULTIPLIER))
+        recovery_count = int(cfg.get("link_recovery_count", DEFAULT_LINK_RECOVERY_COUNT))
 
         rc = flight.rc_input
         if rc is None or rc.empty:
@@ -95,9 +81,7 @@ class LinkTelemetryHealthPlugin(Plugin):
 
         # Link recovery anomaly (multiple dropouts)
         if len(dropout_events) >= recovery_count:
-            findings.append(
-                self._make_recovery_anomaly(dropout_events, recovery_count)
-            )
+            findings.append(self._make_recovery_anomaly(dropout_events, recovery_count))
 
         # Telemetry gap
         telem_gap = self._check_telemetry_gap(rc, telem_gap_mult)
@@ -110,9 +94,7 @@ class LinkTelemetryHealthPlugin(Plugin):
     # RC link marginal
     # ------------------------------------------------------------------
 
-    def _check_rc_marginal(
-        self, rc: pd.DataFrame, rssi_marginal_frac: float
-    ) -> Finding | None:
+    def _check_rc_marginal(self, rc: pd.DataFrame, rssi_marginal_frac: float) -> Finding | None:
         """RSSI near failsafe threshold for sustained periods."""
         if "rssi" not in rc.columns:
             return None
@@ -153,7 +135,7 @@ class LinkTelemetryHealthPlugin(Plugin):
             severity="warning",
             score=55,
             description=(
-                f"RC RSSI was within {rssi_marginal_frac*100:.0f}% of the observed "
+                f"RC RSSI was within {rssi_marginal_frac * 100:.0f}% of the observed "
                 f"minimum ({rssi_min:.1f}) for {pct}% of the flight. "
                 "This indicates the link was operating near its minimum observed quality, "
                 "which may be close to failsafe threshold."
@@ -165,8 +147,7 @@ class LinkTelemetryHealthPlugin(Plugin):
                 "rssi_marginal_frac": rssi_marginal_frac,
                 "finding_type": "rc_link_marginal",
                 "assumptions": [
-                    "Failsafe RSSI level is approximated from observed minimum "
-                    "— actual failsafe threshold depends on transmitter configuration.",
+                    "Failsafe RSSI level is approximated from observed minimum — actual failsafe threshold depends on transmitter configuration.",
                 ],
             },
             timestamp_start=ts_start,
@@ -177,9 +158,7 @@ class LinkTelemetryHealthPlugin(Plugin):
     # RC link lost
     # ------------------------------------------------------------------
 
-    def _check_rc_lost(
-        self, rc: pd.DataFrame, rc_loss_sec: float
-    ) -> tuple[list[Finding], list[dict[str, Any]]]:
+    def _check_rc_lost(self, rc: pd.DataFrame, rc_loss_sec: float) -> tuple[list[Finding], list[dict[str, Any]]]:
         """Detect RC values going to zero or failsafe values for >= rc_loss_sec."""
         findings: list[Finding] = []
         dropout_events: list[dict[str, Any]] = []
@@ -208,11 +187,13 @@ class LinkTelemetryHealthPlugin(Plugin):
                 ts_gap_start = float(ts.iloc[0])
             ts_gap_end = float(ts.iloc[pos]) if pos < len(ts) else ts_gap_start + float(gap_val)
 
-            dropout_events.append({
-                "timestamp_start": ts_gap_start,
-                "timestamp_end": ts_gap_end,
-                "duration_sec": round(float(gap_val), 3),
-            })
+            dropout_events.append(
+                {
+                    "timestamp_start": ts_gap_start,
+                    "timestamp_end": ts_gap_end,
+                    "duration_sec": round(float(gap_val), 3),
+                }
+            )
 
         if not dropout_events:
             return findings, dropout_events
@@ -220,33 +201,31 @@ class LinkTelemetryHealthPlugin(Plugin):
         max_loss = max(e["duration_sec"] for e in dropout_events)
         score = 70 if max_loss >= 3.0 else 65
 
-        findings.append(Finding(
-            plugin_name=self.name,
-            title=(
-                f"RC link lost: {len(dropout_events)} loss event(s), "
-                f"longest {max_loss:.1f}s"
-            ),
-            severity="warning",
-            score=score,
-            description=(
-                f"Detected {len(dropout_events)} RC data gap(s) of "
-                f">= {rc_loss_sec}s. Longest: {max_loss:.1f}s. "
-                "RC link loss at this duration may trigger failsafe behavior."
-            ),
-            evidence={
-                "dropout_count": len(dropout_events),
-                "max_loss_duration_sec": max_loss,
-                "rc_loss_threshold_sec": rc_loss_sec,
-                "events": dropout_events[:10],
-                "finding_type": "rc_link_lost",
-                "assumptions": [
-                    "RC data gaps are used as proxy for link loss "
-                    "— logging interruptions are an alternative explanation.",
-                ],
-            },
-            timestamp_start=dropout_events[0]["timestamp_start"],
-            timestamp_end=dropout_events[-1]["timestamp_end"],
-        ))
+        findings.append(
+            Finding(
+                plugin_name=self.name,
+                title=(f"RC link lost: {len(dropout_events)} loss event(s), longest {max_loss:.1f}s"),
+                severity="warning",
+                score=score,
+                description=(
+                    f"Detected {len(dropout_events)} RC data gap(s) of "
+                    f">= {rc_loss_sec}s. Longest: {max_loss:.1f}s. "
+                    "RC link loss at this duration may trigger failsafe behavior."
+                ),
+                evidence={
+                    "dropout_count": len(dropout_events),
+                    "max_loss_duration_sec": max_loss,
+                    "rc_loss_threshold_sec": rc_loss_sec,
+                    "events": dropout_events[:10],
+                    "finding_type": "rc_link_lost",
+                    "assumptions": [
+                        "RC data gaps are used as proxy for link loss — logging interruptions are an alternative explanation.",
+                    ],
+                },
+                timestamp_start=dropout_events[0]["timestamp_start"],
+                timestamp_end=dropout_events[-1]["timestamp_end"],
+            )
+        )
 
         return findings, dropout_events
 
@@ -267,10 +246,7 @@ class LinkTelemetryHealthPlugin(Plugin):
 
         return Finding(
             plugin_name=self.name,
-            title=(
-                f"Link recovery anomaly: {count} drop-and-recover cycles "
-                f"(threshold: {recovery_count})"
-            ),
+            title=(f"Link recovery anomaly: {count} drop-and-recover cycles (threshold: {recovery_count})"),
             severity="warning",
             score=62,
             description=(
@@ -286,8 +262,7 @@ class LinkTelemetryHealthPlugin(Plugin):
                 "recovery_count_threshold": recovery_count,
                 "finding_type": "link_recovery_anomaly",
                 "assumptions": [
-                    "Each data gap is treated as one drop-and-recover cycle; "
-                    "actual protocol-level reconnects may differ.",
+                    "Each data gap is treated as one drop-and-recover cycle; actual protocol-level reconnects may differ.",
                 ],
             },
             timestamp_start=ts_start,
@@ -298,9 +273,7 @@ class LinkTelemetryHealthPlugin(Plugin):
     # Telemetry gap
     # ------------------------------------------------------------------
 
-    def _check_telemetry_gap(
-        self, rc: pd.DataFrame, gap_multiplier: float
-    ) -> Finding | None:
+    def _check_telemetry_gap(self, rc: pd.DataFrame, gap_multiplier: float) -> Finding | None:
         """Detect gaps in log message rate (> gap_multiplier * average interval)."""
         if "timestamp" not in rc.columns or len(rc) < 10:
             return None
@@ -331,15 +304,12 @@ class LinkTelemetryHealthPlugin(Plugin):
 
         return Finding(
             plugin_name=self.name,
-            title=(
-                f"Telemetry gap detected: {count} gap(s), "
-                f"largest {max_gap:.2f}s ({gap_multiplier:.0f}x avg interval)"
-            ),
+            title=(f"Telemetry gap detected: {count} gap(s), largest {max_gap:.2f}s ({gap_multiplier:.0f}x avg interval)"),
             severity="info",
             score=50,
             description=(
                 f"Found {count} timestamp gap(s) exceeding {gap_multiplier:.1f}x "
-                f"the average RC message interval ({avg_interval*1000:.0f}ms). "
+                f"the average RC message interval ({avg_interval * 1000:.0f}ms). "
                 f"Largest gap: {max_gap:.2f}s at t={ts_worst:.1f}s. "
                 "Telemetry gaps may indicate link issues or a logging interruption."
             ),
@@ -351,8 +321,7 @@ class LinkTelemetryHealthPlugin(Plugin):
                 "worst_gap_timestamp": round(ts_worst, 3),
                 "finding_type": "telemetry_gap",
                 "assumptions": [
-                    "Telemetry gaps may indicate link issues or logging interruption "
-                    "— the two cannot be distinguished from log data alone.",
+                    "Telemetry gaps may indicate link issues or logging interruption — the two cannot be distinguished from log data alone.",
                 ],
             },
             timestamp_start=ts_worst,

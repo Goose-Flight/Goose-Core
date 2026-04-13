@@ -113,13 +113,8 @@ class Plugin(ABC):
         # We check by comparing the bound method to the base class version —
         # if they differ, the plugin has a native implementation.
         # Guard with hasattr for test stubs that don't inherit from Plugin.
-        if (
-            hasattr(type(self), "forensic_analyze_native")
-            and type(self).forensic_analyze_native is not Plugin.forensic_analyze_native
-        ):
-            native_result = self.forensic_analyze_native(
-                flight, evidence_id, run_id, config, parse_diagnostics, tuning_profile
-            )
+        if hasattr(type(self), "forensic_analyze_native") and type(self).forensic_analyze_native is not Plugin.forensic_analyze_native:
+            native_result = self.forensic_analyze_native(flight, evidence_id, run_id, config, parse_diagnostics, tuning_profile)
             if native_result is not None:
                 return native_result
 
@@ -180,36 +175,35 @@ class Plugin(ABC):
             for k, v in (thin.evidence or {}).items():
                 try:
                     import json as _json
+
                     _json.dumps(v)
                     supporting[k] = v
                 except (TypeError, ValueError):
                     supporting[k] = str(v)
 
-            severity = (
-                FindingSeverity(thin.severity)
-                if thin.severity in FindingSeverity._value2member_map_
-                else FindingSeverity.INFO
-            )
+            severity = FindingSeverity(thin.severity) if thin.severity in FindingSeverity._value2member_map_ else FindingSeverity.INFO
 
-            forensic_findings.append(ForensicFinding(
-                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-                plugin_id=thin.plugin_name,
-                plugin_version=self.manifest.version,
-                title=thin.title,
-                description=thin.description,
-                severity=severity,
-                score=int(thin.score),
-                confidence=round(int(thin.score) / 100.0, 2),
-                confidence_scope="finding_analysis",
-                phase=thin.phase,
-                start_time=thin.timestamp_start,
-                end_time=thin.timestamp_end,
-                evidence_references=[ev_ref],
-                supporting_metrics=supporting,
-                contradicting_metrics={},
-                assumptions=[],
-                run_id=run_id,
-            ))
+            forensic_findings.append(
+                ForensicFinding(
+                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    plugin_id=thin.plugin_name,
+                    plugin_version=self.manifest.version,
+                    title=thin.title,
+                    description=thin.description,
+                    severity=severity,
+                    score=int(thin.score),
+                    confidence=round(int(thin.score) / 100.0, 2),
+                    confidence_scope="finding_analysis",
+                    phase=thin.phase,
+                    start_time=thin.timestamp_start,
+                    end_time=thin.timestamp_end,
+                    evidence_references=[ev_ref],
+                    supporting_metrics=supporting,
+                    contradicting_metrics={},
+                    assumptions=[],
+                    run_id=run_id,
+                )
+            )
 
         elapsed = (time.perf_counter() - t0) * 1000
         diag = PDiag(
@@ -227,14 +221,6 @@ class Plugin(ABC):
 
     def applicable(self, flight: Flight) -> bool:
         """Check if this plugin can run on this flight (mode hierarchy check)."""
-        flight_level = (
-            MODE_HIERARCHY.index(flight.primary_mode)
-            if flight.primary_mode in MODE_HIERARCHY
-            else 0
-        )
-        required_level = (
-            MODE_HIERARCHY.index(self.min_mode)
-            if self.min_mode in MODE_HIERARCHY
-            else 0
-        )
+        flight_level = MODE_HIERARCHY.index(flight.primary_mode) if flight.primary_mode in MODE_HIERARCHY else 0
+        required_level = MODE_HIERARCHY.index(self.min_mode) if self.min_mode in MODE_HIERARCHY else 0
         return flight_level >= required_level

@@ -47,9 +47,14 @@ class ObservedOutcome:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> ObservedOutcome:
         known = {
-            "corpus_id", "parser_succeeded", "parser_confidence",
-            "parser_warnings", "findings_found", "plugins_ran",
-            "plugins_skipped", "hypotheses_generated",
+            "corpus_id",
+            "parser_succeeded",
+            "parser_confidence",
+            "parser_warnings",
+            "findings_found",
+            "plugins_ran",
+            "plugins_skipped",
+            "hypotheses_generated",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -57,6 +62,7 @@ class ObservedOutcome:
 @dataclass
 class ExpectedOutcome:
     """Flattened view of expected behavior for reporting."""
+
     should_parse: bool = True
     min_parser_confidence: float = 0.0
     expected_findings: list[str] = field(default_factory=list)
@@ -99,14 +105,20 @@ class CorpusCaseResult:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> CorpusCaseResult:
         d = dict(d)
-        d["expected"] = ExpectedOutcome(**{
-            k: v for k, v in d.get("expected", {}).items()
-            if k in {"should_parse", "min_parser_confidence", "expected_findings", "not_expected_findings"}
-        })
+        d["expected"] = ExpectedOutcome(
+            **{k: v for k, v in d.get("expected", {}).items() if k in {"should_parse", "min_parser_confidence", "expected_findings", "not_expected_findings"}}
+        )
         d["observed"] = ObservedOutcome.from_dict(d.get("observed", {"corpus_id": ""}))
         known = {
-            "corpus_id", "category", "passed", "failures", "warnings",
-            "expected", "observed", "profile", "run_at",
+            "corpus_id",
+            "category",
+            "passed",
+            "failures",
+            "warnings",
+            "expected",
+            "observed",
+            "profile",
+            "run_at",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -120,6 +132,7 @@ class RegressionAlert:
     derived from the corpus_id is included so downstream tools can group
     alerts across runs.
     """
+
     alert_id: str
     corpus_id: str
     category: str
@@ -165,10 +178,7 @@ class ValidationSummary:
             "failed": self.failed,
             "warned": self.warned,
             "corpus_case_results": [r.to_dict() for r in self.corpus_case_results],
-            "regression_alerts": [
-                a.to_dict() if isinstance(a, RegressionAlert) else a
-                for a in self.regression_alerts
-            ],
+            "regression_alerts": [a.to_dict() if isinstance(a, RegressionAlert) else a for a in self.regression_alerts],
             "tuning_profile_id": self.tuning_profile_id,
             "tuning_profile_version": self.tuning_profile_version,
         }
@@ -176,9 +186,7 @@ class ValidationSummary:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> ValidationSummary:
         d = dict(d)
-        d["corpus_case_results"] = [
-            CorpusCaseResult.from_dict(r) for r in d.get("corpus_case_results", [])
-        ]
+        d["corpus_case_results"] = [CorpusCaseResult.from_dict(r) for r in d.get("corpus_case_results", [])]
         raw_alerts = d.get("regression_alerts", [])
         alerts: list[RegressionAlert] = []
         for a in raw_alerts:
@@ -187,18 +195,28 @@ class ValidationSummary:
             elif isinstance(a, dict):
                 alerts.append(RegressionAlert.from_dict(a))
             elif isinstance(a, str):
-                alerts.append(RegressionAlert(
-                    alert_id=a[:32],
-                    corpus_id="unknown",
-                    category="unknown",
-                    severity="failure",
-                    message=a,
-                ))
+                alerts.append(
+                    RegressionAlert(
+                        alert_id=a[:32],
+                        corpus_id="unknown",
+                        category="unknown",
+                        severity="failure",
+                        message=a,
+                    )
+                )
         d["regression_alerts"] = alerts
         known = {
-            "validation_id", "run_at", "engine_version", "total_cases",
-            "passed", "failed", "warned", "corpus_case_results",
-            "regression_alerts", "tuning_profile_id", "tuning_profile_version",
+            "validation_id",
+            "run_at",
+            "engine_version",
+            "total_cases",
+            "passed",
+            "failed",
+            "warned",
+            "corpus_case_results",
+            "regression_alerts",
+            "tuning_profile_id",
+            "tuning_profile_version",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -236,13 +254,15 @@ def run_validation(
         result = _validate_single_case(cc, corpus_dir, cases_dir, tuning_profile)
         results.append(result)
         if not result.passed:
-            regression_alerts.append(RegressionAlert(
-                alert_id=f"REG-{cc.corpus_id}",
-                corpus_id=cc.corpus_id,
-                category=cc.category,
-                severity="failure",
-                message="; ".join(result.failures) if result.failures else "case failed",
-            ))
+            regression_alerts.append(
+                RegressionAlert(
+                    alert_id=f"REG-{cc.corpus_id}",
+                    corpus_id=cc.corpus_id,
+                    category=cc.category,
+                    severity="failure",
+                    message="; ".join(result.failures) if result.failures else "case failed",
+                )
+            )
 
     passed = sum(1 for r in results if r.passed)
     failed = sum(1 for r in results if not r.passed)
@@ -303,37 +323,54 @@ def _validate_single_case(
     # Parse
     try:
         from goose.parsers.detect import parse_file
+
         parse_result = parse_file(str(evidence_path))
     except Exception as exc:  # noqa: BLE001
         observed = ObservedOutcome(corpus_id=cc.corpus_id, parser_succeeded=False)
         if cc.expected_parser.should_succeed:
             return CorpusCaseResult(
-                corpus_id=cc.corpus_id, category=cc.category, passed=False,
+                corpus_id=cc.corpus_id,
+                category=cc.category,
+                passed=False,
                 failures=[f"Parse failed unexpectedly: {exc}"],
-                expected=expected, observed=observed,
-                profile=cc.profile, run_at=run_at,
+                expected=expected,
+                observed=observed,
+                profile=cc.profile,
+                run_at=run_at,
             )
         else:
             return CorpusCaseResult(
-                corpus_id=cc.corpus_id, category=cc.category, passed=True,
-                expected=expected, observed=observed,
-                profile=cc.profile, run_at=run_at,
+                corpus_id=cc.corpus_id,
+                category=cc.category,
+                passed=True,
+                expected=expected,
+                observed=observed,
+                profile=cc.profile,
+                run_at=run_at,
             )
 
     if parse_result is None or not parse_result.success:
         observed = ObservedOutcome(corpus_id=cc.corpus_id, parser_succeeded=False)
         if cc.expected_parser.should_succeed:
             return CorpusCaseResult(
-                corpus_id=cc.corpus_id, category=cc.category, passed=False,
+                corpus_id=cc.corpus_id,
+                category=cc.category,
+                passed=False,
                 failures=["Parse did not succeed but was expected to"],
-                expected=expected, observed=observed,
-                profile=cc.profile, run_at=run_at,
+                expected=expected,
+                observed=observed,
+                profile=cc.profile,
+                run_at=run_at,
             )
         else:
             return CorpusCaseResult(
-                corpus_id=cc.corpus_id, category=cc.category, passed=True,
-                expected=expected, observed=observed,
-                profile=cc.profile, run_at=run_at,
+                corpus_id=cc.corpus_id,
+                category=cc.category,
+                passed=True,
+                expected=expected,
+                observed=observed,
+                profile=cc.profile,
+                run_at=run_at,
             )
 
     flight = parse_result.flight
@@ -356,8 +393,11 @@ def _validate_single_case(
             continue
         try:
             ff_list, _ = plugin.forensic_analyze(
-                flight, "corpus-evidence", f"corpus-{cc.corpus_id}",
-                {}, parse_result.diagnostics,
+                flight,
+                "corpus-evidence",
+                f"corpus-{cc.corpus_id}",
+                {},
+                parse_result.diagnostics,
                 tuning_profile=tuning_profile,
             )
             plugins_ran.append(plugin.manifest.plugin_id)
@@ -365,6 +405,7 @@ def _validate_single_case(
                 all_findings_titles.append(f.title)
         except Exception as exc:  # noqa: BLE001
             import logging as _logging
+
             _logging.getLogger(__name__).debug("Corpus plugin %s failed: %s", plugin.manifest.plugin_id, exc)
             plugins_skipped.append(plugin.manifest.plugin_id)
 
@@ -393,17 +434,13 @@ def _validate_single_case(
         and parse_result.diagnostics.parser_confidence < cc.expected_parser.min_parser_confidence
     ):
         failures.append(
-            f"Parser confidence {parse_result.diagnostics.parser_confidence:.2f} "
-            f"below expected minimum {cc.expected_parser.min_parser_confidence:.2f}"
+            f"Parser confidence {parse_result.diagnostics.parser_confidence:.2f} below expected minimum {cc.expected_parser.min_parser_confidence:.2f}"
         )
 
     # Required analyzers must have run
     for ea in cc.expected_analyzers:
         if ea.should_run and ea.plugin_id not in plugins_ran:
-            failures.append(
-                f"Expected plugin '{ea.plugin_id}' did not run "
-                f"(skipped={ea.plugin_id in plugins_skipped})"
-            )
+            failures.append(f"Expected plugin '{ea.plugin_id}' did not run (skipped={ea.plugin_id in plugins_skipped})")
 
     # Expected findings (partial match)
     for exp_finding in all_expected:

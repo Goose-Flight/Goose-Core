@@ -60,9 +60,7 @@ def _finding(
         severity=severity,
         score=80 if severity != FindingSeverity.PASS else 100,
         confidence=0.8 if severity != FindingSeverity.PASS else 1.0,
-        evidence_references=[
-            EvidenceReference(evidence_id="EV-001", stream_name=stream_name)
-        ],
+        evidence_references=[EvidenceReference(evidence_id="EV-001", stream_name=stream_name)],
         start_time=start_time,
     )
 
@@ -71,6 +69,7 @@ def _make_flight_with_failsafe():
     """Create a minimal Flight-like object with failsafe events."""
 
     from goose.core.flight import Flight, FlightEvent, FlightMetadata
+
     meta = FlightMetadata(
         source_file="test.ulg",
         autopilot="px4",
@@ -105,6 +104,7 @@ def _make_flight_with_rc_dropout():
     """Create a minimal Flight with RC input that drops to zero."""
 
     from goose.core.flight import Flight, FlightMetadata
+
     meta = FlightMetadata(
         source_file="test.ulg",
         autopilot="px4",
@@ -121,13 +121,15 @@ def _make_flight_with_rc_dropout():
     # Create RC input: channels are nominal, then drop to zero for 5 seconds
     timestamps = list(range(60))
     chan1 = [1500] * 20 + [0] * 5 + [1500] * 35
-    flight.rc_input = pd.DataFrame({
-        "timestamp": [float(t) for t in timestamps],
-        "chan1": chan1,
-        "chan2": chan1,
-        "chan3": chan1,
-        "chan4": chan1,
-    })
+    flight.rc_input = pd.DataFrame(
+        {
+            "timestamp": [float(t) for t in timestamps],
+            "chan1": chan1,
+            "chan2": chan1,
+            "chan3": chan1,
+            "chan4": chan1,
+        }
+    )
     return flight
 
 
@@ -135,47 +137,40 @@ def _make_flight_with_rc_dropout():
 # C1: Timeline event extraction
 # ---------------------------------------------------------------------------
 
+
 class TestTimelineExtractsFailsafeEvents:
     def test_failsafe_events_produce_fault_timeline_events(self):
         flight = _make_flight_with_failsafe()
         from goose.forensics.timeline import build_timeline_from_flight
+
         events = build_timeline_from_flight(flight, RUN_ID)
 
         fault_events = [e for e in events if e.event_type == TimelineEventType.FAULT]
         assert len(fault_events) >= 2, (
-            f"Expected at least 2 FAULT events from failsafe FlightEvents, got {len(fault_events)}; "
-            f"all events: {[(e.event_type, e.label) for e in events]}"
+            f"Expected at least 2 FAULT events from failsafe FlightEvents, got {len(fault_events)}; all events: {[(e.event_type, e.label) for e in events]}"
         )
         labels = [e.label for e in fault_events]
-        assert any("Failsafe" in lbl or "failsafe" in lbl.lower() or "RC" in lbl or "Battery" in lbl for lbl in labels), (
-            f"Failsafe labels not found: {labels}"
-        )
+        assert any("Failsafe" in lbl or "failsafe" in lbl.lower() or "RC" in lbl or "Battery" in lbl for lbl in labels), f"Failsafe labels not found: {labels}"
 
     def test_failsafe_event_timestamps_are_correct(self):
         flight = _make_flight_with_failsafe()
         from goose.forensics.timeline import build_timeline_from_flight
+
         events = build_timeline_from_flight(flight, RUN_ID)
-        fault_events = [e for e in events if e.event_type == TimelineEventType.FAULT
-                        and "failsafe" in e.label.lower()]
+        fault_events = [e for e in events if e.event_type == TimelineEventType.FAULT and "failsafe" in e.label.lower()]
         timestamps = sorted(e.start_time for e in fault_events)
-        assert 15.0 in timestamps or any(abs(t - 15.0) < 0.01 for t in timestamps), (
-            f"Expected timestamp ~15.0 in fault events, got: {timestamps}"
-        )
+        assert 15.0 in timestamps or any(abs(t - 15.0) < 0.01 for t in timestamps), f"Expected timestamp ~15.0 in fault events, got: {timestamps}"
 
 
 class TestTimelineExtractsRcLossWindow:
     def test_rc_dropout_produces_anomaly_event(self):
         flight = _make_flight_with_rc_dropout()
         from goose.forensics.timeline import build_timeline_from_flight
+
         events = build_timeline_from_flight(flight, RUN_ID)
 
-        rc_events = [
-            e for e in events
-            if "rc" in e.label.lower() or "signal" in e.label.lower()
-        ]
-        assert len(rc_events) >= 1, (
-            f"Expected at least 1 RC loss event, got 0; events: {[(e.label, e.event_category.value) for e in events]}"
-        )
+        rc_events = [e for e in events if "rc" in e.label.lower() or "signal" in e.label.lower()]
+        assert len(rc_events) >= 1, f"Expected at least 1 RC loss event, got 0; events: {[(e.label, e.event_category.value) for e in events]}"
         rc_ev = rc_events[0]
         assert rc_ev.event_category == TimelineEventCategory.ANOMALY
         assert rc_ev.severity == "warning"
@@ -183,6 +178,7 @@ class TestTimelineExtractsRcLossWindow:
     def test_rc_event_spans_dropout_window(self):
         flight = _make_flight_with_rc_dropout()
         from goose.forensics.timeline import build_timeline_from_flight
+
         events = build_timeline_from_flight(flight, RUN_ID)
         rc_events = [e for e in events if "rc" in e.label.lower() or "signal" in e.label.lower()]
         if rc_events:
@@ -195,6 +191,7 @@ class TestTimelineExtractsRcLossWindow:
 # ---------------------------------------------------------------------------
 # C1b: Finding -> Hypothesis linkage
 # ---------------------------------------------------------------------------
+
 
 class TestTimelineFindingLinksToHypothesis:
     def test_finding_derived_event_has_hypothesis_id(self):
@@ -215,9 +212,7 @@ class TestTimelineFindingLinksToHypothesis:
         events = build_timeline_from_findings([finding], RUN_ID, hypotheses=[hyp])
         assert len(events) == 1
         ev = events[0]
-        assert hyp_id in ev.related_hypothesis_ids, (
-            f"Expected {hyp_id} in related_hypothesis_ids, got {ev.related_hypothesis_ids}"
-        )
+        assert hyp_id in ev.related_hypothesis_ids, f"Expected {hyp_id} in related_hypothesis_ids, got {ev.related_hypothesis_ids}"
 
     def test_finding_not_in_hypothesis_has_no_hypothesis_id(self):
         fid = "FND-TESTAB02"
@@ -262,9 +257,9 @@ class TestTimelineFindingLinksToHypothesis:
 # C1c: Timeline clustering
 # ---------------------------------------------------------------------------
 
+
 class TestClusterTimelineEventsGroupsRapidSequence:
-    def _make_event(self, t: float, label: str, severity: str = "warning",
-                    category: TimelineEventCategory = TimelineEventCategory.ANOMALY) -> TimelineEvent:
+    def _make_event(self, t: float, label: str, severity: str = "warning", category: TimelineEventCategory = TimelineEventCategory.ANOMALY) -> TimelineEvent:
         return TimelineEvent(
             event_id=f"TLE-{uuid.uuid4().hex[:8].upper()}",
             event_type=TimelineEventType.SYSTEM_EVENT,
@@ -364,6 +359,7 @@ class TestClusterTimelineEventsGroupsRapidSequence:
 # C2a: Hypothesis score_components transparency
 # ---------------------------------------------------------------------------
 
+
 class TestHypothesisScoreComponentsVisible:
     def test_score_components_in_supporting_metrics(self):
         findings = [
@@ -374,9 +370,7 @@ class TestHypothesisScoreComponentsVisible:
         power_hyps = [h for h in hypotheses if h.theme == "power"]
         assert len(power_hyps) >= 1, "Expected a power hypothesis"
         hyp = power_hyps[0]
-        assert "score_components" in hyp.supporting_metrics, (
-            f"score_components not in supporting_metrics: {hyp.supporting_metrics}"
-        )
+        assert "score_components" in hyp.supporting_metrics, f"score_components not in supporting_metrics: {hyp.supporting_metrics}"
         sc = hyp.supporting_metrics["score_components"]
         assert "supporting_findings_count" in sc
         assert "contradicting_findings_count" in sc
@@ -411,6 +405,7 @@ class TestHypothesisScoreComponentsVisible:
 # C2c: unknown_mixed enrichment
 # ---------------------------------------------------------------------------
 
+
 class TestUnknownMixedHasUsefulNotes:
     def test_unknown_mixed_fires_when_no_theme_reaches_threshold(self):
         # Single low-weight finding that won't reach 0.3 confidence threshold
@@ -418,9 +413,7 @@ class TestUnknownMixedHasUsefulNotes:
         findings: list[ForensicFinding] = []
         hypotheses = generate_hypotheses(findings, RUN_ID)
         unknown = [h for h in hypotheses if h.theme == "unknown_mixed"]
-        assert len(unknown) == 1, (
-            f"Expected unknown_mixed hypothesis, got: {[h.theme for h in hypotheses]}"
-        )
+        assert len(unknown) == 1, f"Expected unknown_mixed hypothesis, got: {[h.theme for h in hypotheses]}"
 
     def test_unknown_mixed_has_analyst_notes(self):
         hypotheses = generate_hypotheses([], RUN_ID)
@@ -437,8 +430,7 @@ class TestUnknownMixedHasUsefulNotes:
         unknown = [h for h in hypotheses if h.theme == "unknown_mixed"]
         if unknown:
             questions = unknown[0].unresolved_questions
-            assert any("dominant cause" in q.lower() or "reviewing" in q.lower() or "consider" in q.lower()
-                       for q in questions), (
+            assert any("dominant cause" in q.lower() or "reviewing" in q.lower() or "consider" in q.lower() for q in questions), (
                 f"Expected guidance question, got: {questions}"
             )
 
@@ -452,65 +444,83 @@ class TestUnknownMixedHasUsefulNotes:
         unknown = [h for h in hypotheses if h.theme == "unknown_mixed"]
         if unknown:
             cf_ids = unknown[0].contradicting_finding_ids
-            assert len(cf_ids) >= 2, (
-                f"Expected PASS findings as contradicting in unknown_mixed, got: {cf_ids}"
-            )
+            assert len(cf_ids) >= 2, f"Expected PASS findings as contradicting in unknown_mixed, got: {cf_ids}"
 
 
 # ---------------------------------------------------------------------------
 # C3a: ForensicCaseReport has timeline_summary
 # ---------------------------------------------------------------------------
 
+
 class TestForensicCaseReportHasTimelineSummary:
     def _make_case_dir(self, tmp_path: Path) -> Path:
         import json
+
         case_dir = tmp_path / "test_case"
         case_dir.mkdir()
 
         # Minimal case.json
-        (case_dir / "case.json").write_text(json.dumps({
-            "case_id": "CASE-TEST-001",
-            "status": "open",
-            "platform_name": "TestQuad",
-            "operator_name": "TestOp",
-        }), encoding="utf-8")
+        (case_dir / "case.json").write_text(
+            json.dumps(
+                {
+                    "case_id": "CASE-TEST-001",
+                    "status": "open",
+                    "platform_name": "TestQuad",
+                    "operator_name": "TestOp",
+                }
+            ),
+            encoding="utf-8",
+        )
 
         # analysis dir with findings, hypotheses, timeline
         analysis_dir = case_dir / "analysis"
         analysis_dir.mkdir()
-        (analysis_dir / "findings.json").write_text(json.dumps({
-            "findings": [
-                {"finding_id": "FND-001", "severity": "warning", "title": "Test finding", "plugin_id": "test"}
-            ]
-        }), encoding="utf-8")
-        (analysis_dir / "hypotheses.json").write_text(json.dumps({
-            "hypotheses": [
+        (analysis_dir / "findings.json").write_text(
+            json.dumps({"findings": [{"finding_id": "FND-001", "severity": "warning", "title": "Test finding", "plugin_id": "test"}]}), encoding="utf-8"
+        )
+        (analysis_dir / "hypotheses.json").write_text(
+            json.dumps(
                 {
-                    "hypothesis_id": "HYP-001",
-                    "statement": "Test hypothesis",
-                    "confidence": 0.7,
-                    "status": "candidate",
-                    "category": "test",
-                    "contradicting_findings": [],
-                    "unresolved_questions": ["Question 1"],
+                    "hypotheses": [
+                        {
+                            "hypothesis_id": "HYP-001",
+                            "statement": "Test hypothesis",
+                            "confidence": 0.7,
+                            "status": "candidate",
+                            "category": "test",
+                            "contradicting_findings": [],
+                            "unresolved_questions": ["Question 1"],
+                        }
+                    ]
                 }
-            ]
-        }), encoding="utf-8")
-        (analysis_dir / "timeline.json").write_text(json.dumps({
-            "events": [
-                {"event_type": "fault", "event_category": "anomaly", "label": "Test", "start_time": 5.0},
-                {"event_type": "system_event", "event_category": "system", "label": "Test2", "start_time": 10.0},
-            ]
-        }), encoding="utf-8")
+            ),
+            encoding="utf-8",
+        )
+        (analysis_dir / "timeline.json").write_text(
+            json.dumps(
+                {
+                    "events": [
+                        {"event_type": "fault", "event_category": "anomaly", "label": "Test", "start_time": 5.0},
+                        {"event_type": "system_event", "event_category": "system", "label": "Test2", "start_time": 10.0},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
 
         # parsed dir
         parsed_dir = case_dir / "parsed"
         parsed_dir.mkdir()
-        (parsed_dir / "parse_diagnostics.json").write_text(json.dumps({
-            "parser_confidence": 0.9,
-            "warnings": [],
-            "stream_coverage": [],
-        }), encoding="utf-8")
+        (parsed_dir / "parse_diagnostics.json").write_text(
+            json.dumps(
+                {
+                    "parser_confidence": 0.9,
+                    "warnings": [],
+                    "stream_coverage": [],
+                }
+            ),
+            encoding="utf-8",
+        )
         (parsed_dir / "provenance.json").write_text(json.dumps({}), encoding="utf-8")
 
         # manifests dir
@@ -522,6 +532,7 @@ class TestForensicCaseReportHasTimelineSummary:
 
     def test_forensic_case_report_has_timeline_summary_key(self, tmp_path):
         from goose.forensics.reports import generate_forensic_case_report
+
         case_dir = self._make_case_dir(tmp_path)
         report = generate_forensic_case_report(case_dir, "run-001")
         d = report.to_dict()
@@ -533,6 +544,7 @@ class TestForensicCaseReportHasTimelineSummary:
 
     def test_forensic_case_report_has_hypothesis_summary(self, tmp_path):
         from goose.forensics.reports import generate_forensic_case_report
+
         case_dir = self._make_case_dir(tmp_path)
         report = generate_forensic_case_report(case_dir, "run-001")
         d = report.to_dict()
@@ -547,6 +559,7 @@ class TestForensicCaseReportHasTimelineSummary:
 
     def test_forensic_case_report_has_evidence_quality(self, tmp_path):
         from goose.forensics.reports import generate_forensic_case_report
+
         case_dir = self._make_case_dir(tmp_path)
         report = generate_forensic_case_report(case_dir, "run-001")
         d = report.to_dict()
@@ -557,6 +570,7 @@ class TestForensicCaseReportHasTimelineSummary:
 
     def test_forensic_case_report_has_investigation_completeness(self, tmp_path):
         from goose.forensics.reports import generate_forensic_case_report
+
         case_dir = self._make_case_dir(tmp_path)
         report = generate_forensic_case_report(case_dir, "run-001")
         d = report.to_dict()
@@ -570,83 +584,110 @@ class TestForensicCaseReportHasTimelineSummary:
 # C3b: AnomalyReport has dominant_theme
 # ---------------------------------------------------------------------------
 
+
 class TestAnomalyReportHasDominantTheme:
     def _make_case_dir_with_hypotheses(self, tmp_path: Path) -> Path:
         import json
+
         case_dir = tmp_path / "anomaly_case"
         case_dir.mkdir()
 
-        (case_dir / "case.json").write_text(json.dumps({
-            "case_id": "CASE-ANOM-001",
-        }), encoding="utf-8")
+        (case_dir / "case.json").write_text(
+            json.dumps(
+                {
+                    "case_id": "CASE-ANOM-001",
+                }
+            ),
+            encoding="utf-8",
+        )
 
         analysis_dir = case_dir / "analysis"
         analysis_dir.mkdir()
-        (analysis_dir / "findings.json").write_text(json.dumps({
-            "findings": [
-                {"finding_id": "FND-001", "severity": "warning", "title": "Battery sag", "plugin_id": "battery_sag"},
-                {"finding_id": "FND-002", "severity": "critical", "title": "Crash", "plugin_id": "crash_detection"},
-            ]
-        }), encoding="utf-8")
-        (analysis_dir / "hypotheses.json").write_text(json.dumps({
-            "hypotheses": [
+        (analysis_dir / "findings.json").write_text(
+            json.dumps(
                 {
-                    "hypothesis_id": "HYP-001",
-                    "statement": "Battery failure",
-                    "confidence": 0.8,
-                    "status": "candidate",
-                    "category": "battery / power issue",
-                    "theme": "power",
-                },
+                    "findings": [
+                        {"finding_id": "FND-001", "severity": "warning", "title": "Battery sag", "plugin_id": "battery_sag"},
+                        {"finding_id": "FND-002", "severity": "critical", "title": "Crash", "plugin_id": "crash_detection"},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        (analysis_dir / "hypotheses.json").write_text(
+            json.dumps(
                 {
-                    "hypothesis_id": "HYP-002",
-                    "statement": "Crash detected",
-                    "confidence": 0.6,
-                    "status": "candidate",
-                    "category": "impact / damage class",
-                    "theme": "crash",
-                },
-            ]
-        }), encoding="utf-8")
-        (analysis_dir / "timeline.json").write_text(json.dumps({
-            "events": [
-                {"event_type": "fault", "event_category": "anomaly", "label": "Battery warn", "start_time": 20.0},
-                {"event_type": "fault", "event_category": "anomaly", "label": "Crash", "start_time": 21.0},
-            ]
-        }), encoding="utf-8")
+                    "hypotheses": [
+                        {
+                            "hypothesis_id": "HYP-001",
+                            "statement": "Battery failure",
+                            "confidence": 0.8,
+                            "status": "candidate",
+                            "category": "battery / power issue",
+                            "theme": "power",
+                        },
+                        {
+                            "hypothesis_id": "HYP-002",
+                            "statement": "Crash detected",
+                            "confidence": 0.6,
+                            "status": "candidate",
+                            "category": "impact / damage class",
+                            "theme": "crash",
+                        },
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        (analysis_dir / "timeline.json").write_text(
+            json.dumps(
+                {
+                    "events": [
+                        {"event_type": "fault", "event_category": "anomaly", "label": "Battery warn", "start_time": 20.0},
+                        {"event_type": "fault", "event_category": "anomaly", "label": "Crash", "start_time": 21.0},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
 
         parsed_dir = case_dir / "parsed"
         parsed_dir.mkdir()
-        (parsed_dir / "parse_diagnostics.json").write_text(json.dumps({
-            "warnings": [], "missing_streams": [],
-        }), encoding="utf-8")
+        (parsed_dir / "parse_diagnostics.json").write_text(
+            json.dumps(
+                {
+                    "warnings": [],
+                    "missing_streams": [],
+                }
+            ),
+            encoding="utf-8",
+        )
 
         return case_dir
 
     def test_anomaly_report_has_dominant_theme(self, tmp_path):
         from goose.forensics.reports import generate_anomaly_report
+
         case_dir = self._make_case_dir_with_hypotheses(tmp_path)
         report = generate_anomaly_report(case_dir, "CASE-ANOM-001", "run-001")
         d = report.to_dict()
         assert "dominant_theme" in d
         assert d["dominant_theme"] is not None
-        assert d["dominant_theme"] in ("battery / power issue", "impact / damage class"), (
-            f"Unexpected dominant_theme: {d['dominant_theme']}"
-        )
+        assert d["dominant_theme"] in ("battery / power issue", "impact / damage class"), f"Unexpected dominant_theme: {d['dominant_theme']}"
 
     def test_anomaly_report_has_anomaly_windows(self, tmp_path):
         from goose.forensics.reports import generate_anomaly_report
+
         case_dir = self._make_case_dir_with_hypotheses(tmp_path)
         report = generate_anomaly_report(case_dir, "CASE-ANOM-001", "run-001")
         d = report.to_dict()
         assert "anomaly_windows" in d
         # The two anomaly events are within 5s of each other
-        assert len(d["anomaly_windows"]) >= 1, (
-            f"Expected at least 1 anomaly window, got: {d['anomaly_windows']}"
-        )
+        assert len(d["anomaly_windows"]) >= 1, f"Expected at least 1 anomaly window, got: {d['anomaly_windows']}"
 
     def test_anomaly_report_has_data_limitations(self, tmp_path):
         from goose.forensics.reports import generate_anomaly_report
+
         case_dir = self._make_case_dir_with_hypotheses(tmp_path)
         report = generate_anomaly_report(case_dir, "CASE-ANOM-001", "run-001")
         d = report.to_dict()

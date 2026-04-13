@@ -75,6 +75,7 @@ def test_run_comparison_empty_is_not_different():
 
 def test_run_comparison_with_findings_is_different():
     from goose.forensics.replay import FindingDifference
+
     rc = RunComparison(
         comparison_id="CMP-1",
         case_id="CASE-TEST",
@@ -88,6 +89,7 @@ def test_run_comparison_with_findings_is_different():
 
 def test_run_comparison_serialization_roundtrip():
     from goose.forensics.replay import FindingDifference
+
     rc = RunComparison(
         comparison_id="CMP-2",
         case_id="CASE-TEST",

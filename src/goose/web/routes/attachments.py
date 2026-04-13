@@ -38,6 +38,7 @@ router = APIRouter(tags=["attachments"])
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _sanitize_filename(name: str) -> str:
     name = re.sub(r"[^\w.\-]", "_", name)
     return name[:200] or "attachment"
@@ -45,6 +46,7 @@ def _sanitize_filename(name: str) -> str:
 
 def _attachments_dir(case_id: str) -> Path:
     from goose.web.cases_api import get_service
+
     svc = get_service()
     svc.get_case(case_id)  # raises FileNotFoundError if unknown
     d = svc.case_dir(case_id) / "attachments"
@@ -91,6 +93,7 @@ def _parse_attachment_type(raw: str) -> AttachmentType:
 # Routes — mounted under /api/cases via cases_api router
 # ---------------------------------------------------------------------------
 
+
 @router.post("/{case_id}/attachments", status_code=201)
 async def upload_attachment(
     case_id: str,
@@ -136,9 +139,7 @@ async def upload_attachment(
         sha256 = hashlib.sha256(content).hexdigest()
         sha512 = hashlib.sha512(content).hexdigest()
 
-        content_type = file.content_type or (
-            mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
-        )
+        content_type = file.content_type or (mimetypes.guess_type(file.filename)[0] or "application/octet-stream")
 
         att = Attachment(
             attachment_id=attachment_id,
@@ -180,11 +181,13 @@ async def list_attachments(case_id: str) -> JSONResponse:
     entries = _load_manifest(case_id)
     # Strip stored_path from manifest entries before returning (H-1)
     safe_entries = [{k: v for k, v in e.items() if k != "stored_path"} for e in entries]
-    return JSONResponse({
-        "ok": True,
-        "attachments": safe_entries,
-        "count": len(safe_entries),
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "attachments": safe_entries,
+            "count": len(safe_entries),
+        }
+    )
 
 
 @router.get("/{case_id}/attachments/{attachment_id}")
@@ -216,9 +219,7 @@ async def get_attachment_file(case_id: str, attachment_id: str) -> FileResponse:
             # so a tampered manifest can't serve arbitrary filesystem files.
             resolved = Path(stored_path).resolve()
             if not resolved.is_relative_to(att_dir.resolve()):
-                logger.warning(
-                    "Attachment %s stored_path escapes case dir — denying", attachment_id
-                )
+                logger.warning("Attachment %s stored_path escapes case dir — denying", attachment_id)
                 raise HTTPException(status_code=403, detail="Invalid attachment")
             if not resolved.exists():
                 raise HTTPException(status_code=404, detail="Attachment file missing on disk")

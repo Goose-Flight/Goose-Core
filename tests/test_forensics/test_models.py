@@ -58,6 +58,7 @@ def _make_case() -> Case:
 # EvidenceItem tests
 # ---------------------------------------------------------------------------
 
+
 class TestEvidenceItem:
     def test_creation(self):
         ev = _make_evidence_item()
@@ -93,6 +94,7 @@ class TestEvidenceItem:
 # EvidenceManifest tests
 # ---------------------------------------------------------------------------
 
+
 class TestEvidenceManifest:
     def test_creation(self):
         manifest = EvidenceManifest(case_id="CASE-2026-000001")
@@ -123,6 +125,7 @@ class TestEvidenceManifest:
 # ---------------------------------------------------------------------------
 # Case tests
 # ---------------------------------------------------------------------------
+
 
 class TestCase:
     def test_creation(self):
@@ -190,6 +193,7 @@ class TestCase:
 # Provenance tests
 # ---------------------------------------------------------------------------
 
+
 class TestProvenance:
     def test_creation(self):
         p = Provenance(
@@ -221,6 +225,7 @@ class TestProvenance:
 # ---------------------------------------------------------------------------
 # AuditEntry tests
 # ---------------------------------------------------------------------------
+
 
 class TestAuditEntry:
     def test_creation(self):
@@ -287,6 +292,7 @@ class TestAuditEntry:
 # ---------------------------------------------------------------------------
 # CaseStatus enum tests
 # ---------------------------------------------------------------------------
+
 
 class TestCaseStatus:
     def test_all_values(self):

@@ -139,10 +139,7 @@ class CSVParser(BaseParser):
         # --- Timestamp normalization -----------------------------------------
         ts_col = _find_col(df, _COL_TIMESTAMP)
         if ts_col is None:
-            diag.errors.append(
-                "No timestamp column found. Expected one of: "
-                + ", ".join(_COL_TIMESTAMP[:5])
-            )
+            diag.errors.append("No timestamp column found. Expected one of: " + ", ".join(_COL_TIMESTAMP[:5]))
             diag.parser_confidence = 0.0
             diag.parse_duration_ms = round((time.monotonic() - t0) * 1000, 1)
             return ParseResult.failure(diag)
@@ -165,9 +162,7 @@ class CSVParser(BaseParser):
         elif ts_max > 1e6:
             # Ambiguous — treat as milliseconds
             ts_sec = (ts_raw - ts_raw.min()) / 1e3
-            diag.warnings.append(
-                f"Timestamp scale ambiguous (max={ts_max:.0f}). Treating as milliseconds."
-            )
+            diag.warnings.append(f"Timestamp scale ambiguous (max={ts_max:.0f}). Treating as milliseconds.")
         else:
             # Likely already seconds (possibly fractional)
             ts_sec = ts_raw - ts_raw.min()
@@ -176,9 +171,7 @@ class CSVParser(BaseParser):
         duration_sec = float(ts_sec.dropna().max() - ts_sec.dropna().min())
 
         if duration_sec < 1.0:
-            diag.timebase_anomalies.append(
-                f"Log duration is very short ({duration_sec:.2f}s). Timestamps may be unreliable."
-            )
+            diag.timebase_anomalies.append(f"Log duration is very short ({duration_sec:.2f}s). Timestamps may be unreliable.")
 
         # --- Build sub-DataFrames for each stream ---------------------------
         coverage: list[StreamCoverage] = []
@@ -274,10 +267,8 @@ class CSVParser(BaseParser):
             coverage.append(StreamCoverage("rc_input", present=False))
 
         # Mark remaining streams as absent (CSV rarely has vibration/EKF/motors)
-        for absent_stream in ("vibration", "motors", "ekf", "attitude_setpoint",
-                              "position_setpoint", "attitude_rate", "cpu", "flight_mode"):
-            coverage.append(StreamCoverage(absent_stream, present=False,
-                                           notes="Stream not available in CSV format."))
+        for absent_stream in ("vibration", "motors", "ekf", "attitude_setpoint", "position_setpoint", "attitude_rate", "cpu", "flight_mode"):
+            coverage.append(StreamCoverage(absent_stream, present=False, notes="Stream not available in CSV format."))
 
         diag.stream_coverage = coverage
         diag.missing_streams = [sc.stream_name for sc in coverage if not sc.present]

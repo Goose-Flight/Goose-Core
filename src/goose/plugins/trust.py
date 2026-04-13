@@ -27,9 +27,11 @@ def fingerprint_plugin(plugin_instance: Any) -> str:
         return hashlib.sha256(source.encode("utf-8")).hexdigest()
     except (OSError, TypeError) as exc:
         import logging
+
         logging.getLogger(__name__).debug(
             "Cannot fingerprint plugin %s (source unavailable): %s",
-            type(plugin_instance).__name__, exc,
+            type(plugin_instance).__name__,
+            exc,
         )
         return ""
 
@@ -38,9 +40,9 @@ class TrustPolicy:
     """Determines whether a plugin is allowed to run based on trust state and policy."""
 
     class PolicyMode(str, Enum):
-        PERMISSIVE = "permissive"           # all plugins run, warnings shown
-        WARNED = "warned"                   # unsigned/community plugins run with warnings
-        ALLOWLIST_ONLY = "allowlist_only"   # only explicitly allowed plugins run
+        PERMISSIVE = "permissive"  # all plugins run, warnings shown
+        WARNED = "warned"  # unsigned/community plugins run with warnings
+        ALLOWLIST_ONLY = "allowlist_only"  # only explicitly allowed plugins run
 
     def __init__(
         self,

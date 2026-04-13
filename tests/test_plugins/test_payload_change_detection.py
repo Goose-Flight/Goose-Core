@@ -39,9 +39,7 @@ def _make_metadata() -> FlightMetadata:
     )
 
 
-def _make_battery(
-    timestamps: list[float], currents: list[float]
-) -> pd.DataFrame:
+def _make_battery(timestamps: list[float], currents: list[float]) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "timestamp": timestamps,
@@ -122,15 +120,11 @@ class TestManifest:
     def test_required_streams(self, plugin: PayloadChangeDetectionPlugin) -> None:
         assert "battery" in plugin.manifest.required_streams
 
-    def test_output_finding_types(
-        self, plugin: PayloadChangeDetectionPlugin
-    ) -> None:
+    def test_output_finding_types(self, plugin: PayloadChangeDetectionPlugin) -> None:
         assert "possible_mass_reduction_event" in plugin.manifest.output_finding_types
         assert "possible_load_increase_event" in plugin.manifest.output_finding_types
 
-    def test_trust_state_builtin(
-        self, plugin: PayloadChangeDetectionPlugin
-    ) -> None:
+    def test_trust_state_builtin(self, plugin: PayloadChangeDetectionPlugin) -> None:
         assert plugin.manifest.trust_state == PluginTrustState.BUILTIN_TRUSTED
 
     def test_registered_in_plugin_registry(self) -> None:
@@ -145,27 +139,19 @@ class TestManifest:
 
 
 class TestAnalyze:
-    def test_empty_flight_returns_empty_findings(
-        self, plugin: PayloadChangeDetectionPlugin, empty_flight: Flight
-    ) -> None:
+    def test_empty_flight_returns_empty_findings(self, plugin: PayloadChangeDetectionPlugin, empty_flight: Flight) -> None:
         findings = plugin.analyze(empty_flight, {})
         assert findings == []
 
-    def test_short_flight_returns_empty(
-        self, plugin: PayloadChangeDetectionPlugin, short_flight: Flight
-    ) -> None:
+    def test_short_flight_returns_empty(self, plugin: PayloadChangeDetectionPlugin, short_flight: Flight) -> None:
         findings = plugin.analyze(short_flight, {})
         assert findings == []
 
-    def test_flat_current_returns_empty(
-        self, plugin: PayloadChangeDetectionPlugin, flat_current_flight: Flight
-    ) -> None:
+    def test_flat_current_returns_empty(self, plugin: PayloadChangeDetectionPlugin, flat_current_flight: Flight) -> None:
         findings = plugin.analyze(flat_current_flight, {})
         assert findings == []
 
-    def test_step_change_detected(
-        self, plugin: PayloadChangeDetectionPlugin, step_change_flight: Flight
-    ) -> None:
+    def test_step_change_detected(self, plugin: PayloadChangeDetectionPlugin, step_change_flight: Flight) -> None:
         findings = plugin.analyze(step_change_flight, {})
         assert len(findings) >= 1, "Expected at least one candidate event"
 
@@ -177,24 +163,16 @@ class TestAnalyze:
         assert f.evidence["finding_type"] == "possible_mass_reduction_event"
         assert f.evidence["detection_phase"] == "phase_1_candidate"
 
-    def test_phase_1_confidence_is_low(
-        self, plugin: PayloadChangeDetectionPlugin, step_change_flight: Flight
-    ) -> None:
+    def test_phase_1_confidence_is_low(self, plugin: PayloadChangeDetectionPlugin, step_change_flight: Flight) -> None:
         findings = plugin.analyze(step_change_flight, {})
         assert findings
         for f in findings:
             # Phase 1 confidence 0.25–0.45 — score 25–45
-            assert 25 <= f.score <= 45, (
-                f"Phase 1 score should be in [25,45], got {f.score}"
-            )
+            assert 25 <= f.score <= 45, f"Phase 1 score should be in [25,45], got {f.score}"
 
-    def test_config_threshold_override_suppresses_event(
-        self, plugin: PayloadChangeDetectionPlugin, step_change_flight: Flight
-    ) -> None:
+    def test_config_threshold_override_suppresses_event(self, plugin: PayloadChangeDetectionPlugin, step_change_flight: Flight) -> None:
         # Raise threshold well above the 6A step — no finding
-        findings = plugin.analyze(
-            step_change_flight, {"current_delta_threshold": 20.0}
-        )
+        findings = plugin.analyze(step_change_flight, {"current_delta_threshold": 20.0})
         assert findings == []
 
 
@@ -204,63 +182,53 @@ class TestAnalyze:
 
 
 class TestCandidateWindows:
-    def test_clean_step_change_detected(
-        self, plugin: PayloadChangeDetectionPlugin
-    ) -> None:
+    def test_clean_step_change_detected(self, plugin: PayloadChangeDetectionPlugin) -> None:
         times = [i * 0.1 for i in range(600)]
         currents = [15.0 if t < 30.0 else 9.0 for t in times]
-        cands = plugin._find_candidate_windows(
-            times, currents, delta_threshold=3.0, sustained_s=1.5, pre_post_s=5.0
-        )
+        cands = plugin._find_candidate_windows(times, currents, delta_threshold=3.0, sustained_s=1.5, pre_post_s=5.0)
         assert len(cands) >= 1
         c = cands[0]
         assert c["delta_amps"] < 0
         assert abs(c["delta_amps"]) >= 3.0
         assert c["duration_s"] >= 1.5
 
-    def test_no_change_returns_empty(
-        self, plugin: PayloadChangeDetectionPlugin
-    ) -> None:
+    def test_no_change_returns_empty(self, plugin: PayloadChangeDetectionPlugin) -> None:
         times = [i * 0.1 for i in range(600)]
         currents = [15.0] * 600
-        cands = plugin._find_candidate_windows(
-            times, currents, delta_threshold=3.0, sustained_s=1.5, pre_post_s=5.0
-        )
+        cands = plugin._find_candidate_windows(times, currents, delta_threshold=3.0, sustained_s=1.5, pre_post_s=5.0)
         assert cands == []
 
 
 class TestThrottleExplainsChange:
-    def test_matching_throttle_suppresses(
-        self, plugin: PayloadChangeDetectionPlugin
-    ) -> None:
+    def test_matching_throttle_suppresses(self, plugin: PayloadChangeDetectionPlugin) -> None:
         # Build a throttle stream that rises sharply around the same event window
         throttle = [(t * 0.1, 0.4 if t * 0.1 < 30.0 else 0.8) for t in range(600)]
-        assert plugin._throttle_explains_change(
-            throttle,
-            start_time=29.5,
-            end_time=31.0,
-            delta_amps=5.0,
-            tolerance=0.15,
-        ) is True
+        assert (
+            plugin._throttle_explains_change(
+                throttle,
+                start_time=29.5,
+                end_time=31.0,
+                delta_amps=5.0,
+                tolerance=0.15,
+            )
+            is True
+        )
 
-    def test_flat_throttle_does_not_suppress(
-        self, plugin: PayloadChangeDetectionPlugin
-    ) -> None:
+    def test_flat_throttle_does_not_suppress(self, plugin: PayloadChangeDetectionPlugin) -> None:
         throttle = [(t * 0.1, 0.5) for t in range(600)]
-        assert plugin._throttle_explains_change(
-            throttle,
-            start_time=29.5,
-            end_time=31.0,
-            delta_amps=5.0,
-            tolerance=0.15,
-        ) is False
+        assert (
+            plugin._throttle_explains_change(
+                throttle,
+                start_time=29.5,
+                end_time=31.0,
+                delta_amps=5.0,
+                tolerance=0.15,
+            )
+            is False
+        )
 
-    def test_no_throttle_samples_returns_false(
-        self, plugin: PayloadChangeDetectionPlugin
-    ) -> None:
-        assert plugin._throttle_explains_change(
-            [], 29.5, 31.0, 5.0, 0.15
-        ) is False
+    def test_no_throttle_samples_returns_false(self, plugin: PayloadChangeDetectionPlugin) -> None:
+        assert plugin._throttle_explains_change([], 29.5, 31.0, 5.0, 0.15) is False
 
 
 # ---------------------------------------------------------------------------
@@ -269,13 +237,15 @@ class TestThrottleExplainsChange:
 
 
 class TestForensicAnalyze:
-    def test_diagnostics_when_skipped(
-        self, plugin: PayloadChangeDetectionPlugin, empty_flight: Flight
-    ) -> None:
+    def test_diagnostics_when_skipped(self, plugin: PayloadChangeDetectionPlugin, empty_flight: Flight) -> None:
         """No battery stream → plugin is skipped with correct diagnostics."""
         parse_diag = _make_parse_diagnostics()
         findings, diag = plugin.forensic_analyze(
-            empty_flight, "EV-TEST", "RUN-TEST", {}, parse_diag,
+            empty_flight,
+            "EV-TEST",
+            "RUN-TEST",
+            {},
+            parse_diag,
         )
         assert findings == []
         assert isinstance(diag, PluginDiagnostics)
@@ -291,7 +261,11 @@ class TestForensicAnalyze:
     ) -> None:
         parse_diag = _make_parse_diagnostics()
         findings, diag = plugin.forensic_analyze(
-            step_change_flight, "EV-TEST", "RUN-TEST", {}, parse_diag,
+            step_change_flight,
+            "EV-TEST",
+            "RUN-TEST",
+            {},
+            parse_diag,
         )
         assert diag.executed is True
         assert diag.skipped is False
@@ -316,14 +290,10 @@ class TestTuningProfileIntegration:
         assert "min_flight_duration_s" in cfg.thresholds.values
 
     def test_default_profile_constant_contains_plugin(self) -> None:
-        cfg = DEFAULT_TUNING_PROFILE.get_config_for_plugin(
-            "payload_change_detection"
-        )
+        cfg = DEFAULT_TUNING_PROFILE.get_config_for_plugin("payload_change_detection")
         assert cfg is not None
 
-    def test_default_thresholds_match_source(
-        self, plugin: PayloadChangeDetectionPlugin
-    ) -> None:
+    def test_default_thresholds_match_source(self, plugin: PayloadChangeDetectionPlugin) -> None:
         profile = TuningProfile.default()
         cfg = profile.get_config_for_plugin("payload_change_detection")
         assert cfg is not None and cfg.thresholds is not None

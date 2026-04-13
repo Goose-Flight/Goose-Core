@@ -28,6 +28,7 @@ class EntitlementLevel(str, Enum):
     Ordering matters: a higher-index level implicitly includes every lower
     level. See ``FeatureGate.is_enabled`` for the check.
     """
+
     OSS_CORE = "oss_core"
     LOCAL_PRO = "local_pro"
     HOSTED_TEAM = "hosted_team"
@@ -36,6 +37,7 @@ class EntitlementLevel(str, Enum):
 
 class CapabilityGroup(str, Enum):
     """Capability buckets. Mapped to minimum entitlement level below."""
+
     CORE_CASE_WORKFLOW = "core_case_workflow"
     ADVANCED_REPORTS = "advanced_reports"
     PREMIUM_PLUGINS = "premium_plugins"
@@ -124,15 +126,15 @@ FEATURE_TIER_MATRIX: dict[str, EntitlementLevel] = {
     # boundary is explicit and call sites can be updated without hunting through
     # the codebase when the tier distinction is enforced.
     # To gate these: change the EntitlementLevel to LOCAL_PRO.
-    "saved_analysis_templates": EntitlementLevel.OSS_CORE,   # PRO-reserved: template reuse across runs
-    "multi_run_batch": EntitlementLevel.OSS_CORE,             # PRO-reserved: batch multiple logs at once
-    "advanced_export_formats": EntitlementLevel.OSS_CORE,     # PRO-reserved: ZIP bundle with evidence file
+    "saved_analysis_templates": EntitlementLevel.OSS_CORE,  # PRO-reserved: template reuse across runs
+    "multi_run_batch": EntitlementLevel.OSS_CORE,  # PRO-reserved: batch multiple logs at once
+    "advanced_export_formats": EntitlementLevel.OSS_CORE,  # PRO-reserved: ZIP bundle with evidence file
     # Named capability constants (see module-level CAPABILITY_* names above)
-    CAPABILITY_CASE_COMPLETENESS_CHECK: EntitlementLevel.OSS_CORE,   # always available
-    CAPABILITY_MULTI_RUN_COMPARISON: EntitlementLevel.LOCAL_PRO,      # side-by-side run diff
-    CAPABILITY_BATCH_ANALYSIS: EntitlementLevel.LOCAL_PRO,            # batch log processing
-    CAPABILITY_SAVED_TEMPLATES: EntitlementLevel.LOCAL_PRO,           # config template reuse
-    CAPABILITY_ADVANCED_EXPORT_ZIP: EntitlementLevel.LOCAL_PRO,       # signed ZIP bundle export
+    CAPABILITY_CASE_COMPLETENESS_CHECK: EntitlementLevel.OSS_CORE,  # always available
+    CAPABILITY_MULTI_RUN_COMPARISON: EntitlementLevel.LOCAL_PRO,  # side-by-side run diff
+    CAPABILITY_BATCH_ANALYSIS: EntitlementLevel.LOCAL_PRO,  # batch log processing
+    CAPABILITY_SAVED_TEMPLATES: EntitlementLevel.LOCAL_PRO,  # config template reuse
+    CAPABILITY_ADVANCED_EXPORT_ZIP: EntitlementLevel.LOCAL_PRO,  # signed ZIP bundle export
     # Hosted Team features
     "accounts_orgs": EntitlementLevel.HOSTED_TEAM,
     "shared_cases": EntitlementLevel.HOSTED_TEAM,
@@ -209,22 +211,10 @@ class FeatureGate:
         """Return current entitlement state for API exposure."""
         return {
             "current_level": cls._current_level.value,
-            "capabilities": {
-                cap.value: cls.is_enabled(cap)
-                for cap in CapabilityGroup
-            },
-            "requirements": {
-                cap.value: req.value
-                for cap, req in CAPABILITY_REQUIREMENTS.items()
-            },
-            "features": {
-                feature: cls.is_enabled_for_level(level)
-                for feature, level in FEATURE_TIER_MATRIX.items()
-            },
-            "feature_requirements": {
-                feature: level.value
-                for feature, level in FEATURE_TIER_MATRIX.items()
-            },
+            "capabilities": {cap.value: cls.is_enabled(cap) for cap in CapabilityGroup},
+            "requirements": {cap.value: req.value for cap, req in CAPABILITY_REQUIREMENTS.items()},
+            "features": {feature: cls.is_enabled_for_level(level) for feature, level in FEATURE_TIER_MATRIX.items()},
+            "feature_requirements": {feature: level.value for feature, level in FEATURE_TIER_MATRIX.items()},
         }
 
 

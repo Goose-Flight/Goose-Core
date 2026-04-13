@@ -16,6 +16,7 @@ from goose.plugins.attitude_tracking import AttitudeTrackingPlugin
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_metadata(duration: float = 60.0) -> FlightMetadata:
     return FlightMetadata(
         source_file="test.ulg",
@@ -48,17 +49,19 @@ def _good_attitude(n: int = 300, duration: float = 60.0) -> tuple[pd.DataFrame, 
     """Attitude and setpoint with very small tracking error (<1 degree)."""
     ts = np.linspace(0.0, duration, n)
     rng = np.random.default_rng(42)
-    roll = rng.normal(0.0, 0.05, n)       # ~3 degrees amplitude
+    roll = rng.normal(0.0, 0.05, n)  # ~3 degrees amplitude
     pitch = rng.normal(0.0, 0.03, n)
     yaw = np.linspace(0.0, 0.5, n)
     # Setpoints very close — error < 1 degree
     att = pd.DataFrame({"timestamp": ts, "roll": roll, "pitch": pitch, "yaw": yaw})
-    sp = pd.DataFrame({
-        "timestamp": ts,
-        "roll": roll + rng.normal(0.0, 0.01, n),    # ~0.6 degree rms error
-        "pitch": pitch + rng.normal(0.0, 0.01, n),
-        "yaw": yaw + rng.normal(0.0, 0.01, n),
-    })
+    sp = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "roll": roll + rng.normal(0.0, 0.01, n),  # ~0.6 degree rms error
+            "pitch": pitch + rng.normal(0.0, 0.01, n),
+            "yaw": yaw + rng.normal(0.0, 0.01, n),
+        }
+    )
     return att, sp
 
 
@@ -71,12 +74,14 @@ def _warning_attitude(n: int = 300) -> tuple[pd.DataFrame, pd.DataFrame]:
     yaw = np.linspace(0.0, 1.0, n)
     # Roll setpoint offset by ~7 degrees (0.12 radians)
     att = pd.DataFrame({"timestamp": ts, "roll": roll, "pitch": pitch, "yaw": yaw})
-    sp = pd.DataFrame({
-        "timestamp": ts,
-        "roll": roll + 0.12,    # constant ~6.9 degree offset -> RMS ~6.9 deg
-        "pitch": pitch + rng.normal(0.0, 0.005, n),
-        "yaw": yaw + rng.normal(0.0, 0.005, n),
-    })
+    sp = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "roll": roll + 0.12,  # constant ~6.9 degree offset -> RMS ~6.9 deg
+            "pitch": pitch + rng.normal(0.0, 0.005, n),
+            "yaw": yaw + rng.normal(0.0, 0.005, n),
+        }
+    )
     return att, sp
 
 
@@ -89,35 +94,40 @@ def _critical_attitude(n: int = 300) -> tuple[pd.DataFrame, pd.DataFrame]:
     yaw = np.linspace(0.0, 1.0, n)
     # Roll setpoint offset by ~20 degrees (0.35 radians)
     att = pd.DataFrame({"timestamp": ts, "roll": roll, "pitch": pitch, "yaw": yaw})
-    sp = pd.DataFrame({
-        "timestamp": ts,
-        "roll": roll + 0.35,    # ~20 degree constant offset
-        "pitch": pitch + 0.35,
-        "yaw": yaw + rng.normal(0.0, 0.005, n),
-    })
+    sp = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "roll": roll + 0.35,  # ~20 degree constant offset
+            "pitch": pitch + 0.35,
+            "yaw": yaw + rng.normal(0.0, 0.005, n),
+        }
+    )
     return att, sp
 
 
 def _oscillating_attitude(n: int = 600) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Attitude with rapid oscillating sign-changing error on roll."""
     ts = np.linspace(0.0, 60.0, n)
-    roll = np.sin(np.linspace(0, 20 * np.pi, n)) * 0.05   # oscillating ~3 degrees
+    roll = np.sin(np.linspace(0, 20 * np.pi, n)) * 0.05  # oscillating ~3 degrees
     pitch = np.zeros(n)
     yaw = np.zeros(n)
     att = pd.DataFrame({"timestamp": ts, "roll": roll, "pitch": pitch, "yaw": yaw})
     # Setpoint is zero, so error oscillates back and forth rapidly
-    sp = pd.DataFrame({
-        "timestamp": ts,
-        "roll": np.zeros(n),
-        "pitch": np.zeros(n),
-        "yaw": np.zeros(n),
-    })
+    sp = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "roll": np.zeros(n),
+            "pitch": np.zeros(n),
+            "yaw": np.zeros(n),
+        }
+    )
     return att, sp
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def plugin() -> AttitudeTrackingPlugin:
@@ -164,6 +174,7 @@ def no_attitude_flight() -> Flight:
 # Interface tests
 # ---------------------------------------------------------------------------
 
+
 class TestAttitudeTrackingPluginInterface:
     def test_has_required_attributes(self, plugin: AttitudeTrackingPlugin) -> None:
         assert plugin.name == "attitude_tracking"
@@ -204,6 +215,7 @@ class TestAttitudeTrackingPluginInterface:
 # Missing data
 # ---------------------------------------------------------------------------
 
+
 class TestAttitudeTrackingMissingData:
     def test_no_attitude_returns_info(self, plugin: AttitudeTrackingPlugin, no_attitude_flight: Flight) -> None:
         findings = plugin.analyze(no_attitude_flight, {})
@@ -221,6 +233,7 @@ class TestAttitudeTrackingMissingData:
 # ---------------------------------------------------------------------------
 # Good tracking
 # ---------------------------------------------------------------------------
+
 
 class TestAttitudeTrackingGood:
     def test_produces_findings(self, plugin: AttitudeTrackingPlugin, good_flight: Flight) -> None:
@@ -246,6 +259,7 @@ class TestAttitudeTrackingGood:
 # Warning-level tracking error
 # ---------------------------------------------------------------------------
 
+
 class TestAttitudeTrackingWarning:
     def test_warning_severity_present(self, plugin: AttitudeTrackingPlugin, warning_flight: Flight) -> None:
         findings = plugin.analyze(warning_flight, {})
@@ -267,6 +281,7 @@ class TestAttitudeTrackingWarning:
 # Critical-level tracking error
 # ---------------------------------------------------------------------------
 
+
 class TestAttitudeTrackingCritical:
     def test_critical_severity(self, plugin: AttitudeTrackingPlugin, critical_flight: Flight) -> None:
         findings = plugin.analyze(critical_flight, {})
@@ -282,6 +297,7 @@ class TestAttitudeTrackingCritical:
 # ---------------------------------------------------------------------------
 # Oscillation detection
 # ---------------------------------------------------------------------------
+
 
 class TestAttitudeTrackingOscillation:
     def test_oscillation_finding_produced(self, plugin: AttitudeTrackingPlugin, oscillating_flight: Flight) -> None:

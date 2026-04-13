@@ -24,6 +24,7 @@ from typing import Any
 
 class UserProfile(str, Enum):
     """Formal user-class identifiers. Used for validation and routing."""
+
     RACER = "racer"
     RESEARCH = "research"
     SHOP_REPAIR = "shop_repair"
@@ -41,13 +42,14 @@ class WordingPack:
     language without forking any backend logic. A Racer sees "Run" where
     a Gov/Mil user sees "Sortie"; the underlying record is identical.
     """
+
     profile_id: str
-    workflow_label: str          # "Run" vs "Case" vs "Sortie" vs "Test"
-    event_label: str             # "Crash" vs "Anomaly" vs "Mishap" vs "Incident"
-    operator_label: str          # "Pilot" vs "Operator" vs "Technician" vs "Tester"
-    platform_label: str          # "Quad" vs "UAV" vs "UAS" vs "Aircraft"
-    analysis_label: str          # "Check" vs "Analysis" vs "Investigation" vs "Inspection"
-    summary_heading: str         # heading used in reports
+    workflow_label: str  # "Run" vs "Case" vs "Sortie" vs "Test"
+    event_label: str  # "Crash" vs "Anomaly" vs "Mishap" vs "Incident"
+    operator_label: str  # "Pilot" vs "Operator" vs "Technician" vs "Tester"
+    platform_label: str  # "Quad" vs "UAV" vs "UAS" vs "Aircraft"
+    analysis_label: str  # "Check" vs "Analysis" vs "Investigation" vs "Inspection"
+    summary_heading: str  # heading used in reports
     report_sections: dict[str, str] = field(default_factory=dict)  # section key -> display title
 
     def to_dict(self) -> dict[str, Any]:
@@ -64,8 +66,7 @@ class WordingPack:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> WordingPack:
-        known = {"profile_id", "workflow_label", "event_label", "operator_label",
-                 "platform_label", "analysis_label", "summary_heading", "report_sections"}
+        known = {"profile_id", "workflow_label", "event_label", "operator_label", "platform_label", "analysis_label", "summary_heading", "report_sections"}
         return cls(**{k: v for k, v in d.items() if k in known})
 
 
@@ -77,20 +78,21 @@ class ProfileConfig:
     Clients (GUI, report builders, API consumers) can read this blob and
     render their interface accordingly.
     """
+
     profile_id: str
     name: str
     description: str
-    default_entry_path: str          # "quick_analysis" or "investigation_case"
-    default_plugins: list[str]       # plugin_ids to emphasize
-    secondary_plugins: list[str]     # plugin_ids available but not primary
-    deprioritized_plugins: list[str] # plugin_ids de-emphasized for this profile
-    chart_presets: list[str]         # signal names to show by default
-    findings_sort_priority: list[str]    # severity categories to sort first
-    hypothesis_priority: list[str]       # hypothesis themes to show first
-    visible_case_fields: list[str]       # which Case metadata fields to show prominently
-    deprioritized_case_fields: list[str] # fields to hide/collapse by default
+    default_entry_path: str  # "quick_analysis" or "investigation_case"
+    default_plugins: list[str]  # plugin_ids to emphasize
+    secondary_plugins: list[str]  # plugin_ids available but not primary
+    deprioritized_plugins: list[str]  # plugin_ids de-emphasized for this profile
+    chart_presets: list[str]  # signal names to show by default
+    findings_sort_priority: list[str]  # severity categories to sort first
+    hypothesis_priority: list[str]  # hypothesis themes to show first
+    visible_case_fields: list[str]  # which Case metadata fields to show prominently
+    deprioritized_case_fields: list[str]  # fields to hide/collapse by default
     wording: WordingPack
-    report_defaults: list[str]       # default report types to offer
+    report_defaults: list[str]  # default report types to offer
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -166,7 +168,9 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
         default_entry_path="investigation_case",
         default_plugins=["log_health", "gps_health", "ekf_health", "ekf_consistency", "vibration"],
         secondary_plugins=[
-            "battery_sag", "attitude_tracking", "position_tracking",
+            "battery_sag",
+            "attitude_tracking",
+            "position_tracking",
             "payload_change_detection",
         ],
         deprioritized_plugins=[],
@@ -178,8 +182,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             "vibration-induced instability",
         ],
         visible_case_fields=[
-            "operator_name", "tester_name", "firmware_version",
-            "hardware_config", "environment_summary",
+            "operator_name",
+            "tester_name",
+            "firmware_version",
+            "hardware_config",
+            "environment_summary",
         ],
         deprioritized_case_fields=["customer_name", "ticket_id", "unit_name"],
         wording=WordingPack(
@@ -204,8 +211,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
         description="Repair shop triage and fault isolation",
         default_entry_path="quick_analysis",
         default_plugins=[
-            "crash_detection", "battery_sag", "vibration",
-            "motor_saturation", "log_health",
+            "crash_detection",
+            "battery_sag",
+            "vibration",
+            "motor_saturation",
+            "log_health",
         ],
         secondary_plugins=["gps_health", "ekf_health", "rc_signal"],
         deprioritized_plugins=[],
@@ -217,8 +227,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             "impact / damage class",
         ],
         visible_case_fields=[
-            "customer_name", "ticket_id", "platform_name",
-            "damage_summary", "technician_name",
+            "customer_name",
+            "ticket_id",
+            "platform_name",
+            "damage_summary",
+            "technician_name",
         ],
         deprioritized_case_fields=["mission_id", "unit_name", "sortie_id"],
         wording=WordingPack(
@@ -243,8 +256,11 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
         description="Manufacturing QA and acceptance testing",
         default_entry_path="investigation_case",
         default_plugins=[
-            "log_health", "vibration", "motor_saturation",
-            "attitude_tracking", "battery_sag",
+            "log_health",
+            "vibration",
+            "motor_saturation",
+            "attitude_tracking",
+            "battery_sag",
         ],
         secondary_plugins=["ekf_consistency", "gps_health"],
         deprioritized_plugins=[],
@@ -255,7 +271,10 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             "vibration-induced instability",
         ],
         visible_case_fields=[
-            "serial_number", "tester_name", "firmware_version", "hardware_config",
+            "serial_number",
+            "tester_name",
+            "firmware_version",
+            "hardware_config",
         ],
         deprioritized_case_fields=["customer_name", "operator_name", "mission_id"],
         wording=WordingPack(
@@ -280,12 +299,20 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
         description="Government, military, and public safety investigation",
         default_entry_path="investigation_case",
         default_plugins=[
-            "crash_detection", "battery_sag", "gps_health",
-            "ekf_health", "failsafe_events", "log_health",
+            "crash_detection",
+            "battery_sag",
+            "gps_health",
+            "ekf_health",
+            "failsafe_events",
+            "log_health",
         ],
         secondary_plugins=[
-            "vibration", "motor_saturation", "attitude_tracking",
-            "rc_signal", "position_tracking", "payload_change_detection",
+            "vibration",
+            "motor_saturation",
+            "attitude_tracking",
+            "rc_signal",
+            "position_tracking",
+            "payload_change_detection",
         ],
         deprioritized_plugins=[],
         chart_presets=["altitude_m", "velocity_m_s", "battery_voltage_v", "gps_fix_type"],
@@ -297,9 +324,17 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
             "propulsion / motor issue",
         ],
         visible_case_fields=[
-            "mission_id", "sortie_id", "operation_type", "operator_name",
-            "team_name", "unit_name", "location_name", "environment_summary",
-            "damage_summary", "recommendations", "corrective_actions",
+            "mission_id",
+            "sortie_id",
+            "operation_type",
+            "operator_name",
+            "team_name",
+            "unit_name",
+            "location_name",
+            "environment_summary",
+            "damage_summary",
+            "recommendations",
+            "corrective_actions",
         ],
         deprioritized_case_fields=["customer_name", "ticket_id"],
         wording=WordingPack(
@@ -325,13 +360,13 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
         name="Advanced / Custom",
         description="Minimal assumptions, full control",
         default_entry_path="investigation_case",
-        default_plugins=[],   # all plugins, no preference
+        default_plugins=[],  # all plugins, no preference
         secondary_plugins=[],
         deprioritized_plugins=[],
         chart_presets=[],
         findings_sort_priority=["critical", "warning", "info", "pass"],
         hypothesis_priority=[],
-        visible_case_fields=[],   # show all
+        visible_case_fields=[],  # show all
         deprioritized_case_fields=[],
         wording=WordingPack(
             profile_id="advanced",
@@ -355,12 +390,19 @@ PROFILE_CONFIGS: dict[str, ProfileConfig] = {
         description="Standard investigation workflow",
         default_entry_path="investigation_case",
         default_plugins=[
-            "crash_detection", "battery_sag", "gps_health",
-            "log_health", "vibration",
+            "crash_detection",
+            "battery_sag",
+            "gps_health",
+            "log_health",
+            "vibration",
         ],
         secondary_plugins=[
-            "ekf_health", "ekf_consistency", "motor_saturation",
-            "attitude_tracking", "rc_signal", "position_tracking",
+            "ekf_health",
+            "ekf_consistency",
+            "motor_saturation",
+            "attitude_tracking",
+            "rc_signal",
+            "position_tracking",
             "failsafe_events",
         ],
         deprioritized_plugins=[],

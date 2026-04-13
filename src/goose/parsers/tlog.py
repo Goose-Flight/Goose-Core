@@ -25,8 +25,5 @@ class TLogParser(BaseParser):
     def parse(self, filepath: str | Path) -> ParseResult:
         ext = Path(filepath).suffix
         diag = ParseDiagnostics.unsupported(ext, parser_name="TLogParser")
-        diag.errors = [
-            "TLog (.tlog) format is not yet implemented. "
-            "Only PX4 ULog (.ulg) files are currently supported."
-        ]
+        diag.errors = ["TLog (.tlog) format is not yet implemented. Only PX4 ULog (.ulg) files are currently supported."]
         return ParseResult.failure(diag)

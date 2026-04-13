@@ -117,6 +117,7 @@ def list_extension_formats() -> list[str]:
 # API is always populated, even before any Pro package is installed.
 # ---------------------------------------------------------------------------
 
+
 def _generate_json_findings(case_dir: Path, run_id: str | None) -> dict[str, Any]:
     """Generate a JSON findings report from the last analysis run."""
     findings_path = case_dir / "analysis" / "findings.json"
@@ -124,6 +125,7 @@ def _generate_json_findings(case_dir: Path, run_id: str | None) -> dict[str, Any
         findings_path = case_dir / "analysis" / f"findings_{run_id}.json"
     if findings_path.exists():
         import json
+
         try:
             return json.loads(findings_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
@@ -138,6 +140,7 @@ def _generate_json_hypotheses(case_dir: Path, run_id: str | None) -> dict[str, A
         hyp_path = case_dir / "analysis" / f"hypotheses_{run_id}.json"
     if hyp_path.exists():
         import json
+
         try:
             return json.loads(hyp_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
@@ -150,6 +153,7 @@ def _generate_timeline(case_dir: Path, run_id: str | None) -> dict[str, Any]:
     tl_path = case_dir / "analysis" / "timeline.json"
     if tl_path.exists():
         import json
+
         try:
             return json.loads(tl_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:

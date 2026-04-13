@@ -24,11 +24,13 @@ router = APIRouter(tags=["profiles"])
 @router.get("/api/profiles")
 async def list_profiles() -> JSONResponse:
     """Return all registered profile configs as a dict keyed by profile_id."""
-    return JSONResponse({
-        "ok": True,
-        "profiles": {pid: cfg.to_dict() for pid, cfg in PROFILE_CONFIGS.items()},
-        "count": len(PROFILE_CONFIGS),
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "profiles": {pid: cfg.to_dict() for pid, cfg in PROFILE_CONFIGS.items()},
+            "count": len(PROFILE_CONFIGS),
+        }
+    )
 
 
 @router.get("/api/profiles/{profile_id}")
@@ -40,17 +42,21 @@ async def get_profile_route(profile_id: str) -> JSONResponse:
     if profile_id not in PROFILE_CONFIGS:
         # Still return default so the GUI can't crash on a stale id.
         cfg = get_profile(profile_id)
-        return JSONResponse({
+        return JSONResponse(
+            {
+                "ok": True,
+                "profile": cfg.to_dict(),
+                "fallback": True,
+                "message": f"Unknown profile '{profile_id}', returning default.",
+            }
+        )
+    return JSONResponse(
+        {
             "ok": True,
-            "profile": cfg.to_dict(),
-            "fallback": True,
-            "message": f"Unknown profile '{profile_id}', returning default.",
-        })
-    return JSONResponse({
-        "ok": True,
-        "profile": PROFILE_CONFIGS[profile_id].to_dict(),
-        "fallback": False,
-    })
+            "profile": PROFILE_CONFIGS[profile_id].to_dict(),
+            "fallback": False,
+        }
+    )
 
 
 @router.get("/api/features")

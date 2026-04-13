@@ -53,8 +53,13 @@ class PluginExecutionDifference:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> PluginExecutionDifference:
         known = {
-            "plugin_id", "change", "original_status", "replay_status",
-            "original_version", "replay_version", "findings_delta",
+            "plugin_id",
+            "change",
+            "original_status",
+            "replay_status",
+            "original_version",
+            "replay_version",
+            "findings_delta",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -77,8 +82,10 @@ class DiagnosticsDifference:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> DiagnosticsDifference:
         known = {
-            "parser_confidence_delta", "warnings_added",
-            "warnings_removed", "missing_streams_delta",
+            "parser_confidence_delta",
+            "warnings_added",
+            "warnings_removed",
+            "missing_streams_delta",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -154,22 +161,25 @@ class RunComparison:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> RunComparison:
         d = dict(d)
-        d["finding_differences"] = [
-            FindingDifference.from_dict(f) for f in d.get("finding_differences", [])
-        ]
-        d["plugin_differences"] = [
-            PluginExecutionDifference.from_dict(p) for p in d.get("plugin_differences", [])
-        ]
+        d["finding_differences"] = [FindingDifference.from_dict(f) for f in d.get("finding_differences", [])]
+        d["plugin_differences"] = [PluginExecutionDifference.from_dict(p) for p in d.get("plugin_differences", [])]
         dd = d.get("diagnostics_difference")
         d["diagnostics_difference"] = DiagnosticsDifference.from_dict(dd) if dd else None
-        d["hypothesis_differences"] = [
-            HypothesisDifference.from_dict(h) for h in d.get("hypothesis_differences", [])
-        ]
+        d["hypothesis_differences"] = [HypothesisDifference.from_dict(h) for h in d.get("hypothesis_differences", [])]
         known = {
-            "comparison_id", "case_id", "run_a_id", "run_b_id", "compared_at",
-            "finding_differences", "plugin_differences", "diagnostics_difference",
-            "hypothesis_differences", "tuning_profile_changed",
-            "parser_version_changed", "plugin_versions_changed", "summary",
+            "comparison_id",
+            "case_id",
+            "run_a_id",
+            "run_b_id",
+            "compared_at",
+            "finding_differences",
+            "plugin_differences",
+            "diagnostics_difference",
+            "hypothesis_differences",
+            "tuning_profile_changed",
+            "parser_version_changed",
+            "plugin_versions_changed",
+            "summary",
             "risk_assessment",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
@@ -219,15 +229,21 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
     added, removed, changed = _diff_findings(findings_a, findings_b)
     finding_diffs: list[FindingDifference] = list(changed)
     for fid in added:
-        finding_diffs.append(FindingDifference(
-            finding_id=fid, change_type="added",
-            replay_value=next((f for f in findings_b if f.get("finding_id", f.get("title")) == fid), None),
-        ))
+        finding_diffs.append(
+            FindingDifference(
+                finding_id=fid,
+                change_type="added",
+                replay_value=next((f for f in findings_b if f.get("finding_id", f.get("title")) == fid), None),
+            )
+        )
     for fid in removed:
-        finding_diffs.append(FindingDifference(
-            finding_id=fid, change_type="removed",
-            original_value=next((f for f in findings_a if f.get("finding_id", f.get("title")) == fid), None),
-        ))
+        finding_diffs.append(
+            FindingDifference(
+                finding_id=fid,
+                change_type="removed",
+                original_value=next((f for f in findings_a if f.get("finding_id", f.get("title")) == fid), None),
+            )
+        )
 
     # Plugin differences
     plugin_diffs: list[PluginExecutionDifference] = []
@@ -240,20 +256,32 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
         va = vers_a.get(pid)
         vb = vers_b.get(pid)
         if va and not vb:
-            plugin_diffs.append(PluginExecutionDifference(
-                plugin_id=pid, change="removed",
-                original_version=va, original_status="ran",
-            ))
+            plugin_diffs.append(
+                PluginExecutionDifference(
+                    plugin_id=pid,
+                    change="removed",
+                    original_version=va,
+                    original_status="ran",
+                )
+            )
         elif vb and not va:
-            plugin_diffs.append(PluginExecutionDifference(
-                plugin_id=pid, change="added",
-                replay_version=vb, replay_status="ran",
-            ))
+            plugin_diffs.append(
+                PluginExecutionDifference(
+                    plugin_id=pid,
+                    change="added",
+                    replay_version=vb,
+                    replay_status="ran",
+                )
+            )
         elif va != vb:
-            plugin_diffs.append(PluginExecutionDifference(
-                plugin_id=pid, change="version_changed",
-                original_version=va, replay_version=vb,
-            ))
+            plugin_diffs.append(
+                PluginExecutionDifference(
+                    plugin_id=pid,
+                    change="version_changed",
+                    original_version=va,
+                    replay_version=vb,
+                )
+            )
             versions_changed.append(pid)
 
     # Hypothesis differences
@@ -262,23 +290,33 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
     hyp_b_themes = {h.get("theme", h.get("statement", "")): h for h in hyps_b}
 
     for theme in sorted(set(hyp_b_themes) - set(hyp_a_themes)):
-        hyp_diffs.append(HypothesisDifference(
-            theme=theme, change="added",
-            replay_confidence=hyp_b_themes[theme].get("confidence"),
-        ))
+        hyp_diffs.append(
+            HypothesisDifference(
+                theme=theme,
+                change="added",
+                replay_confidence=hyp_b_themes[theme].get("confidence"),
+            )
+        )
     for theme in sorted(set(hyp_a_themes) - set(hyp_b_themes)):
-        hyp_diffs.append(HypothesisDifference(
-            theme=theme, change="removed",
-            original_confidence=hyp_a_themes[theme].get("confidence"),
-        ))
+        hyp_diffs.append(
+            HypothesisDifference(
+                theme=theme,
+                change="removed",
+                original_confidence=hyp_a_themes[theme].get("confidence"),
+            )
+        )
     for theme in sorted(set(hyp_a_themes) & set(hyp_b_themes)):
         ca = hyp_a_themes[theme].get("confidence")
         cb = hyp_b_themes[theme].get("confidence")
         if ca != cb:
-            hyp_diffs.append(HypothesisDifference(
-                theme=theme, change="confidence_changed",
-                original_confidence=ca, replay_confidence=cb,
-            ))
+            hyp_diffs.append(
+                HypothesisDifference(
+                    theme=theme,
+                    change="confidence_changed",
+                    original_confidence=ca,
+                    replay_confidence=cb,
+                )
+            )
 
     # Tuning profile
     tp_a = (run_a or {}).get("tuning_profile") or "default"
@@ -310,13 +348,9 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
                     title = f.get("title", diff.finding_id)
                     break
             if replay_rank > orig_rank:
-                severity_escalations.append(
-                    f"'{title}': {orig_sev} → {replay_sev}"
-                )
+                severity_escalations.append(f"'{title}': {orig_sev} → {replay_sev}")
             elif replay_rank < orig_rank:
-                severity_improvements.append(
-                    f"'{title}': {orig_sev} → {replay_sev}"
-                )
+                severity_improvements.append(f"'{title}': {orig_sev} → {replay_sev}")
 
     # Hypothesis themes that appeared or disappeared
     added_themes = [d.theme for d in hyp_diffs if d.change == "added"]
@@ -338,13 +372,9 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
     parts: list[str] = []
 
     if severity_escalations:
-        parts.append(
-            "Severity escalation(s): " + "; ".join(severity_escalations)
-        )
+        parts.append("Severity escalation(s): " + "; ".join(severity_escalations))
     if severity_improvements:
-        parts.append(
-            "Severity improvement(s): " + "; ".join(severity_improvements)
-        )
+        parts.append("Severity improvement(s): " + "; ".join(severity_improvements))
 
     # Added/removed findings with titles
     added_titles: list[str] = []
@@ -372,9 +402,7 @@ def compare_runs(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison:
         parts.append(f"Hypothesis theme(s) no longer triggered: {', '.join(removed_themes)}")
 
     if versions_changed:
-        parts.append(
-            f"Plugin version delta: {', '.join(versions_changed)}"
-        )
+        parts.append(f"Plugin version delta: {', '.join(versions_changed)}")
     if tuning_changed:
         parts.append(f"Tuning profile changed: {tp_a!r} → {tp_b!r}")
 
@@ -534,9 +562,7 @@ def load_comparison(case_dir: Path, comparison_id: str) -> RunComparison | None:
         return None
 
 
-def find_comparison(
-    case_dir: Path, run_a_id: str, run_b_id: str
-) -> RunComparison | None:
+def find_comparison(case_dir: Path, run_a_id: str, run_b_id: str) -> RunComparison | None:
     """Return the most recent saved comparison for a given run pair, if any.
 
     Checks both (run_a_id, run_b_id) and (run_b_id, run_a_id) orderings so

@@ -42,21 +42,24 @@ from goose.plugins import PLUGIN_REGISTRY
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_timestamps(n: int = 120, start: float = 0.0, step: float = 0.5) -> list[float]:
     return [start + i * step for i in range(n)]
 
 
 def _make_attitude(n: int = 120) -> pd.DataFrame:
     ts = _make_timestamps(n)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "roll": np.sin(np.linspace(0, 4 * np.pi, n)) * 5,
-        "pitch": np.cos(np.linspace(0, 4 * np.pi, n)) * 3,
-        "yaw": np.linspace(0, 360, n),
-        "roll_setpoint": np.zeros(n),
-        "pitch_setpoint": np.zeros(n),
-        "yaw_setpoint": np.linspace(0, 360, n),
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "roll": np.sin(np.linspace(0, 4 * np.pi, n)) * 5,
+            "pitch": np.cos(np.linspace(0, 4 * np.pi, n)) * 3,
+            "yaw": np.linspace(0, 360, n),
+            "roll_setpoint": np.zeros(n),
+            "pitch_setpoint": np.zeros(n),
+            "yaw_setpoint": np.linspace(0, 360, n),
+        }
+    )
 
 
 def _make_battery(n: int = 120, include_sag: bool = True) -> pd.DataFrame:
@@ -67,27 +70,31 @@ def _make_battery(n: int = 120, include_sag: bool = True) -> pd.DataFrame:
     if include_sag:
         # Add a brief sag event at t=30s
         sag_idx = int(0.25 * n)
-        voltage[sag_idx:sag_idx + 5] -= 1.5
-        current[sag_idx:sag_idx + 5] += 10.0
-    return pd.DataFrame({
-        "timestamp": ts,
-        "voltage": voltage,
-        "current": current,
-        "remaining_pct": np.linspace(100, 50, n),
-    })
+        voltage[sag_idx : sag_idx + 5] -= 1.5
+        current[sag_idx : sag_idx + 5] += 10.0
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "voltage": voltage,
+            "current": current,
+            "remaining_pct": np.linspace(100, 50, n),
+        }
+    )
 
 
 def _make_gps(n: int = 120) -> pd.DataFrame:
     ts = _make_timestamps(n)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "lat": np.linspace(37.7749, 37.7759, n),
-        "lon": np.linspace(-122.4194, -122.4184, n),
-        "alt": np.linspace(0, 50, n),
-        "fix_type": [3] * n,
-        "satellites": [12] * n,
-        "hdop": [0.9] * n,
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "lat": np.linspace(37.7749, 37.7759, n),
+            "lon": np.linspace(-122.4194, -122.4184, n),
+            "alt": np.linspace(0, 50, n),
+            "fix_type": [3] * n,
+            "satellites": [12] * n,
+            "hdop": [0.9] * n,
+        }
+    )
 
 
 def _make_vibration(n: int = 120, spike: bool = False) -> pd.DataFrame:
@@ -105,49 +112,57 @@ def _make_vibration(n: int = 120, spike: bool = False) -> pd.DataFrame:
 
 def _make_motors(n: int = 120) -> pd.DataFrame:
     ts = _make_timestamps(n)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "output_0": np.ones(n) * 0.5,
-        "output_1": np.ones(n) * 0.5,
-        "output_2": np.ones(n) * 0.5,
-        "output_3": np.ones(n) * 0.5,
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "output_0": np.ones(n) * 0.5,
+            "output_1": np.ones(n) * 0.5,
+            "output_2": np.ones(n) * 0.5,
+            "output_3": np.ones(n) * 0.5,
+        }
+    )
 
 
 def _make_rc_input(n: int = 120) -> pd.DataFrame:
     ts = _make_timestamps(n)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "ch1": np.ones(n) * 1500,
-        "ch2": np.ones(n) * 1500,
-        "ch3": np.ones(n) * 1500,
-        "ch4": np.ones(n) * 1500,
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "ch1": np.ones(n) * 1500,
+            "ch2": np.ones(n) * 1500,
+            "ch3": np.ones(n) * 1500,
+            "ch4": np.ones(n) * 1500,
+        }
+    )
 
 
 def _make_ekf(n: int = 120) -> pd.DataFrame:
     ts = _make_timestamps(n)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "VIBE": np.zeros(n),
-        "IVN": np.zeros(n),
-        "IVE": np.zeros(n),
-        "IVD": np.zeros(n),
-        "IPN": np.zeros(n),
-        "IPE": np.zeros(n),
-        "OFN": np.zeros(n),
-        "OFE": np.zeros(n),
-        "FS": np.zeros(n),
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "VIBE": np.zeros(n),
+            "IVN": np.zeros(n),
+            "IVE": np.zeros(n),
+            "IVD": np.zeros(n),
+            "IPN": np.zeros(n),
+            "IPE": np.zeros(n),
+            "OFN": np.zeros(n),
+            "OFE": np.zeros(n),
+            "FS": np.zeros(n),
+        }
+    )
 
 
 def _make_position(n: int = 120) -> pd.DataFrame:
     ts = _make_timestamps(n)
-    return pd.DataFrame({
-        "timestamp": ts,
-        "alt_rel": np.linspace(0, 50, n),
-        "alt_msl": np.linspace(10, 60, n),
-    })
+    return pd.DataFrame(
+        {
+            "timestamp": ts,
+            "alt_rel": np.linspace(0, 50, n),
+            "alt_msl": np.linspace(10, 60, n),
+        }
+    )
 
 
 def _make_rich_flight() -> Flight:
@@ -231,11 +246,10 @@ def _run_plugin_forensic(plugin_id: str, flight: Flight) -> list[ForensicFinding
     diag = _make_parse_diagnostics()
 
     from goose.forensics.tuning import TuningProfile
+
     tuning = TuningProfile.default()
 
-    ff_list, _p_diag = plugin.forensic_analyze(
-        flight, ev.evidence_id, run_id, {}, diag, tuning_profile=tuning
-    )
+    ff_list, _p_diag = plugin.forensic_analyze(flight, ev.evidence_id, run_id, {}, diag, tuning_profile=tuning)
     return ff_list
 
 
@@ -267,23 +281,18 @@ ALL_PLUGIN_IDS = [
 def test_all_expected_plugins_are_registered():
     """Golden-path: all 17 expected plugins are in PLUGIN_REGISTRY."""
     for plugin_id in ALL_PLUGIN_IDS:
-        assert plugin_id in PLUGIN_REGISTRY, (
-            f"Plugin '{plugin_id}' is not in PLUGIN_REGISTRY — "
-            "was it removed or renamed?"
-        )
+        assert plugin_id in PLUGIN_REGISTRY, f"Plugin '{plugin_id}' is not in PLUGIN_REGISTRY — was it removed or renamed?"
 
 
 def test_plugin_count_is_17():
     """Confirm Core ships exactly 17 built-in plugins."""
-    assert len(PLUGIN_REGISTRY) == 17, (
-        f"Expected 17 plugins, got {len(PLUGIN_REGISTRY)}. "
-        f"Registry keys: {sorted(PLUGIN_REGISTRY.keys())}"
-    )
+    assert len(PLUGIN_REGISTRY) == 17, f"Expected 17 plugins, got {len(PLUGIN_REGISTRY)}. Registry keys: {sorted(PLUGIN_REGISTRY.keys())}"
 
 
 # ---------------------------------------------------------------------------
 # Per-plugin forensic_analyze() integration
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def rich_flight() -> Flight:
@@ -303,9 +312,7 @@ def test_plugin_forensic_analyze_returns_forensic_findings(plugin_id, rich_fligh
     """Every non-empty result must contain ForensicFinding objects."""
     ff_list = _run_plugin_forensic(plugin_id, rich_flight)
     for ff in ff_list:
-        assert isinstance(ff, ForensicFinding), (
-            f"Plugin {plugin_id} returned a non-ForensicFinding: {type(ff)}"
-        )
+        assert isinstance(ff, ForensicFinding), f"Plugin {plugin_id} returned a non-ForensicFinding: {type(ff)}"
 
 
 @pytest.mark.parametrize("plugin_id", ALL_PLUGIN_IDS)
@@ -316,14 +323,13 @@ def test_plugin_findings_have_required_fields(plugin_id, rich_flight):
         assert ff.finding_id, f"Plugin {plugin_id}: finding missing finding_id"
         assert ff.plugin_id, f"Plugin {plugin_id}: finding missing plugin_id"
         assert ff.severity in FindingSeverity, f"Plugin {plugin_id}: invalid severity {ff.severity}"
-        assert isinstance(ff.evidence_references, list), (
-            f"Plugin {plugin_id}: evidence_references must be a list"
-        )
+        assert isinstance(ff.evidence_references, list), f"Plugin {plugin_id}: evidence_references must be a list"
 
 
 # ---------------------------------------------------------------------------
 # Timeline integration
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("plugin_id", ALL_PLUGIN_IDS)
 def test_timestamped_findings_appear_in_timeline(plugin_id, rich_flight):
@@ -336,19 +342,12 @@ def test_timestamped_findings_appear_in_timeline(plugin_id, rich_flight):
     timeline_events = build_timeline_from_findings(ff_list, run_id=run_id)
 
     # Count findings with a timestamp (ForensicFinding uses start_time, not timestamp_start)
-    timestamped = [
-        ff for ff in ff_list
-        if ff.start_time is not None
-    ]
-    timeline_finding_events = [
-        e for e in timeline_events
-        if e.source == "plugin"
-    ]
+    timestamped = [ff for ff in ff_list if ff.start_time is not None]
+    timeline_finding_events = [e for e in timeline_events if e.source == "plugin"]
 
     # Every timestamped finding should produce a timeline event
     assert len(timeline_finding_events) >= len(timestamped), (
-        f"Plugin {plugin_id}: {len(timestamped)} timestamped findings but only "
-        f"{len(timeline_finding_events)} timeline events produced."
+        f"Plugin {plugin_id}: {len(timestamped)} timestamped findings but only {len(timeline_finding_events)} timeline events produced."
     )
 
 
@@ -375,30 +374,28 @@ def test_all_plugins_together_build_timeline(rich_flight):
 # emits non-PASS findings.  Only list themes where the plugin is directly
 # referenced in lifting._HYPOTHESIS_THEMES.
 _PLUGIN_TO_THEMES: dict[str, list[str]] = {
-    "crash_detection":           ["crash"],
-    "battery_sag":               ["power"],
-    "gps_health":                ["navigation", "environmental"],
-    "ekf_consistency":           ["navigation", "environmental"],
-    "vibration":                 ["vibration"],
-    "motor_saturation":          ["propulsion"],
-    "attitude_tracking":         ["control"],
-    "rc_signal":                 ["communications_link", "operator_action"],
-    "failsafe_events":           ["communications_link", "operator_action"],
-    "operator_action_sequence":  ["communications_link", "operator_action"],
-    "payload_change_detection":  ["impact_damage"],
+    "crash_detection": ["crash"],
+    "battery_sag": ["power"],
+    "gps_health": ["navigation", "environmental"],
+    "ekf_consistency": ["navigation", "environmental"],
+    "vibration": ["vibration"],
+    "motor_saturation": ["propulsion"],
+    "attitude_tracking": ["control"],
+    "rc_signal": ["communications_link", "operator_action"],
+    "failsafe_events": ["communications_link", "operator_action"],
+    "operator_action_sequence": ["communications_link", "operator_action"],
+    "payload_change_detection": ["impact_damage"],
     "damage_impact_classification": ["impact_damage"],
     # Plugins not directly referenced in _HYPOTHESIS_THEMES — no theme assertion
-    "position_tracking":         [],
-    "log_health":                [],
-    "mission_phase_anomaly":     [],
-    "environment_conditions":    [],
-    "link_telemetry_health":     [],
+    "position_tracking": [],
+    "log_health": [],
+    "mission_phase_anomaly": [],
+    "environment_conditions": [],
+    "link_telemetry_health": [],
 }
 
 
-@pytest.mark.parametrize("plugin_id", [
-    pid for pid in ALL_PLUGIN_IDS if _PLUGIN_TO_THEMES.get(pid)
-])
+@pytest.mark.parametrize("plugin_id", [pid for pid in ALL_PLUGIN_IDS if _PLUGIN_TO_THEMES.get(pid)])
 def test_plugin_findings_drive_hypothesis_generation(plugin_id, rich_flight):
     """Plugins that map to a hypothesis theme must produce at least one hypothesis
     when they emit non-PASS findings.
@@ -424,9 +421,7 @@ def test_plugin_findings_drive_hypothesis_generation(plugin_id, rich_flight):
 
     # generate_hypotheses must not raise regardless of finding mix
     hypotheses = generate_hypotheses(ff_list, run_id=run_id, parse_diag=diag)
-    assert isinstance(hypotheses, list), (
-        f"Plugin {plugin_id}: generate_hypotheses() must return a list"
-    )
+    assert isinstance(hypotheses, list), f"Plugin {plugin_id}: generate_hypotheses() must return a list"
 
     # For strict theme verification: only assert if we have warning/critical findings
     # that would actually match the theme's severity_filter.
@@ -482,6 +477,7 @@ def test_all_plugins_together_generate_hypotheses(rich_flight):
 # Forensic finding contract compliance
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("plugin_id", ALL_PLUGIN_IDS)
 def test_forensic_findings_are_serializable(plugin_id, rich_flight):
     """Every ForensicFinding must round-trip through to_dict()/from_dict()."""
@@ -510,18 +506,15 @@ def test_plugin_diagnostics_returned(plugin_id, rich_flight):
     diag = _make_parse_diagnostics()
     tuning = TuningProfile.default()
 
-    ff_list, p_diag = plugin.forensic_analyze(
-        rich_flight, ev.evidence_id, run_id, {}, diag, tuning_profile=tuning
-    )
-    assert isinstance(p_diag, PluginDiagnostics), (
-        f"Plugin {plugin_id} did not return a PluginDiagnostics object"
-    )
+    ff_list, p_diag = plugin.forensic_analyze(rich_flight, ev.evidence_id, run_id, {}, diag, tuning_profile=tuning)
+    assert isinstance(p_diag, PluginDiagnostics), f"Plugin {plugin_id} did not return a PluginDiagnostics object"
     assert p_diag.plugin_id == plugin.manifest.plugin_id
 
 
 # ---------------------------------------------------------------------------
 # Empty flight degrades gracefully
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("plugin_id", ALL_PLUGIN_IDS)
 def test_plugin_handles_empty_flight_gracefully(plugin_id):

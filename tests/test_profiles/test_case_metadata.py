@@ -27,6 +27,7 @@ def client(tmp_path: Path) -> TestClient:
 # Case metadata
 # ---------------------------------------------------------------------------
 
+
 class TestCaseMetadata:
     def test_new_fields_default_to_none_or_default(self):
         c = Case(
@@ -107,14 +108,18 @@ class TestCaseMetadata:
 # Case creation API with v11 metadata
 # ---------------------------------------------------------------------------
 
+
 class TestCreateCaseWithMetadata:
     def test_create_with_profile(self, client: TestClient):
-        res = client.post("/api/cases", json={
-            "created_by": "test",
-            "profile": "racer",
-            "platform_name": "Alpha Quad",
-            "recent_changes": "new motors",
-        })
+        res = client.post(
+            "/api/cases",
+            json={
+                "created_by": "test",
+                "profile": "racer",
+                "platform_name": "Alpha Quad",
+                "recent_changes": "new motors",
+            },
+        )
         assert res.status_code == 201
         data = res.json()
         assert data["case"]["profile"] == "racer"
@@ -122,13 +127,16 @@ class TestCreateCaseWithMetadata:
         assert data["case"]["recent_changes"] == "new motors"
 
     def test_create_with_gov_mil_metadata(self, client: TestClient):
-        res = client.post("/api/cases", json={
-            "profile": "gov_mil",
-            "mission_id": "OP-100",
-            "sortie_id": "S-1",
-            "unit_name": "RED-1",
-            "operator_name": "Goose",
-        })
+        res = client.post(
+            "/api/cases",
+            json={
+                "profile": "gov_mil",
+                "mission_id": "OP-100",
+                "sortie_id": "S-1",
+                "unit_name": "RED-1",
+                "operator_name": "Goose",
+            },
+        )
         assert res.status_code == 201
         case = res.json()["case"]
         assert case["profile"] == "gov_mil"
@@ -145,6 +153,7 @@ class TestCreateCaseWithMetadata:
 # ---------------------------------------------------------------------------
 # Attachment dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestAttachmentModel:
     def _make(self, **kwargs):
@@ -201,6 +210,7 @@ class TestAttachmentModel:
 # ---------------------------------------------------------------------------
 # Attachment API
 # ---------------------------------------------------------------------------
+
 
 class TestAttachmentAPI:
     def _create_case(self, client: TestClient) -> str:

@@ -43,26 +43,26 @@ FMT_TYPE = 128  # 0x80
 # DataFlash binary type-format char to struct format mapping
 # Based on ArduPilot source: libraries/AP_Logger/LogStructure.h
 _FMT_CHAR_MAP: dict[str, str] = {
-    "a": "64s",   # int16_t[32]
-    "b": "b",     # int8_t
-    "B": "B",     # uint8_t
-    "h": "h",     # int16_t
-    "H": "H",     # uint16_t
-    "i": "i",     # int32_t
-    "I": "I",     # uint32_t
-    "f": "f",     # float
-    "d": "d",     # double
-    "n": "4s",    # char[4]
-    "N": "16s",   # char[16]
-    "Z": "64s",   # char[64]
-    "c": "h",     # int16_t * 100 (centidegrees)
-    "C": "H",     # uint16_t * 100
-    "e": "i",     # int32_t * 100
-    "E": "I",     # uint32_t * 100
-    "L": "i",     # int32_t latitude/longitude (deg * 1e7)
-    "M": "B",     # uint8_t flight mode
-    "q": "q",     # int64_t
-    "Q": "Q",     # uint64_t
+    "a": "64s",  # int16_t[32]
+    "b": "b",  # int8_t
+    "B": "B",  # uint8_t
+    "h": "h",  # int16_t
+    "H": "H",  # uint16_t
+    "i": "i",  # int32_t
+    "I": "I",  # uint32_t
+    "f": "f",  # float
+    "d": "d",  # double
+    "n": "4s",  # char[4]
+    "N": "16s",  # char[16]
+    "Z": "64s",  # char[64]
+    "c": "h",  # int16_t * 100 (centidegrees)
+    "C": "H",  # uint16_t * 100
+    "e": "i",  # int32_t * 100
+    "E": "I",  # uint32_t * 100
+    "L": "i",  # int32_t latitude/longitude (deg * 1e7)
+    "M": "B",  # uint8_t flight mode
+    "q": "q",  # int64_t
+    "Q": "Q",  # uint64_t
 }
 
 # Scaling for centidegree types
@@ -74,6 +74,7 @@ _SCALE_LAT_LON = {"L"}
 # ---------------------------------------------------------------------------
 # Text-format parser helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_text_fmt_line(parts: list[str]) -> dict[str, Any] | None:
     """Parse a FMT definition line into a format descriptor dict.
@@ -115,7 +116,7 @@ def _parse_text_dataflash(raw: str) -> dict[str, list[dict[str, Any]]]:
     Returns a dict: message_name -> list of row dicts {col: value, ...}.
     The first column is always TimeUS (time in microseconds).
     """
-    fmt_defs: dict[str, dict[str, Any]] = {}   # name -> fmt descriptor
+    fmt_defs: dict[str, dict[str, Any]] = {}  # name -> fmt descriptor
     records: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     for raw_line in raw.splitlines():
@@ -164,6 +165,7 @@ def _records_to_df(records: list[dict[str, Any]], time_col: str = "TimeUS") -> p
 # ---------------------------------------------------------------------------
 # Stream extractors (text format)
 # ---------------------------------------------------------------------------
+
 
 def _extract_attitude_text(records: dict[str, list[dict]]) -> pd.DataFrame:
     """ATT -> attitude DataFrame (roll/pitch/yaw in degrees)."""
@@ -276,8 +278,7 @@ def _extract_imu_text(records: dict[str, list[dict]]) -> pd.DataFrame:
 
     result = pd.DataFrame()
     result["timestamp"] = df["timestamp"]
-    for src, dst in [("AccX", "accel_x"), ("AccY", "accel_y"), ("AccZ", "accel_z"),
-                     ("GyrX", "gyro_x"), ("GyrY", "gyro_y"), ("GyrZ", "gyro_z")]:
+    for src, dst in [("AccX", "accel_x"), ("AccY", "accel_y"), ("AccZ", "accel_z"), ("GyrX", "gyro_x"), ("GyrY", "gyro_y"), ("GyrZ", "gyro_z")]:
         if src in df.columns:
             result[dst] = pd.to_numeric(df[src], errors="coerce")
     return result
@@ -369,11 +370,13 @@ def _extract_mode_changes_text(records: dict[str, list[dict]]) -> list[ModeChang
             mode_name = "unknown"
 
         if mode_name != prev_mode:
-            changes.append(ModeChange(
-                timestamp=ts,
-                from_mode=prev_mode,
-                to_mode=mode_name,
-            ))
+            changes.append(
+                ModeChange(
+                    timestamp=ts,
+                    from_mode=prev_mode,
+                    to_mode=mode_name,
+                )
+            )
             prev_mode = mode_name
 
     return changes
@@ -388,12 +391,14 @@ def _extract_events_text(records: dict[str, list[dict]]) -> list[FlightEvent]:
         ts = float(row.get("TimeUS", 0)) / 1e6
         subsys = row.get("Subsys", "")
         ecode = row.get("ECode", "")
-        events.append(FlightEvent(
-            timestamp=ts,
-            event_type="error",
-            severity="warning",
-            message=f"Error: Subsys={subsys} ECode={ecode}",
-        ))
+        events.append(
+            FlightEvent(
+                timestamp=ts,
+                event_type="error",
+                severity="warning",
+                message=f"Error: Subsys={subsys} ECode={ecode}",
+            )
+        )
 
     # EV events (arming/disarming/etc.)
     EV_NAMES = {
@@ -408,23 +413,27 @@ def _extract_events_text(records: dict[str, list[dict]]) -> list[FlightEvent]:
         ts = float(row.get("TimeUS", 0)) / 1e6
         ev_id = int(row.get("Id", 0)) if row.get("Id") is not None else 0
         msg = EV_NAMES.get(ev_id, f"Event {ev_id}")
-        events.append(FlightEvent(
-            timestamp=ts,
-            event_type="info",
-            severity="info",
-            message=msg,
-        ))
+        events.append(
+            FlightEvent(
+                timestamp=ts,
+                event_type="info",
+                severity="info",
+                message=msg,
+            )
+        )
 
     # MSG messages
     for row in records.get("MSG", []):
         ts = float(row.get("TimeUS", 0)) / 1e6
         msg_text = str(row.get("Message", "")).strip()
-        events.append(FlightEvent(
-            timestamp=ts,
-            event_type="info",
-            severity="info",
-            message=msg_text,
-        ))
+        events.append(
+            FlightEvent(
+                timestamp=ts,
+                event_type="info",
+                severity="info",
+                message=msg_text,
+            )
+        )
 
     events.sort(key=lambda e: e.timestamp)
     return events
@@ -441,8 +450,7 @@ def _extract_firmware_from_msg(records: dict[str, list[dict]]) -> str:
 
 def _infer_vehicle_type_from_mode(mode_changes: list[ModeChange]) -> str:
     """Rough vehicle type inference from mode names."""
-    copter_modes = {"stabilize", "alt_hold", "loiter", "auto", "guided",
-                    "sport", "drift", "poshold", "brake", "throw"}
+    copter_modes = {"stabilize", "alt_hold", "loiter", "auto", "guided", "sport", "drift", "poshold", "brake", "throw"}
     plane_modes = {"manual", "fbwa", "fbwb", "cruise", "autotune", "fly_by_wire_a"}
     rover_modes = {"hold", "steering", "acro", "guided"}
 
@@ -460,13 +468,14 @@ def _infer_vehicle_type_from_mode(mode_changes: list[ModeChange]) -> str:
 # Binary format parser helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
     """Best-effort binary DataFlash parser.
 
     Reads FMT definitions and then attempts to parse known message types.
     Silently skips malformed or unknown messages.
     """
-    fmt_defs: dict[int, dict[str, Any]] = {}   # type_byte -> descriptor
+    fmt_defs: dict[int, dict[str, Any]] = {}  # type_byte -> descriptor
     records: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     i = 0
@@ -491,9 +500,9 @@ def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
             try:
                 sub_type = data[i]
                 # length = data[i+1]
-                name = data[i + 2:i + 6].rstrip(b"\x00").decode("ascii", errors="ignore")
-                fmt_str = data[i + 6:i + 22].rstrip(b"\x00").decode("ascii", errors="ignore")
-                cols_raw = data[i + 22:i + 86].rstrip(b"\x00").decode("ascii", errors="ignore")
+                name = data[i + 2 : i + 6].rstrip(b"\x00").decode("ascii", errors="ignore")
+                fmt_str = data[i + 6 : i + 22].rstrip(b"\x00").decode("ascii", errors="ignore")
+                cols_raw = data[i + 22 : i + 86].rstrip(b"\x00").decode("ascii", errors="ignore")
                 columns = [c.strip() for c in cols_raw.split(",") if c.strip()]
 
                 # Build struct format
@@ -521,7 +530,7 @@ def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
                 i += 1
                 continue
             try:
-                values = struct.unpack(desc["struct_fmt"], data[i:i + size])
+                values = struct.unpack(desc["struct_fmt"], data[i : i + size])
                 # Decode bytes fields
                 decoded = []
                 fmt_chars = desc["fmt_str"]
@@ -551,6 +560,7 @@ def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
 # ---------------------------------------------------------------------------
 # Main parser class
 # ---------------------------------------------------------------------------
+
 
 class DataFlashParser(BaseParser):
     """ArduPilot DataFlash (.log text format, .bin binary format) parser."""
@@ -601,11 +611,7 @@ class DataFlashParser(BaseParser):
             return ParseResult.failure(diag)
 
         # --- Format detection (binary vs text) -----------------------------
-        is_binary = (
-            len(raw_bytes) >= 2
-            and raw_bytes[0] == BINARY_HEADER[0]
-            and raw_bytes[1] == BINARY_HEADER[1]
-        )
+        is_binary = len(raw_bytes) >= 2 and raw_bytes[0] == BINARY_HEADER[0] and raw_bytes[1] == BINARY_HEADER[1]
 
         if not is_binary:
             # Try decoding as text
@@ -616,10 +622,7 @@ class DataFlashParser(BaseParser):
                 raw_text = ""
             # Confirm it's actually DataFlash text by looking for FMT lines
             if "FMT" not in raw_text[:4096]:
-                diag.errors.append(
-                    "File does not appear to be a DataFlash log "
-                    "(no FMT definitions found and no binary header)."
-                )
+                diag.errors.append("File does not appear to be a DataFlash log (no FMT definitions found and no binary header).")
                 diag.parser_confidence = 0.1
                 diag.parse_completed_at = datetime.now().replace(microsecond=0)
                 diag.parse_duration_ms = round((time.monotonic() - t0) * 1000, 1)
@@ -644,7 +647,7 @@ class DataFlashParser(BaseParser):
         # --- Extract streams -----------------------------------------------
         try:
             attitude = _extract_attitude_text(records)
-            position = _extract_baro_text(records)   # BARO gives altitude
+            position = _extract_baro_text(records)  # BARO gives altitude
             battery = _extract_battery_text(records)
             gps = _extract_gps_text(records)
             imu_vib = _extract_imu_text(records)
@@ -688,11 +691,13 @@ class DataFlashParser(BaseParser):
         missing: list[str] = []
         for name, df in STREAM_MAP.items():
             if not df.empty:
-                coverage.append(StreamCoverage(
-                    stream_name=name,
-                    present=True,
-                    row_count=len(df),
-                ))
+                coverage.append(
+                    StreamCoverage(
+                        stream_name=name,
+                        present=True,
+                        row_count=len(df),
+                    )
+                )
             else:
                 coverage.append(StreamCoverage(stream_name=name, present=False))
                 missing.append(name)
@@ -757,9 +762,7 @@ class DataFlashParser(BaseParser):
         # --- Finalize diagnostics ----------------------------------------
         diag.parse_completed_at = datetime.now().replace(microsecond=0)
         diag.parse_duration_ms = round((time.monotonic() - t0) * 1000, 1)
-        diag.assumptions.append(
-            "TimeUS column treated as microseconds since log start (first record = t=0)."
-        )
+        diag.assumptions.append("TimeUS column treated as microseconds since log start (first record = t=0).")
         diag.parse_artifacts = {"message_types_found": sorted(records.keys())}
 
         # --- Provenance --------------------------------------------------

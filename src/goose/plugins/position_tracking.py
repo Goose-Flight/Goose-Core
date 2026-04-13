@@ -13,11 +13,11 @@ from goose.plugins.base import Plugin
 from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Thresholds
-WARN_MEAN_ERROR_M = 3.0     # warn if mean horizontal error > 3m
+WARN_MEAN_ERROR_M = 3.0  # warn if mean horizontal error > 3m
 CRITICAL_MEAN_ERROR_M = 10.0  # critical if mean horizontal error > 10m
-WARN_VERT_ERROR_M = 2.0     # warn if mean vertical error > 2m
+WARN_VERT_ERROR_M = 2.0  # warn if mean vertical error > 2m
 CRITICAL_VERT_ERROR_M = 5.0  # critical if mean vertical error > 5m
-HOVER_DRIFT_M = 1.0         # drift during hover > 1m flagged
+HOVER_DRIFT_M = 1.0  # drift during hover > 1m flagged
 LOW_VELOCITY_THRESHOLD = 0.5  # m/s — below this = hovering
 
 
@@ -71,27 +71,31 @@ class PositionTrackingPlugin(Plugin):
         low_vel = float(cfg.get("low_velocity_threshold_ms", LOW_VELOCITY_THRESHOLD))
 
         if not flight.has_position_setpoints:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No position setpoint data available",
-                severity="info",
-                score=50,
-                description=(
-                    "Position setpoint data is not present in this flight log. "
-                    "Position tracking analysis requires a flight mode that commands "
-                    "position setpoints (e.g. Position, Mission)."
-                ),
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No position setpoint data available",
+                    severity="info",
+                    score=50,
+                    description=(
+                        "Position setpoint data is not present in this flight log. "
+                        "Position tracking analysis requires a flight mode that commands "
+                        "position setpoints (e.g. Position, Mission)."
+                    ),
+                )
+            )
             return findings
 
         if flight.position is None or flight.position.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No position data available",
-                severity="info",
-                score=50,
-                description="Position data is missing from the flight log.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No position data available",
+                    severity="info",
+                    score=50,
+                    description="Position data is missing from the flight log.",
+                )
+            )
             return findings
 
         pos = flight.position.copy()
@@ -99,13 +103,15 @@ class PositionTrackingPlugin(Plugin):
 
         # Require timestamp in both DataFrames
         if "timestamp" not in pos.columns or "timestamp" not in sp.columns:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="Position data missing timestamp column",
-                severity="info",
-                score=50,
-                description="Cannot merge position and setpoint data without timestamps.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="Position data missing timestamp column",
+                    severity="info",
+                    score=50,
+                    description="Cannot merge position and setpoint data without timestamps.",
+                )
+            )
             return findings
 
         # Merge on nearest timestamp
@@ -119,13 +125,15 @@ class PositionTrackingPlugin(Plugin):
         )
 
         if merged.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="Could not merge position and setpoint data",
-                severity="info",
-                score=50,
-                description="Position and setpoint DataFrames could not be aligned by timestamp.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="Could not merge position and setpoint data",
+                    severity="info",
+                    score=50,
+                    description="Position and setpoint DataFrames could not be aligned by timestamp.",
+                )
+            )
             return findings
 
         findings.extend(self._check_horizontal_error(merged, warn_err, crit_err))
@@ -163,10 +171,7 @@ class PositionTrackingPlugin(Plugin):
             df = merged[["timestamp", "lat", "lon", "lat_sp", "lon_sp"]].dropna()
             if df.empty:
                 return []
-            horiz_errors = pd.Series([
-                _haversine_m(row["lat"], row["lon"], row["lat_sp"], row["lon_sp"])
-                for _, row in df.iterrows()
-            ], index=df.index)
+            horiz_errors = pd.Series([_haversine_m(row["lat"], row["lon"], row["lat_sp"], row["lon_sp"]) for _, row in df.iterrows()], index=df.index)
 
         mean_err = float(horiz_errors.mean())
         max_err = float(horiz_errors.max())
@@ -182,30 +187,28 @@ class PositionTrackingPlugin(Plugin):
             severity = "pass"
             score = 95
 
-        return [Finding(
-            plugin_name=self.name,
-            title=(
-                f"Horizontal position error — mean {mean_err:.1f}m"
-                if severity != "pass"
-                else "Horizontal position tracking nominal"
-            ),
-            severity=severity,
-            score=score,
-            description=(
-                f"Mean horizontal position error: {mean_err:.2f}m, "
-                f"maximum: {max_err:.2f}m. "
-                f"Thresholds — warning: {WARN_MEAN_ERROR_M}m, critical: {CRITICAL_MEAN_ERROR_M}m."
-            ),
-            evidence={
-                "mean_error_m": round(mean_err, 3),
-                "max_error_m": round(max_err, 3),
-                "warn_threshold_m": WARN_MEAN_ERROR_M,
-                "critical_threshold_m": CRITICAL_MEAN_ERROR_M,
-                "sample_count": len(horiz_errors),
-            },
-            timestamp_start=float(ts.iloc[0]) if not ts.empty else None,
-            timestamp_end=float(ts.iloc[-1]) if not ts.empty else None,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=(f"Horizontal position error — mean {mean_err:.1f}m" if severity != "pass" else "Horizontal position tracking nominal"),
+                severity=severity,
+                score=score,
+                description=(
+                    f"Mean horizontal position error: {mean_err:.2f}m, "
+                    f"maximum: {max_err:.2f}m. "
+                    f"Thresholds — warning: {WARN_MEAN_ERROR_M}m, critical: {CRITICAL_MEAN_ERROR_M}m."
+                ),
+                evidence={
+                    "mean_error_m": round(mean_err, 3),
+                    "max_error_m": round(max_err, 3),
+                    "warn_threshold_m": WARN_MEAN_ERROR_M,
+                    "critical_threshold_m": CRITICAL_MEAN_ERROR_M,
+                    "sample_count": len(horiz_errors),
+                },
+                timestamp_start=float(ts.iloc[0]) if not ts.empty else None,
+                timestamp_end=float(ts.iloc[-1]) if not ts.empty else None,
+            )
+        ]
 
     # ------------------------------------------------------------------
     # Vertical position error
@@ -252,30 +255,28 @@ class PositionTrackingPlugin(Plugin):
             severity = "pass"
             score = 95
 
-        return [Finding(
-            plugin_name=self.name,
-            title=(
-                f"Vertical position error — mean {mean_err:.1f}m"
-                if severity != "pass"
-                else "Vertical position tracking nominal"
-            ),
-            severity=severity,
-            score=score,
-            description=(
-                f"Mean vertical (altitude) error: {mean_err:.2f}m, "
-                f"maximum: {max_err:.2f}m. "
-                f"Thresholds — warning: {WARN_VERT_ERROR_M}m, critical: {CRITICAL_VERT_ERROR_M}m."
-            ),
-            evidence={
-                "mean_error_m": round(mean_err, 3),
-                "max_error_m": round(max_err, 3),
-                "warn_threshold_m": WARN_VERT_ERROR_M,
-                "critical_threshold_m": CRITICAL_VERT_ERROR_M,
-                "sample_count": len(vert_errors),
-            },
-            timestamp_start=float(ts.iloc[0]) if not ts.empty else None,
-            timestamp_end=float(ts.iloc[-1]) if not ts.empty else None,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=(f"Vertical position error — mean {mean_err:.1f}m" if severity != "pass" else "Vertical position tracking nominal"),
+                severity=severity,
+                score=score,
+                description=(
+                    f"Mean vertical (altitude) error: {mean_err:.2f}m, "
+                    f"maximum: {max_err:.2f}m. "
+                    f"Thresholds — warning: {WARN_VERT_ERROR_M}m, critical: {CRITICAL_VERT_ERROR_M}m."
+                ),
+                evidence={
+                    "mean_error_m": round(mean_err, 3),
+                    "max_error_m": round(max_err, 3),
+                    "warn_threshold_m": WARN_VERT_ERROR_M,
+                    "critical_threshold_m": CRITICAL_VERT_ERROR_M,
+                    "sample_count": len(vert_errors),
+                },
+                timestamp_start=float(ts.iloc[0]) if not ts.empty else None,
+                timestamp_end=float(ts.iloc[-1]) if not ts.empty else None,
+            )
+        ]
 
     # ------------------------------------------------------------------
     # Hover drift
@@ -337,18 +338,13 @@ class PositionTrackingPlugin(Plugin):
             if pos_df.empty:
                 return []
             pos_df = pos_df.copy()
-            pos_df["horiz_err"] = [
-                _haversine_m(r["lat"], r["lon"], r["lat_sp"], r["lon_sp"])
-                for _, r in pos_df.iterrows()
-            ]
+            pos_df["horiz_err"] = [_haversine_m(r["lat"], r["lon"], r["lat_sp"], r["lon_sp"]) for _, r in pos_df.iterrows()]
         else:
             pos_df = merged[["timestamp", "x", "y", "x_sp", "y_sp"]].dropna()
             if pos_df.empty:
                 return []
             pos_df = pos_df.copy()
-            pos_df["horiz_err"] = np.sqrt(
-                (pos_df["x"] - pos_df["x_sp"]) ** 2 + (pos_df["y"] - pos_df["y_sp"]) ** 2
-            )
+            pos_df["horiz_err"] = np.sqrt((pos_df["x"] - pos_df["x_sp"]) ** 2 + (pos_df["y"] - pos_df["y_sp"]) ** 2)
 
         # Filter position errors to hover windows
         hover_pos = pos_df[pos_df["timestamp"].isin(hover_timestamps)]
@@ -370,43 +366,44 @@ class PositionTrackingPlugin(Plugin):
         mean_drift = float(hover_pos["horiz_err"].mean())
 
         if max_drift <= HOVER_DRIFT_M:
-            return [Finding(
-                plugin_name=self.name,
-                title="No excessive hover drift detected",
-                severity="pass",
-                score=95,
-                description=(
-                    f"Maximum horizontal drift during hover: {max_drift:.2f}m "
-                    f"(threshold: {HOVER_DRIFT_M}m)."
-                ),
-                evidence={
-                    "max_drift_m": round(max_drift, 3),
-                    "mean_drift_m": round(mean_drift, 3),
-                    "threshold_m": HOVER_DRIFT_M,
-                },
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="No excessive hover drift detected",
+                    severity="pass",
+                    score=95,
+                    description=(f"Maximum horizontal drift during hover: {max_drift:.2f}m (threshold: {HOVER_DRIFT_M}m)."),
+                    evidence={
+                        "max_drift_m": round(max_drift, 3),
+                        "mean_drift_m": round(mean_drift, 3),
+                        "threshold_m": HOVER_DRIFT_M,
+                    },
+                )
+            ]
 
         severity = "critical" if max_drift > CRITICAL_MEAN_ERROR_M else "warning"
         score = 20 if severity == "critical" else 55
 
         ts = hover_pos["timestamp"]
-        return [Finding(
-            plugin_name=self.name,
-            title=f"Hover drift detected — max {max_drift:.1f}m during low-velocity hover",
-            severity=severity,
-            score=score,
-            description=(
-                f"Position drifted up to {max_drift:.2f}m from setpoint while hovering "
-                f"(ground speed < {LOW_VELOCITY_THRESHOLD}m/s). "
-                f"Mean drift during hover: {mean_drift:.2f}m. "
-                "Hover drift may indicate GPS/EKF issues or windy conditions."
-            ),
-            evidence={
-                "max_drift_m": round(max_drift, 3),
-                "mean_drift_m": round(mean_drift, 3),
-                "threshold_m": HOVER_DRIFT_M,
-                "hover_samples": len(hover_pos),
-            },
-            timestamp_start=float(ts.iloc[0]) if not ts.empty else None,
-            timestamp_end=float(ts.iloc[-1]) if not ts.empty else None,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"Hover drift detected — max {max_drift:.1f}m during low-velocity hover",
+                severity=severity,
+                score=score,
+                description=(
+                    f"Position drifted up to {max_drift:.2f}m from setpoint while hovering "
+                    f"(ground speed < {LOW_VELOCITY_THRESHOLD}m/s). "
+                    f"Mean drift during hover: {mean_drift:.2f}m. "
+                    "Hover drift may indicate GPS/EKF issues or windy conditions."
+                ),
+                evidence={
+                    "max_drift_m": round(max_drift, 3),
+                    "mean_drift_m": round(mean_drift, 3),
+                    "threshold_m": HOVER_DRIFT_M,
+                    "hover_samples": len(hover_pos),
+                },
+                timestamp_start=float(ts.iloc[0]) if not ts.empty else None,
+                timestamp_end=float(ts.iloc[-1]) if not ts.empty else None,
+            )
+        ]

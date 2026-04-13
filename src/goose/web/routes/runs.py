@@ -28,23 +28,27 @@ class CompareRunsRequest(BaseModel):
 async def list_runs(case_id: str) -> JSONResponse:
     """Return all analysis runs for a case."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
 
-    return JSONResponse({
-        "ok": True,
-        "runs": [r.to_dict() for r in case.analysis_runs],
-        "count": len(case.analysis_runs),
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "runs": [r.to_dict() for r in case.analysis_runs],
+            "count": len(case.analysis_runs),
+        }
+    )
 
 
 @router.get("/{case_id}/runs/{run_id}")
 async def get_run(case_id: str, run_id: str) -> JSONResponse:
     """Return detail for a specific analysis run."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)

@@ -60,9 +60,7 @@ def _attitude_divergence(
     result["timestamp"] = merged["timestamp"]
     for axis in ("roll", "pitch"):
         if axis in merged.columns and f"{axis}_sp" in merged.columns:
-            result[f"{axis}_error_deg"] = np.degrees(
-                np.abs(merged[axis] - merged[f"{axis}_sp"])
-            )
+            result[f"{axis}_error_deg"] = np.degrees(np.abs(merged[axis] - merged[f"{axis}_sp"]))
     return result
 
 
@@ -187,22 +185,24 @@ class CrashDetectionPlugin(Plugin):
                 time_range_end=None,
                 support_summary="Flight completed without crash indicators.",
             )
-            forensic_findings.append(ForensicFinding(
-                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-                plugin_id=self.name,
-                plugin_version=self.manifest.version,
-                title="No crash detected",
-                description="Flight completed without crash indicators.",
-                severity=FindingSeverity.PASS,
-                score=100,
-                confidence=1.0,
-                confidence_scope="finding_analysis",
-                evidence_references=[ev_ref],
-                supporting_metrics={},
-                contradicting_metrics={},
-                assumptions=["No signals met crash thresholds; flight is assumed nominal"],
-                run_id=run_id,
-            ))
+            forensic_findings.append(
+                ForensicFinding(
+                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    plugin_id=self.name,
+                    plugin_version=self.manifest.version,
+                    title="No crash detected",
+                    description="Flight completed without crash indicators.",
+                    severity=FindingSeverity.PASS,
+                    score=100,
+                    confidence=1.0,
+                    confidence_scope="finding_analysis",
+                    evidence_references=[ev_ref],
+                    supporting_metrics={},
+                    contradicting_metrics={},
+                    assumptions=["No signals met crash thresholds; flight is assumed nominal"],
+                    run_id=run_id,
+                )
+            )
         else:
             classification = self._classify(crash_signals, flight)
             confidence = self._compute_confidence(crash_signals)
@@ -224,29 +224,18 @@ class CrashDetectionPlugin(Plugin):
             assumptions: list[str] = []
             signal_types = {s["type"] for s in crash_signals}
             if "impact" in signal_types:
-                assumptions.append(
-                    "Impact inferred from attitude divergence and sudden velocity change "
-                    "— direct collision sensor not available"
-                )
+                assumptions.append("Impact inferred from attitude divergence and sudden velocity change — direct collision sensor not available")
             if "altitude_loss" in signal_types:
-                assumptions.append(
-                    "Altitude loss is assumed to reflect uncontrolled descent "
-                    "— controlled landing cannot be ruled out without motor data"
-                )
+                assumptions.append("Altitude loss is assumed to reflect uncontrolled descent — controlled landing cannot be ruled out without motor data")
             if "attitude_divergence" in signal_types:
                 assumptions.append(
-                    "Attitude divergence from setpoint is treated as loss-of-control "
-                    "— external disturbance (wind gust) is an alternative explanation"
+                    "Attitude divergence from setpoint is treated as loss-of-control — external disturbance (wind gust) is an alternative explanation"
                 )
             if "motor_failure" in signal_types:
-                assumptions.append(
-                    "Motor output drop is classified as failure "
-                    "— intentional disarm during landing is an alternative explanation"
-                )
+                assumptions.append("Motor output drop is classified as failure — intentional disarm during landing is an alternative explanation")
             if not assumptions:
                 assumptions.append(
-                    "Crash classification inferred from multiple correlated signals; "
-                    "individual signal interpretations may be affected by data gaps"
+                    "Crash classification inferred from multiple correlated signals; individual signal interpretations may be affected by data gaps"
                 )
 
             # Supporting metrics: aggregate key values from all signals
@@ -266,34 +255,31 @@ class CrashDetectionPlugin(Plugin):
                 stream_name=self.manifest.primary_stream or "position",
                 time_range_start=earliest_ts,
                 time_range_end=latest_ts,
-                support_summary=(
-                    f"Crash window: {earliest_ts:.1f}s–{latest_ts:.1f}s. "
-                    f"Classification: {classification}."
-                ) if earliest_ts is not None and latest_ts is not None else
-                f"Crash classified as {classification}.",
+                support_summary=(f"Crash window: {earliest_ts:.1f}s–{latest_ts:.1f}s. Classification: {classification}.")
+                if earliest_ts is not None and latest_ts is not None
+                else f"Crash classified as {classification}.",
             )
 
-            forensic_findings.append(ForensicFinding(
-                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-                plugin_id=self.name,
-                plugin_version=self.manifest.version,
-                title=f"Crash detected: {classification}",
-                description=(
-                    f"Crash classified as '{classification}' with {confidence:.0%} confidence. "
-                    f"Signals: {', '.join(sorted(signal_types))}."
-                ),
-                severity=severity,
-                score=score,
-                confidence=round(confidence, 2),
-                confidence_scope="finding_analysis",
-                start_time=earliest_ts,
-                end_time=latest_ts,
-                evidence_references=[ev_ref],
-                supporting_metrics=supporting_metrics,
-                contradicting_metrics={},
-                assumptions=assumptions,
-                run_id=run_id,
-            ))
+            forensic_findings.append(
+                ForensicFinding(
+                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    plugin_id=self.name,
+                    plugin_version=self.manifest.version,
+                    title=f"Crash detected: {classification}",
+                    description=(f"Crash classified as '{classification}' with {confidence:.0%} confidence. Signals: {', '.join(sorted(signal_types))}."),
+                    severity=severity,
+                    score=score,
+                    confidence=round(confidence, 2),
+                    confidence_scope="finding_analysis",
+                    start_time=earliest_ts,
+                    end_time=latest_ts,
+                    evidence_references=[ev_ref],
+                    supporting_metrics=supporting_metrics,
+                    contradicting_metrics={},
+                    assumptions=assumptions,
+                    run_id=run_id,
+                )
+            )
 
             # Individual signal findings
             for signal in crash_signals:
@@ -306,24 +292,26 @@ class CrashDetectionPlugin(Plugin):
                     time_range_end=sig_ts_end,
                     support_summary=signal["description"][:200],
                 )
-                forensic_findings.append(ForensicFinding(
-                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-                    plugin_id=self.name,
-                    plugin_version=self.manifest.version,
-                    title=signal["title"],
-                    description=signal["description"],
-                    severity=FindingSeverity.WARNING,
-                    score=signal.get("score", 30),
-                    confidence=round(signal.get("score", 30) / 100.0, 2),
-                    confidence_scope="finding_analysis",
-                    start_time=sig_ts_start,
-                    end_time=sig_ts_end,
-                    evidence_references=[sig_ev_ref],
-                    supporting_metrics=signal.get("evidence", {}),
-                    contradicting_metrics={},
-                    assumptions=[],
-                    run_id=run_id,
-                ))
+                forensic_findings.append(
+                    ForensicFinding(
+                        finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                        plugin_id=self.name,
+                        plugin_version=self.manifest.version,
+                        title=signal["title"],
+                        description=signal["description"],
+                        severity=FindingSeverity.WARNING,
+                        score=signal.get("score", 30),
+                        confidence=round(signal.get("score", 30) / 100.0, 2),
+                        confidence_scope="finding_analysis",
+                        start_time=sig_ts_start,
+                        end_time=sig_ts_end,
+                        evidence_references=[sig_ev_ref],
+                        supporting_metrics=signal.get("evidence", {}),
+                        contradicting_metrics={},
+                        assumptions=[],
+                        run_id=run_id,
+                    )
+                )
 
         elapsed = (time.perf_counter() - t0) * 1000
         diag = PDiag(
@@ -371,13 +359,15 @@ class CrashDetectionPlugin(Plugin):
             crash_signals.append(abort_signal)
 
         if not crash_signals:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No crash detected",
-                severity="pass",
-                score=100,
-                description="Flight completed without crash indicators.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No crash detected",
+                    severity="pass",
+                    score=100,
+                    description="Flight completed without crash indicators.",
+                )
+            )
             return findings
 
         # Classify the crash
@@ -413,38 +403,39 @@ class CrashDetectionPlugin(Plugin):
             default=None,
         )
 
-        findings.append(Finding(
-            plugin_name=self.name,
-            title=f"Crash detected: {classification}",
-            severity=severity,
-            score=score,
-            description=(
-                f"Crash classified as '{classification}' with {confidence:.0%} confidence. "
-                f"Signals: {', '.join(s['type'] for s in crash_signals)}."
-            ),
-            evidence=evidence,
-            timestamp_start=earliest_ts if earliest_ts != float("inf") else None,
-            timestamp_end=latest_ts if latest_ts else None,
-        ))
+        findings.append(
+            Finding(
+                plugin_name=self.name,
+                title=f"Crash detected: {classification}",
+                severity=severity,
+                score=score,
+                description=(
+                    f"Crash classified as '{classification}' with {confidence:.0%} confidence. Signals: {', '.join(s['type'] for s in crash_signals)}."
+                ),
+                evidence=evidence,
+                timestamp_start=earliest_ts if earliest_ts != float("inf") else None,
+                timestamp_end=latest_ts if latest_ts else None,
+            )
+        )
 
         # Add individual signal findings
         for signal in crash_signals:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title=signal["title"],
-                severity="warning",
-                score=signal.get("score", 30),
-                description=signal["description"],
-                evidence=signal.get("evidence", {}),
-                timestamp_start=signal.get("timestamp_start"),
-                timestamp_end=signal.get("timestamp_end"),
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title=signal["title"],
+                    severity="warning",
+                    score=signal.get("score", 30),
+                    description=signal["description"],
+                    evidence=signal.get("evidence", {}),
+                    timestamp_start=signal.get("timestamp_start"),
+                    timestamp_end=signal.get("timestamp_end"),
+                )
+            )
 
         return findings
 
-    def _check_altitude_loss(
-        self, flight: Flight, cfg: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def _check_altitude_loss(self, flight: Flight, cfg: dict[str, Any]) -> dict[str, Any] | None:
         """Detect rapid sustained altitude loss (>threshold m/s for >duration)."""
         if flight.position.empty or len(flight.position) < 20:
             return None
@@ -474,14 +465,11 @@ class CrashDetectionPlugin(Plugin):
                 if in_run:
                     run_duration = timestamps.iloc[i] - run_start
                     if run_duration >= sustained_sec:
-                        max_rate = float(rate.iloc[max(0, i - int(run_duration)):i].max())
+                        max_rate = float(rate.iloc[max(0, i - int(run_duration)) : i].max())
                         return {
                             "type": "altitude_loss",
                             "title": f"Rapid altitude loss at {max_rate:.1f} m/s",
-                            "description": (
-                                f"Sustained descent of >{threshold} m/s detected for "
-                                f"{run_duration:.1f}s (peak {max_rate:.1f} m/s)."
-                            ),
+                            "description": (f"Sustained descent of >{threshold} m/s detected for {run_duration:.1f}s (peak {max_rate:.1f} m/s)."),
                             "score": 15,
                             "evidence": {
                                 "max_descent_rate": max_rate,
@@ -496,14 +484,11 @@ class CrashDetectionPlugin(Plugin):
         if in_run:
             run_duration = timestamps.iloc[-1] - run_start
             if run_duration >= sustained_sec:
-                max_rate = float(rate.iloc[-max(1, int(run_duration)):].max())
+                max_rate = float(rate.iloc[-max(1, int(run_duration)) :].max())
                 return {
                     "type": "altitude_loss",
                     "title": f"Rapid altitude loss at {max_rate:.1f} m/s",
-                    "description": (
-                        f"Sustained descent of >{threshold} m/s detected for "
-                        f"{run_duration:.1f}s until end of log (peak {max_rate:.1f} m/s)."
-                    ),
+                    "description": (f"Sustained descent of >{threshold} m/s detected for {run_duration:.1f}s until end of log (peak {max_rate:.1f} m/s)."),
                     "score": 10,
                     "evidence": {
                         "max_descent_rate": max_rate,
@@ -516,9 +501,7 @@ class CrashDetectionPlugin(Plugin):
 
         return None
 
-    def _check_attitude_divergence(
-        self, flight: Flight, cfg: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def _check_attitude_divergence(self, flight: Flight, cfg: dict[str, Any]) -> dict[str, Any] | None:
         """Detect sudden attitude divergence from setpoint."""
         if not flight.has_attitude_setpoints:
             return None
@@ -553,10 +536,7 @@ class CrashDetectionPlugin(Plugin):
                         return {
                             "type": "attitude_divergence",
                             "title": f"Sudden {axis} divergence: {peak_error:.0f} deg",
-                            "description": (
-                                f"{axis.title()} diverged >{threshold_deg} deg from setpoint "
-                                f"in {ramp_time:.1f}s (peak {peak_error:.0f} deg)."
-                            ),
+                            "description": (f"{axis.title()} diverged >{threshold_deg} deg from setpoint in {ramp_time:.1f}s (peak {peak_error:.0f} deg)."),
                             "score": 20,
                             "evidence": {
                                 "axis": axis,
@@ -569,9 +549,7 @@ class CrashDetectionPlugin(Plugin):
 
         return None
 
-    def _check_motor_failure(
-        self, flight: Flight, cfg: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def _check_motor_failure(self, flight: Flight, cfg: dict[str, Any]) -> dict[str, Any] | None:
         """Detect motor output dropping to zero while others remain active."""
         if flight.motors.empty:
             return None
@@ -596,18 +574,12 @@ class CrashDetectionPlugin(Plugin):
                 return {
                     "type": "motor_failure",
                     "title": f"Motor {dead[0]} output dropped to zero",
-                    "description": (
-                        f"Motor(s) {dead} output fell below {threshold} "
-                        f"while {len(active)} motors remained active."
-                    ),
+                    "description": (f"Motor(s) {dead} output fell below {threshold} while {len(active)} motors remained active."),
                     "score": 10,
                     "evidence": {
                         "failed_motors": dead,
                         "active_motors": len(active),
-                        "outputs_at_failure": {
-                            motor_cols[j]: round(outputs[j], 3)
-                            for j in range(len(motor_cols))
-                        },
+                        "outputs_at_failure": {motor_cols[j]: round(outputs[j], 3) for j in range(len(motor_cols))},
                     },
                     "timestamp_start": float(timestamps.iloc[i]),
                     "timestamp_end": float(timestamps.iloc[-1]),
@@ -615,9 +587,7 @@ class CrashDetectionPlugin(Plugin):
 
         return None
 
-    def _check_impact(
-        self, flight: Flight, cfg: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def _check_impact(self, flight: Flight, cfg: dict[str, Any]) -> dict[str, Any] | None:
         """Detect impact signature: high-g spike followed by data stop or flatline."""
         if flight.vibration.empty:
             return None
@@ -630,9 +600,7 @@ class CrashDetectionPlugin(Plugin):
         threshold_ms2 = threshold_g * 9.81
 
         timestamps = flight.vibration["timestamp"]
-        total_accel = np.sqrt(sum(
-            flight.vibration[c] ** 2 for c in accel_cols
-        ))
+        total_accel = np.sqrt(sum(flight.vibration[c] ** 2 for c in accel_cols))
 
         spikes = total_accel > threshold_ms2
         if not spikes.any():
@@ -651,9 +619,7 @@ class CrashDetectionPlugin(Plugin):
                 "type": "impact",
                 "title": f"Impact detected: {peak_g:.1f}g spike",
                 "description": (
-                    f"High-g spike of {peak_g:.1f}g detected near end of log "
-                    f"({remaining_samples} samples remaining). "
-                    "Consistent with ground impact."
+                    f"High-g spike of {peak_g:.1f}g detected near end of log ({remaining_samples} samples remaining). Consistent with ground impact."
                 ),
                 "score": 5,
                 "evidence": {
@@ -667,9 +633,7 @@ class CrashDetectionPlugin(Plugin):
 
         return None
 
-    def _check_abrupt_termination(
-        self, flight: Flight
-    ) -> dict[str, Any] | None:
+    def _check_abrupt_termination(self, flight: Flight) -> dict[str, Any] | None:
         """Detect abrupt flight termination: takeoff followed by immediate landing."""
         takeoff_ts: float | None = None
         landing_ts: float | None = None
@@ -692,10 +656,7 @@ class CrashDetectionPlugin(Plugin):
         return {
             "type": "abrupt_termination",
             "title": f"Abrupt flight termination after {flight_duration:.1f}s",
-            "description": (
-                f"Flight lasted only {flight_duration:.1f}s from takeoff to landing. "
-                "Possible in-flight failure, safety landing, or crash."
-            ),
+            "description": (f"Flight lasted only {flight_duration:.1f}s from takeoff to landing. Possible in-flight failure, safety landing, or crash."),
             "score": 20,
             "evidence": {
                 "takeoff_timestamp": takeoff_ts,
@@ -706,15 +667,12 @@ class CrashDetectionPlugin(Plugin):
             "timestamp_end": landing_ts,
         }
 
-    def _classify(
-        self, signals: list[dict[str, Any]], flight: Flight
-    ) -> str:
+    def _classify(self, signals: list[dict[str, Any]], flight: Flight) -> str:
         """Classify the crash type based on detected signals."""
         signal_types = {s["type"] for s in signals}
 
         if "motor_failure" in signal_types:
             return "motor_failure"
-
 
         # Power loss: altitude drop + no motor output at all near end
         if "altitude_loss" in signal_types and not flight.motors.empty:
@@ -750,7 +708,6 @@ class CrashDetectionPlugin(Plugin):
             "attitude_divergence": 0.25,
             "motor_failure": 0.35,
             "impact": 0.3,
-
             "abrupt_termination": 0.3,
         }
 
@@ -763,16 +720,16 @@ class CrashDetectionPlugin(Plugin):
         for s in signals:
             ts = s.get("timestamp_start")
             if ts is not None:
-                events.append({
-                    "timestamp": ts,
-                    "event": s["type"],
-                    "detail": s["title"],
-                })
+                events.append(
+                    {
+                        "timestamp": ts,
+                        "event": s["type"],
+                        "detail": s["title"],
+                    }
+                )
         return sorted(events, key=lambda e: e["timestamp"])
 
-    def _root_cause_chain(
-        self, classification: str, signals: list[dict[str, Any]]
-    ) -> list[str]:
+    def _root_cause_chain(self, classification: str, signals: list[dict[str, Any]]) -> list[str]:
         """Build probable root cause chain for the crash."""
         chain: list[str] = []
 

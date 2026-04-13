@@ -17,18 +17,16 @@ def plugins() -> None:
 def _safe_load_plugins() -> list[Plugin]:
     """Load plugins, skipping any that fail to import or instantiate."""
     import sys
+
     if sys.version_info >= (3, 12):
         from importlib.metadata import entry_points
     else:
         from importlib.metadata import entry_points
 
     eps = entry_points()
-    group = (
-        eps.get("goose.plugins", [])
-        if isinstance(eps, dict)
-        else eps.select(group="goose.plugins")
-    )
+    group = eps.get("goose.plugins", []) if isinstance(eps, dict) else eps.select(group="goose.plugins")
     import logging
+
     _log = logging.getLogger(__name__)
     loaded: list[Plugin] = []
     for ep in group:

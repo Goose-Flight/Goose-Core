@@ -20,15 +20,42 @@ PLUGIN_WEIGHTS: dict[str, float] = {
 }
 
 
-_SKIP_KEYWORDS = frozenset([
-    "skipped", "not available", "not found", "no data", "no battery",
-    "no attitude", "no gps", "no motor", "no rc", "no ekf", "no position",
-    "could not find", "could not merge", "cannot merge", "cannot compute",
-    "insufficient data", "too few", "no matching", "missing timestamp",
-    "no overlapping", "no velocity", "no vibration", "no barometer",
-    "no magnetometer", "no airspeed", "no wind", "no cpu", "no manual",
-    "analysis skipped", "data not found", "data missing", "no setpoint",
-])
+_SKIP_KEYWORDS = frozenset(
+    [
+        "skipped",
+        "not available",
+        "not found",
+        "no data",
+        "no battery",
+        "no attitude",
+        "no gps",
+        "no motor",
+        "no rc",
+        "no ekf",
+        "no position",
+        "could not find",
+        "could not merge",
+        "cannot merge",
+        "cannot compute",
+        "insufficient data",
+        "too few",
+        "no matching",
+        "missing timestamp",
+        "no overlapping",
+        "no velocity",
+        "no vibration",
+        "no barometer",
+        "no magnetometer",
+        "no airspeed",
+        "no wind",
+        "no cpu",
+        "no manual",
+        "analysis skipped",
+        "data not found",
+        "data missing",
+        "no setpoint",
+    ]
+)
 
 
 def _is_data_missing_finding(finding: Any) -> bool:

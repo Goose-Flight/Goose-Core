@@ -138,6 +138,7 @@ class TestAnalyzeUsesProfilePlugins:
         # Plugin execution order is persisted to plugin_diagnostics.json.
         svc = cases_api.get_service()
         import json
+
         diag_path = svc.case_dir(case_id) / "analysis" / "plugin_diagnostics.json"
         assert diag_path.exists()
         bundle = json.loads(diag_path.read_text(encoding="utf-8"))
@@ -146,9 +147,7 @@ class TestAnalyzeUsesProfilePlugins:
         assert len(primary) > 0
         # Every primary plugin must appear before any non-primary plugin.
         primary_indices = [order.index(p) for p in primary]
-        non_primary_indices = [
-            i for i, p in enumerate(order) if p not in primary
-        ]
+        non_primary_indices = [i for i, p in enumerate(order) if p not in primary]
         assert max(primary_indices) < min(non_primary_indices)
 
     def test_advanced_profile_runs_all_plugins(self, client: TestClient):
@@ -170,9 +169,8 @@ class TestAnalyzeUsesProfilePlugins:
 
         svc = cases_api.get_service()
         import json
-        bundle = json.loads(
-            (svc.case_dir(case_id) / "analysis" / "plugin_diagnostics.json").read_text(encoding="utf-8")
-        )
+
+        bundle = json.loads((svc.case_dir(case_id) / "analysis" / "plugin_diagnostics.json").read_text(encoding="utf-8"))
         order = bundle["plugin_execution_order"]
         deprio = bundle["profile_deprioritized_plugins"]
         assert "log_health" in deprio
@@ -213,10 +211,7 @@ class TestFindingsOrdering:
         last_rank = -1
         for f in findings:
             r = rank.get(f["severity"], len(rank) + 1)
-            assert r >= last_rank, (
-                f"Finding severity {f['severity']} (rank {r}) appeared "
-                f"after a severity with rank {last_rank}"
-            )
+            assert r >= last_rank, f"Finding severity {f['severity']} (rank {r}) appeared after a severity with rank {last_rank}"
             last_rank = r
 
 
@@ -242,9 +237,8 @@ class TestRunMetadataCapturesProfile:
 
         svc = cases_api.get_service()
         import json
-        bundle = json.loads(
-            (svc.case_dir(case_id) / "analysis" / "plugin_diagnostics.json").read_text(encoding="utf-8")
-        )
+
+        bundle = json.loads((svc.case_dir(case_id) / "analysis" / "plugin_diagnostics.json").read_text(encoding="utf-8"))
         assert bundle["profile_id"] == "shop_repair"
         assert isinstance(bundle["profile_primary_plugins"], list)
         # shop_repair has explicit primary plugins.

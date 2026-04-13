@@ -19,9 +19,11 @@ def client_and_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     # Reset the case service so it picks up the new cwd
     from goose.forensics import CaseService
     from goose.web import cases_api
+
     cases_api._set_service(CaseService(base_dir=tmp_path / "cases"))
 
     from goose.web.app import create_app
+
     app = create_app()
     client = TestClient(app)
     yield client, cases_api.get_service()
@@ -64,9 +66,7 @@ def test_replay_route_404_on_missing_run(client_and_service, normal_flight_path:
     assert r.status_code == 404
 
 
-def test_replay_verification_route_returns_none_when_absent(
-    client_and_service, normal_flight_path: Path
-):
+def test_replay_verification_route_returns_none_when_absent(client_and_service, normal_flight_path: Path):
     client, svc = client_and_service
     case = svc.create_case(created_by="test")
     svc.ingest_evidence(case.case_id, normal_flight_path, acquired_by="test")
@@ -120,6 +120,7 @@ def test_validation_run_endpoint(client_and_service, monkeypatch: pytest.MonkeyP
     repo_corpus = Path(__file__).parent.parent / "corpus"
 
     from goose.web.routes import validation as val_mod
+
     monkeypatch.setattr(val_mod, "_corpus_dir", lambda: repo_corpus)
 
     r = client.post("/api/validation/run")

@@ -26,10 +26,10 @@ from goose.plugins.base import Plugin
 from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Thresholds
-DEFAULT_ALTITUDE_LOSS_RATE = 3.0       # m/s — descent rate considered anomalous per phase
-DEFAULT_BATTERY_DROP_RATE = 0.5        # %/sec — battery drain rate considered anomalous
-DEFAULT_PHASE_VIBRATION_RATIO = 2.0    # factor above whole-flight baseline = anomalous
-DEFAULT_SHORT_PHASE_SEC = 5.0          # phase shorter than this = suspiciously short
+DEFAULT_ALTITUDE_LOSS_RATE = 3.0  # m/s — descent rate considered anomalous per phase
+DEFAULT_BATTERY_DROP_RATE = 0.5  # %/sec — battery drain rate considered anomalous
+DEFAULT_PHASE_VIBRATION_RATIO = 2.0  # factor above whole-flight baseline = anomalous
+DEFAULT_SHORT_PHASE_SEC = 5.0  # phase shorter than this = suspiciously short
 
 
 class MissionPhaseAnomalyPlugin(Plugin):
@@ -43,8 +43,7 @@ class MissionPhaseAnomalyPlugin(Plugin):
 
     name = "mission_phase_anomaly"
     description = (
-        "Detects anomalies in specific flight phases (takeoff, climb, cruise, landing). "
-        "Provides phase-level temporal context for forensic investigation."
+        "Detects anomalies in specific flight phases (takeoff, climb, cruise, landing). Provides phase-level temporal context for forensic investigation."
     )
     version = "1.0.0"
     min_mode = "manual"
@@ -55,8 +54,7 @@ class MissionPhaseAnomalyPlugin(Plugin):
         version="1.0.0",
         author="Goose Flight",
         description=(
-            "Detects anomalies in specific flight phases (takeoff, climb, cruise, landing). "
-            "Provides phase-level temporal context for forensic investigation."
+            "Detects anomalies in specific flight phases (takeoff, climb, cruise, landing). Provides phase-level temporal context for forensic investigation."
         ),
         category=PluginCategory.FLIGHT_DYNAMICS,
         supported_vehicle_types=["multirotor", "fixed_wing", "all"],
@@ -90,16 +88,15 @@ class MissionPhaseAnomalyPlugin(Plugin):
         phases = getattr(flight, "phases", []) or []
         if not phases:
             # No phase data — emit an info finding and return
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="Flight phase data unavailable",
-                severity="info",
-                score=50,
-                description=(
-                    "No flight phase information extracted from this log. "
-                    "Phase-anomaly analysis requires flight phase detection data."
-                ),
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="Flight phase data unavailable",
+                    severity="info",
+                    score=50,
+                    description=("No flight phase information extracted from this log. Phase-anomaly analysis requires flight phase detection data."),
+                )
+            )
             return findings
 
         # Run per-phase checks
@@ -111,25 +108,27 @@ class MissionPhaseAnomalyPlugin(Plugin):
 
             # 1. Suspiciously short phases
             if 0 < phase_dur < cfg["short_phase_sec"]:
-                findings.append(Finding(
-                    plugin_name=self.name,
-                    title=f"Phase '{phase_type}' unusually short ({phase_dur:.1f}s)",
-                    severity="warning",
-                    score=55,
-                    description=(
-                        f"The '{phase_type}' phase lasted only {phase_dur:.1f}s — "
-                        f"shorter than the expected minimum of {cfg['short_phase_sec']}s. "
-                        "This may indicate an aborted maneuver, a failsafe trigger, or a logging gap."
-                    ),
-                    evidence={
-                        "phase": phase_type,
-                        "duration_sec": round(phase_dur, 2),
-                        "threshold_sec": cfg["short_phase_sec"],
-                    },
-                    phase=phase_type,
-                    timestamp_start=t_start,
-                    timestamp_end=t_end,
-                ))
+                findings.append(
+                    Finding(
+                        plugin_name=self.name,
+                        title=f"Phase '{phase_type}' unusually short ({phase_dur:.1f}s)",
+                        severity="warning",
+                        score=55,
+                        description=(
+                            f"The '{phase_type}' phase lasted only {phase_dur:.1f}s — "
+                            f"shorter than the expected minimum of {cfg['short_phase_sec']}s. "
+                            "This may indicate an aborted maneuver, a failsafe trigger, or a logging gap."
+                        ),
+                        evidence={
+                            "phase": phase_type,
+                            "duration_sec": round(phase_dur, 2),
+                            "threshold_sec": cfg["short_phase_sec"],
+                        },
+                        phase=phase_type,
+                        timestamp_start=t_start,
+                        timestamp_end=t_end,
+                    )
+                )
 
             # 2. Phase-specific altitude anomaly
             alt_finding = self._check_phase_altitude(flight, phase_type, t_start, t_end, cfg)
@@ -147,16 +146,15 @@ class MissionPhaseAnomalyPlugin(Plugin):
                 findings.append(vib_finding)
 
         if not findings:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No phase-specific anomalies detected",
-                severity="pass",
-                score=95,
-                description=(
-                    f"Checked {len(phases)} flight phase(s). "
-                    "No phase-localized anomalies found above threshold."
-                ),
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No phase-specific anomalies detected",
+                    severity="pass",
+                    score=95,
+                    description=(f"Checked {len(phases)} flight phase(s). No phase-localized anomalies found above threshold."),
+                )
+            )
 
         return findings
 
@@ -197,10 +195,7 @@ class MissionPhaseAnomalyPlugin(Plugin):
 
         # Flag descent during phases where we expect stability or climb
         anomalous_descent_phases = {"cruise", "on_mission", "hold", "loiter", "hover"}
-        is_anomalous = (
-            rate > threshold
-            and phase_type.lower() in anomalous_descent_phases
-        )
+        is_anomalous = rate > threshold and phase_type.lower() in anomalous_descent_phases
 
         # Also flag if landing is steeper than expected
         if phase_type.lower() in ("landing", "descent") and rate > threshold * 2:
@@ -305,9 +300,7 @@ class MissionPhaseAnomalyPlugin(Plugin):
             return None
 
         # Whole-flight baseline RMS
-        total_rms = float(np.sqrt(
-            sum((flight.vibration[c] ** 2).mean() for c in accel_cols) / len(accel_cols)
-        ))
+        total_rms = float(np.sqrt(sum((flight.vibration[c] ** 2).mean() for c in accel_cols) / len(accel_cols)))
         if total_rms < 0.1:
             return None
 
@@ -317,9 +310,7 @@ class MissionPhaseAnomalyPlugin(Plugin):
         if len(phase_vib) < 5:
             return None
 
-        phase_rms = float(np.sqrt(
-            sum((phase_vib[c] ** 2).mean() for c in accel_cols if c in phase_vib.columns) / len(accel_cols)
-        ))
+        phase_rms = float(np.sqrt(sum((phase_vib[c] ** 2).mean() for c in accel_cols if c in phase_vib.columns) / len(accel_cols)))
 
         ratio = phase_rms / total_rms if total_rms > 0 else 1.0
         threshold = cfg["phase_vibration_ratio"]

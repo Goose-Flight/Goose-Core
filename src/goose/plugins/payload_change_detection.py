@@ -42,9 +42,7 @@ class PayloadChangeDetectionPlugin(Plugin):
     """Detect candidate mid-flight payload / mass-change events."""
 
     name = "payload_change_detection"
-    description = (
-        "Phase 1 candidate detector for mid-flight payload / mass-change events."
-    )
+    description = "Phase 1 candidate detector for mid-flight payload / mass-change events."
     version = "1.0.0"
     min_mode = "manual"
 
@@ -86,32 +84,22 @@ class PayloadChangeDetectionPlugin(Plugin):
     )
 
     # Default thresholds — all overridable via config / tuning profile.
-    DEFAULT_CURRENT_DELTA_THRESHOLD = 3.0   # amps — minimum sustained current change
-    DEFAULT_SUSTAINED_DURATION_S = 1.5      # seconds — change must persist this long
-    DEFAULT_PRE_POST_WINDOW_S = 5.0         # seconds for pre/post moving average
-    DEFAULT_COMMAND_TOLERANCE = 0.15        # fractional throttle tolerance
-    DEFAULT_MIN_FLIGHT_DURATION_S = 10.0    # minimum flight duration to run analysis
+    DEFAULT_CURRENT_DELTA_THRESHOLD = 3.0  # amps — minimum sustained current change
+    DEFAULT_SUSTAINED_DURATION_S = 1.5  # seconds — change must persist this long
+    DEFAULT_PRE_POST_WINDOW_S = 5.0  # seconds for pre/post moving average
+    DEFAULT_COMMAND_TOLERANCE = 0.15  # fractional throttle tolerance
+    DEFAULT_MIN_FLIGHT_DURATION_S = 10.0  # minimum flight duration to run analysis
 
     def analyze(self, flight: Flight, config: dict[str, Any]) -> list[Finding]:
         """Phase 1: detect abrupt sustained current changes not explained by throttle."""
         findings: list[Finding] = []
         cfg = config or {}
 
-        current_delta = float(
-            cfg.get("current_delta_threshold", self.DEFAULT_CURRENT_DELTA_THRESHOLD)
-        )
-        sustained_s = float(
-            cfg.get("sustained_duration_s", self.DEFAULT_SUSTAINED_DURATION_S)
-        )
-        pre_post_s = float(
-            cfg.get("pre_post_window_s", self.DEFAULT_PRE_POST_WINDOW_S)
-        )
-        cmd_tolerance = float(
-            cfg.get("command_tolerance", self.DEFAULT_COMMAND_TOLERANCE)
-        )
-        min_flight_s = float(
-            cfg.get("min_flight_duration_s", self.DEFAULT_MIN_FLIGHT_DURATION_S)
-        )
+        current_delta = float(cfg.get("current_delta_threshold", self.DEFAULT_CURRENT_DELTA_THRESHOLD))
+        sustained_s = float(cfg.get("sustained_duration_s", self.DEFAULT_SUSTAINED_DURATION_S))
+        pre_post_s = float(cfg.get("pre_post_window_s", self.DEFAULT_PRE_POST_WINDOW_S))
+        cmd_tolerance = float(cfg.get("command_tolerance", self.DEFAULT_COMMAND_TOLERANCE))
+        min_flight_s = float(cfg.get("min_flight_duration_s", self.DEFAULT_MIN_FLIGHT_DURATION_S))
 
         # Required: battery current stream
         current_stream = self._get_current_stream(flight)
@@ -130,9 +118,7 @@ class PayloadChangeDetectionPlugin(Plugin):
         throttle_stream = self._get_throttle_stream(flight)
 
         # Find candidate windows
-        candidates = self._find_candidate_windows(
-            times, currents, current_delta, sustained_s, pre_post_s
-        )
+        candidates = self._find_candidate_windows(times, currents, current_delta, sustained_s, pre_post_s)
 
         for cand in candidates:
             # Suppress if throttle moved proportionally around the event window
@@ -156,11 +142,7 @@ class PayloadChangeDetectionPlugin(Plugin):
             if abs(cand["delta_amps"]) > current_delta * 2:
                 confidence_base += 0.10  # up to ~0.45
 
-            severity = (
-                "warning"
-                if abs(cand["delta_amps"]) > current_delta * 2
-                else "info"
-            )
+            severity = "warning" if abs(cand["delta_amps"]) > current_delta * 2 else "info"
 
             findings.append(
                 Finding(
@@ -186,18 +168,15 @@ class PayloadChangeDetectionPlugin(Plugin):
                         "finding_type": finding_type,
                         "confidence": round(confidence_base, 2),
                         "assumptions": [
-                            "Phase 1 detection: correlates current draw only, "
-                            "not full multi-signal analysis",
+                            "Phase 1 detection: correlates current draw only, not full multi-signal analysis",
                             "Low-confidence candidate — requires investigator review",
-                            "Throttle change suppression applied but may not cover "
-                            "all false-positive cases",
+                            "Throttle change suppression applied but may not cover all false-positive cases",
                         ],
                         "recommendations": [
                             "Review chart of battery current around this time window",
                             "Check motor outputs for corresponding change",
                             "Check altitude/vertical velocity for response change",
-                            "Consider flight context: was a release, drop, or load "
-                            "change expected?",
+                            "Consider flight context: was a release, drop, or load change expected?",
                         ],
                     },
                     phase=None,
@@ -212,9 +191,7 @@ class PayloadChangeDetectionPlugin(Plugin):
     # Stream helpers
     # ------------------------------------------------------------------
 
-    def _get_current_stream(
-        self, flight: Flight
-    ) -> list[tuple[float, float]] | None:
+    def _get_current_stream(self, flight: Flight) -> list[tuple[float, float]] | None:
         """Return [(timestamp, current_amps), ...] from the battery DataFrame."""
         bat = getattr(flight, "battery", None)
         if bat is None or not isinstance(bat, pd.DataFrame) or bat.empty:
@@ -227,9 +204,7 @@ class PayloadChangeDetectionPlugin(Plugin):
         df = df.sort_values("timestamp").reset_index(drop=True)
         return [(float(t), float(c)) for t, c in zip(df["timestamp"], df["current"], strict=False)]
 
-    def _get_throttle_stream(
-        self, flight: Flight
-    ) -> list[tuple[float, float]] | None:
+    def _get_throttle_stream(self, flight: Flight) -> list[tuple[float, float]] | None:
         """Return [(timestamp, throttle_frac_0_1), ...] derived from motors or rc_input.
 
         Tries ``flight.motors`` first (average motor output across motor columns),
@@ -238,39 +213,25 @@ class PayloadChangeDetectionPlugin(Plugin):
         """
         # Try motors DataFrame — average of motor_{i} columns
         motors = getattr(flight, "motors", None)
-        if (
-            isinstance(motors, pd.DataFrame)
-            and not motors.empty
-            and "timestamp" in motors.columns
-        ):
+        if isinstance(motors, pd.DataFrame) and not motors.empty and "timestamp" in motors.columns:
             motor_cols = [c for c in motors.columns if c.startswith("motor_")]
             if motor_cols:
                 df = motors[["timestamp", *motor_cols]].dropna()
                 if not df.empty:
                     df = df.sort_values("timestamp").reset_index(drop=True)
                     avg = df[motor_cols].mean(axis=1)
-                    return [
-                        (float(t), float(v))
-                        for t, v in zip(df["timestamp"], avg, strict=False)
-                    ]
+                    return [(float(t), float(v)) for t, v in zip(df["timestamp"], avg, strict=False)]
 
         # Fallback: rc_input throttle channel
         rc = getattr(flight, "rc_input", None)
-        if (
-            isinstance(rc, pd.DataFrame)
-            and not rc.empty
-            and "timestamp" in rc.columns
-        ):
+        if isinstance(rc, pd.DataFrame) and not rc.empty and "timestamp" in rc.columns:
             for col in ("throttle", "throttle_pct", "channel_2", "ch2"):
                 if col in rc.columns:
                     df = rc[["timestamp", col]].dropna()
                     if df.empty:
                         continue
                     df = df.sort_values("timestamp").reset_index(drop=True)
-                    return [
-                        (float(t), float(v))
-                        for t, v in zip(df["timestamp"], df[col], strict=False)
-                    ]
+                    return [(float(t), float(v)) for t, v in zip(df["timestamp"], df[col], strict=False)]
 
         return None
 

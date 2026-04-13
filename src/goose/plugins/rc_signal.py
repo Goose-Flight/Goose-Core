@@ -59,13 +59,15 @@ class RcSignalPlugin(Plugin):
         stuck_sec = float(cfg.get("stuck_channel_sec", STUCK_CHANNEL_SEC))
 
         if flight.rc_input is None or flight.rc_input.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No RC input data available",
-                severity="info",
-                score=50,
-                description="No RC input data found in the flight log. RC signal checks skipped.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No RC input data available",
+                    severity="info",
+                    score=50,
+                    description="No RC input data found in the flight log. RC signal checks skipped.",
+                )
+            )
             return findings
 
         rc = flight.rc_input.copy()
@@ -73,14 +75,16 @@ class RcSignalPlugin(Plugin):
         required_cols = {"timestamp", "rssi"}
         missing = required_cols - set(rc.columns)
         if missing:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="RC data missing required columns",
-                severity="info",
-                score=50,
-                description=f"RC input DataFrame is missing columns: {sorted(missing)}. Cannot assess signal quality.",
-                evidence={"missing_columns": sorted(missing), "available_columns": list(rc.columns)},
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="RC data missing required columns",
+                    severity="info",
+                    score=50,
+                    description=f"RC input DataFrame is missing columns: {sorted(missing)}. Cannot assess signal quality.",
+                    evidence={"missing_columns": sorted(missing), "available_columns": list(rc.columns)},
+                )
+            )
             return findings
 
         findings.extend(self._check_rssi(rc, rssi_warn, rssi_crit))
@@ -108,22 +112,23 @@ class RcSignalPlugin(Plugin):
         mean_rssi = round(float(rssi.mean()), 1)
 
         if min_rssi >= RSSI_WARNING:
-            return [Finding(
-                plugin_name=self.name,
-                title="RC signal strength nominal",
-                severity="pass",
-                score=95,
-                description=(
-                    f"RSSI stayed above the warning threshold of {RSSI_WARNING}% throughout the flight. "
-                    f"Minimum: {min_rssi}%, mean: {mean_rssi}%."
-                ),
-                evidence={
-                    "min_rssi_pct": min_rssi,
-                    "mean_rssi_pct": mean_rssi,
-                    "warning_threshold": RSSI_WARNING,
-                    "critical_threshold": RSSI_CRITICAL,
-                },
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="RC signal strength nominal",
+                    severity="pass",
+                    score=95,
+                    description=(
+                        f"RSSI stayed above the warning threshold of {RSSI_WARNING}% throughout the flight. Minimum: {min_rssi}%, mean: {mean_rssi}%."
+                    ),
+                    evidence={
+                        "min_rssi_pct": min_rssi,
+                        "mean_rssi_pct": mean_rssi,
+                        "warning_threshold": RSSI_WARNING,
+                        "critical_threshold": RSSI_CRITICAL,
+                    },
+                )
+            ]
 
         # Find timestamps of first threshold crossings
         ts = rc["timestamp"]
@@ -157,33 +162,33 @@ class RcSignalPlugin(Plugin):
                 f"Minimum RSSI: {min_rssi}%, mean: {mean_rssi}%. Consider improving antenna placement."
             )
 
-        return [Finding(
-            plugin_name=self.name,
-            title=title,
-            severity=severity,
-            score=score,
-            description=desc,
-            evidence={
-                "min_rssi_pct": min_rssi,
-                "mean_rssi_pct": mean_rssi,
-                "warning_threshold": RSSI_WARNING,
-                "critical_threshold": RSSI_CRITICAL,
-                "samples_below_warning": n_warn,
-                "samples_below_critical": n_crit,
-                "pct_below_warning": pct_warn,
-                "pct_below_critical": pct_crit,
-            },
-            timestamp_start=ts_warn_start,
-            timestamp_end=ts_crit_start,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=title,
+                severity=severity,
+                score=score,
+                description=desc,
+                evidence={
+                    "min_rssi_pct": min_rssi,
+                    "mean_rssi_pct": mean_rssi,
+                    "warning_threshold": RSSI_WARNING,
+                    "critical_threshold": RSSI_CRITICAL,
+                    "samples_below_warning": n_warn,
+                    "samples_below_critical": n_crit,
+                    "pct_below_warning": pct_warn,
+                    "pct_below_critical": pct_crit,
+                },
+                timestamp_start=ts_warn_start,
+                timestamp_end=ts_crit_start,
+            )
+        ]
 
     # ------------------------------------------------------------------
     # Dropout detection
     # ------------------------------------------------------------------
 
-    def _check_dropouts(
-        self, rc: pd.DataFrame, DROPOUT_GAP_SEC: float = DROPOUT_GAP_SEC
-    ) -> list[Finding]:
+    def _check_dropouts(self, rc: pd.DataFrame, DROPOUT_GAP_SEC: float = DROPOUT_GAP_SEC) -> list[Finding]:
         """Detect gaps in RC input data longer than DROPOUT_GAP_SEC."""
         ts = rc["timestamp"].sort_values().reset_index(drop=True)
         if len(ts) < 2:
@@ -194,14 +199,16 @@ class RcSignalPlugin(Plugin):
         dropout_gaps = gaps[dropout_mask]
 
         if dropout_gaps.empty:
-            return [Finding(
-                plugin_name=self.name,
-                title="No RC signal dropouts detected",
-                severity="pass",
-                score=95,
-                description=f"No gaps larger than {DROPOUT_GAP_SEC}s found in RC input data stream.",
-                evidence={"dropout_threshold_sec": DROPOUT_GAP_SEC, "dropout_count": 0},
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="No RC signal dropouts detected",
+                    severity="pass",
+                    score=95,
+                    description=f"No gaps larger than {DROPOUT_GAP_SEC}s found in RC input data stream.",
+                    evidence={"dropout_threshold_sec": DROPOUT_GAP_SEC, "dropout_count": 0},
+                )
+            ]
 
         dropout_events = []
         for pos, idx in enumerate(dropout_gaps.index):
@@ -210,42 +217,44 @@ class RcSignalPlugin(Plugin):
                 ts_start_val = float(ts.iloc[int(idx) - 1])
             except (IndexError, ValueError):
                 ts_start_val = float(ts.iloc[0])
-            dropout_events.append({
-                "timestamp": round(ts_start_val, 3),
-                "gap_sec": round(float(dropout_gaps.iloc[pos]), 3),
-            })
+            dropout_events.append(
+                {
+                    "timestamp": round(ts_start_val, 3),
+                    "gap_sec": round(float(dropout_gaps.iloc[pos]), 3),
+                }
+            )
 
         max_gap = round(float(dropout_gaps.max()), 3)
         count = len(dropout_events)
         severity = "critical" if max_gap > 5.0 or count > 3 else "warning"
         score = 15 if severity == "critical" else 45
 
-        return [Finding(
-            plugin_name=self.name,
-            title=f"RC signal dropout(s) detected — {count} event(s), longest {max_gap}s",
-            severity=severity,
-            score=score,
-            description=(
-                f"Detected {count} RC input gap(s) exceeding {DROPOUT_GAP_SEC}s. "
-                f"Longest dropout: {max_gap}s. "
-                "Signal dropouts may trigger the RC failsafe and cause uncontrolled behavior."
-            ),
-            evidence={
-                "dropout_count": count,
-                "max_gap_sec": max_gap,
-                "dropout_threshold_sec": DROPOUT_GAP_SEC,
-                "events": dropout_events[:20],
-            },
-            timestamp_start=dropout_events[0]["timestamp"] if dropout_events else None,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"RC signal dropout(s) detected — {count} event(s), longest {max_gap}s",
+                severity=severity,
+                score=score,
+                description=(
+                    f"Detected {count} RC input gap(s) exceeding {DROPOUT_GAP_SEC}s. "
+                    f"Longest dropout: {max_gap}s. "
+                    "Signal dropouts may trigger the RC failsafe and cause uncontrolled behavior."
+                ),
+                evidence={
+                    "dropout_count": count,
+                    "max_gap_sec": max_gap,
+                    "dropout_threshold_sec": DROPOUT_GAP_SEC,
+                    "events": dropout_events[:20],
+                },
+                timestamp_start=dropout_events[0]["timestamp"] if dropout_events else None,
+            )
+        ]
 
     # ------------------------------------------------------------------
     # Stuck channel detection
     # ------------------------------------------------------------------
 
-    def _check_stuck_channels(
-        self, rc: pd.DataFrame, STUCK_CHANNEL_SEC: float = STUCK_CHANNEL_SEC
-    ) -> list[Finding]:
+    def _check_stuck_channels(self, rc: pd.DataFrame, STUCK_CHANNEL_SEC: float = STUCK_CHANNEL_SEC) -> list[Finding]:
         """Detect RC channels whose value is unchanged for longer than STUCK_CHANNEL_SEC."""
         channel_cols = [c for c in rc.columns if c.startswith("chan") or c.startswith("channel")]
         if not channel_cols:
@@ -266,32 +275,33 @@ class RcSignalPlugin(Plugin):
                 stuck.append(col)
 
         if not stuck:
-            return [Finding(
-                plugin_name=self.name,
-                title="No stuck RC channels detected",
-                severity="pass",
-                score=95,
-                description=(
-                    f"All RC channels showed variation over the flight. "
-                    f"Checked {len(channel_cols)} channel(s)."
-                ),
-                evidence={"checked_channels": channel_cols},
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="No stuck RC channels detected",
+                    severity="pass",
+                    score=95,
+                    description=(f"All RC channels showed variation over the flight. Checked {len(channel_cols)} channel(s)."),
+                    evidence={"checked_channels": channel_cols},
+                )
+            ]
 
-        return [Finding(
-            plugin_name=self.name,
-            title=f"Stuck RC channel(s) detected — {', '.join(stuck)}",
-            severity="warning",
-            score=40,
-            description=(
-                f"Channel(s) {stuck} showed no variation throughout the {duration:.1f}s flight. "
-                "A stuck channel may indicate a hardware failure, misconfigured transmitter, "
-                "or signal corruption."
-            ),
-            evidence={
-                "stuck_channels": stuck,
-                "checked_channels": channel_cols,
-                "flight_duration_sec": round(duration, 1),
-                "stuck_threshold_sec": STUCK_CHANNEL_SEC,
-            },
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"Stuck RC channel(s) detected — {', '.join(stuck)}",
+                severity="warning",
+                score=40,
+                description=(
+                    f"Channel(s) {stuck} showed no variation throughout the {duration:.1f}s flight. "
+                    "A stuck channel may indicate a hardware failure, misconfigured transmitter, "
+                    "or signal corruption."
+                ),
+                evidence={
+                    "stuck_channels": stuck,
+                    "checked_channels": channel_cols,
+                    "flight_duration_sec": round(duration, 1),
+                    "stuck_threshold_sec": STUCK_CHANNEL_SEC,
+                },
+            )
+        ]

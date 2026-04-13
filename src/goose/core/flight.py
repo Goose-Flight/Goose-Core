@@ -259,7 +259,7 @@ class Flight:
         else:
             not_crash_prob = 1.0
             for w in weights:
-                not_crash_prob *= (1.0 - w)
+                not_crash_prob *= 1.0 - w
             confidence = round(1.0 - not_crash_prob, 3)
 
         return {

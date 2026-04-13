@@ -26,10 +26,7 @@ class DamageImpactClassificationPlugin(Plugin):
     """Classify damage indicators and distinguish pre-impact vs post-impact anomalies."""
 
     name = "damage_impact_classification"
-    description = (
-        "Classifies damage indicators and distinguishes pre-impact anomalies "
-        "from post-impact artifact"
-    )
+    description = "Classifies damage indicators and distinguishes pre-impact anomalies from post-impact artifact"
     version = "1.0.0"
     min_mode = "manual"
 
@@ -38,10 +35,7 @@ class DamageImpactClassificationPlugin(Plugin):
         name="Damage and Impact Classification",
         version="1.0.0",
         author="Goose Flight",
-        description=(
-            "Classifies damage indicators and distinguishes pre-impact anomalies "
-            "from post-impact artifact"
-        ),
+        description=("Classifies damage indicators and distinguishes pre-impact anomalies from post-impact artifact"),
         category=PluginCategory.CRASH,
         supported_vehicle_types=["multirotor", "fixed_wing", "all"],
         required_streams=["attitude"],
@@ -66,53 +60,35 @@ class DamageImpactClassificationPlugin(Plugin):
         findings: list[Finding] = []
         cfg = config or {}
 
-        vib_spike_threshold = float(
-            cfg.get("impact_vibration_spike_ms2", DEFAULT_IMPACT_VIBRATION_SPIKE_MS2)
-        )
-        att_divergence_deg = float(
-            cfg.get("impact_attitude_divergence_deg", DEFAULT_IMPACT_ATTITUDE_DIVERGENCE_DEG)
-        )
-        pre_window_sec = float(
-            cfg.get("pre_impact_window_sec", DEFAULT_PRE_IMPACT_WINDOW_SEC)
-        )
-        post_window_sec = float(
-            cfg.get("post_impact_window_sec", DEFAULT_POST_IMPACT_WINDOW_SEC)
-        )
+        vib_spike_threshold = float(cfg.get("impact_vibration_spike_ms2", DEFAULT_IMPACT_VIBRATION_SPIKE_MS2))
+        att_divergence_deg = float(cfg.get("impact_attitude_divergence_deg", DEFAULT_IMPACT_ATTITUDE_DIVERGENCE_DEG))
+        pre_window_sec = float(cfg.get("pre_impact_window_sec", DEFAULT_PRE_IMPACT_WINDOW_SEC))
+        post_window_sec = float(cfg.get("post_impact_window_sec", DEFAULT_POST_IMPACT_WINDOW_SEC))
 
         # Step 1: detect impact timestamp
-        impact_ts = self._detect_impact(
-            flight, vib_spike_threshold, att_divergence_deg
-        )
+        impact_ts = self._detect_impact(flight, vib_spike_threshold, att_divergence_deg)
 
         # Step 2: impact signature finding
         if impact_ts is not None:
-            sig_finding = self._make_impact_signature_finding(
-                flight, impact_ts, vib_spike_threshold, att_divergence_deg
-            )
+            sig_finding = self._make_impact_signature_finding(flight, impact_ts, vib_spike_threshold, att_divergence_deg)
             if sig_finding:
                 findings.append(sig_finding)
 
         # Step 3: scan pre-impact window for anomalies
         pre_anomalies: list[Finding] = []
         if impact_ts is not None:
-            pre_anomalies = self._check_pre_impact_window(
-                flight, impact_ts, pre_window_sec
-            )
+            pre_anomalies = self._check_pre_impact_window(flight, impact_ts, pre_window_sec)
             findings.extend(pre_anomalies)
 
         # Step 4: flag post-impact artifact
         if impact_ts is not None:
-            post_finding = self._make_post_impact_artifact(
-                flight, impact_ts, post_window_sec
-            )
+            post_finding = self._make_post_impact_artifact(flight, impact_ts, post_window_sec)
             if post_finding:
                 findings.append(post_finding)
 
         # Step 5: damage sequence indicator
         if impact_ts is not None:
-            seq_finding = self._make_sequence_indicator(
-                pre_anomalies, impact_ts
-            )
+            seq_finding = self._make_sequence_indicator(pre_anomalies, impact_ts)
             if seq_finding:
                 findings.append(seq_finding)
 
@@ -133,13 +109,9 @@ class DamageImpactClassificationPlugin(Plugin):
 
         # Signal 1: vibration spike
         if not flight.vibration.empty and "timestamp" in flight.vibration.columns:
-            accel_cols = [
-                c for c in flight.vibration.columns if c.startswith("accel_")
-            ]
+            accel_cols = [c for c in flight.vibration.columns if c.startswith("accel_")]
             if accel_cols:
-                total_accel = np.sqrt(
-                    sum(flight.vibration[c] ** 2 for c in accel_cols)
-                )
+                total_accel = np.sqrt(sum(flight.vibration[c] ** 2 for c in accel_cols))
                 spike_mask = total_accel > vib_spike_ms2
                 if spike_mask.any():
                     # Use the last spike (impact is typically near end of log)
@@ -182,17 +154,13 @@ class DamageImpactClassificationPlugin(Plugin):
 
         # Check vibration spike
         if not flight.vibration.empty:
-            accel_cols = [
-                c for c in flight.vibration.columns if c.startswith("accel_")
-            ]
+            accel_cols = [c for c in flight.vibration.columns if c.startswith("accel_")]
             if accel_cols:
-                near_impact = flight.vibration[
-                    abs(flight.vibration["timestamp"] - impact_ts) <= 2.0
-                ] if "timestamp" in flight.vibration.columns else flight.vibration
+                near_impact = (
+                    flight.vibration[abs(flight.vibration["timestamp"] - impact_ts) <= 2.0] if "timestamp" in flight.vibration.columns else flight.vibration
+                )
                 if not near_impact.empty:
-                    total = np.sqrt(
-                        sum(near_impact[c] ** 2 for c in accel_cols)
-                    )
+                    total = np.sqrt(sum(near_impact[c] ** 2 for c in accel_cols))
                     if float(total.max()) > vib_spike_ms2:
                         signals_present.append("vibration_spike")
                         metrics["peak_vibration_ms2"] = round(float(total.max()), 1)
@@ -202,9 +170,7 @@ class DamageImpactClassificationPlugin(Plugin):
             for axis in ("roll", "pitch"):
                 if axis not in flight.attitude.columns:
                     continue
-                near = flight.attitude[
-                    abs(flight.attitude["timestamp"] - impact_ts) <= 2.0
-                ]
+                near = flight.attitude[abs(flight.attitude["timestamp"] - impact_ts) <= 2.0]
                 if not near.empty:
                     diffs = np.abs(np.degrees(near[axis].diff().dropna()))
                     if float(diffs.max()) > att_divergence_deg:
@@ -214,13 +180,9 @@ class DamageImpactClassificationPlugin(Plugin):
 
         # Check velocity stop (position proxy)
         if not flight.position.empty and "timestamp" in flight.position.columns:
-            vel_cols = [
-                c for c in flight.position.columns if "vel" in c.lower()
-            ]
+            vel_cols = [c for c in flight.position.columns if "vel" in c.lower()]
             if vel_cols:
-                near = flight.position[
-                    flight.position["timestamp"] >= impact_ts
-                ].head(5)
+                near = flight.position[flight.position["timestamp"] >= impact_ts].head(5)
                 if not near.empty:
                     signals_present.append("velocity_stop")
 
@@ -247,8 +209,7 @@ class DamageImpactClassificationPlugin(Plugin):
             evidence={
                 **metrics,
                 "assumptions": [
-                    "Impact signature inferred from correlated sensor spikes "
-                    "— individual signals may have alternative explanations.",
+                    "Impact signature inferred from correlated sensor spikes — individual signals may have alternative explanations.",
                     "Velocity stop proxy uses position data; direct velocity sensor preferred.",
                 ],
             },
@@ -273,40 +234,34 @@ class DamageImpactClassificationPlugin(Plugin):
 
         # Motor saturation in pre-impact window
         if not flight.motors.empty and "timestamp" in flight.motors.columns:
-            motor_cols = [
-                c for c in flight.motors.columns if c.startswith("output_")
-            ]
+            motor_cols = [c for c in flight.motors.columns if c.startswith("output_")]
             if motor_cols:
-                pre = flight.motors[
-                    (flight.motors["timestamp"] >= window_start)
-                    & (flight.motors["timestamp"] < window_end)
-                ]
+                pre = flight.motors[(flight.motors["timestamp"] >= window_start) & (flight.motors["timestamp"] < window_end)]
                 if not pre.empty:
                     for col in motor_cols:
                         if float(pre[col].max()) > 0.95:
-                            findings.append(Finding(
-                                plugin_name=self.name,
-                                title=(
-                                    f"Pre-impact motor saturation: {col} "
-                                    f"reached {float(pre[col].max()):.2f}"
-                                ),
-                                severity="warning",
-                                score=35,
-                                description=(
-                                    f"Motor {col} output reached saturation (>0.95) "
-                                    f"within {pre_window_sec}s before the detected impact at "
-                                    f"t={impact_ts:.1f}s. This is a candidate pre-impact cause."
-                                ),
-                                evidence={
-                                    "motor": col,
-                                    "max_output": round(float(pre[col].max()), 3),
-                                    "window_start": window_start,
-                                    "impact_ts": impact_ts,
-                                    "finding_type": "pre_impact_anomaly",
-                                },
-                                timestamp_start=window_start,
-                                timestamp_end=impact_ts,
-                            ))
+                            findings.append(
+                                Finding(
+                                    plugin_name=self.name,
+                                    title=(f"Pre-impact motor saturation: {col} reached {float(pre[col].max()):.2f}"),
+                                    severity="warning",
+                                    score=35,
+                                    description=(
+                                        f"Motor {col} output reached saturation (>0.95) "
+                                        f"within {pre_window_sec}s before the detected impact at "
+                                        f"t={impact_ts:.1f}s. This is a candidate pre-impact cause."
+                                    ),
+                                    evidence={
+                                        "motor": col,
+                                        "max_output": round(float(pre[col].max()), 3),
+                                        "window_start": window_start,
+                                        "impact_ts": impact_ts,
+                                        "finding_type": "pre_impact_anomaly",
+                                    },
+                                    timestamp_start=window_start,
+                                    timestamp_end=impact_ts,
+                                )
+                            )
 
         # Battery sag in pre-impact window
         if not flight.battery.empty and "timestamp" in flight.battery.columns:
@@ -315,71 +270,62 @@ class DamageImpactClassificationPlugin(Plugin):
                 None,
             )
             if volt_col:
-                pre = flight.battery[
-                    (flight.battery["timestamp"] >= window_start)
-                    & (flight.battery["timestamp"] < window_end)
-                ]
+                pre = flight.battery[(flight.battery["timestamp"] >= window_start) & (flight.battery["timestamp"] < window_end)]
                 if not pre.empty and len(pre) > 1:
                     volt_drop = float(pre[volt_col].iloc[0]) - float(pre[volt_col].iloc[-1])
                     if volt_drop > 0.5:
-                        findings.append(Finding(
-                            plugin_name=self.name,
-                            title=f"Pre-impact battery voltage sag: {volt_drop:.2f}V drop",
-                            severity="warning",
-                            score=40,
-                            description=(
-                                f"Battery voltage dropped {volt_drop:.2f}V within "
-                                f"{pre_window_sec}s before the detected impact at "
-                                f"t={impact_ts:.1f}s. This may be a pre-impact cause."
-                            ),
-                            evidence={
-                                "volt_drop_v": round(volt_drop, 3),
-                                "volt_at_window_start": round(float(pre[volt_col].iloc[0]), 3),
-                                "volt_at_impact": round(float(pre[volt_col].iloc[-1]), 3),
-                                "window_start": window_start,
-                                "impact_ts": impact_ts,
-                                "finding_type": "pre_impact_anomaly",
-                            },
-                            timestamp_start=window_start,
-                            timestamp_end=impact_ts,
-                        ))
-
-        # EKF divergence in pre-impact window
-        if not flight.ekf.empty and "timestamp" in flight.ekf.columns:
-            innov_cols = [
-                c for c in flight.ekf.columns if "innov" in c.lower()
-            ]
-            if innov_cols:
-                pre = flight.ekf[
-                    (flight.ekf["timestamp"] >= window_start)
-                    & (flight.ekf["timestamp"] < window_end)
-                ]
-                if not pre.empty:
-                    for col in innov_cols:
-                        if float(pre[col].abs().max()) > 1.0:
-                            findings.append(Finding(
+                        findings.append(
+                            Finding(
                                 plugin_name=self.name,
-                                title=(
-                                    f"Pre-impact EKF divergence: {col} "
-                                    f"reached {float(pre[col].abs().max()):.2f}"
-                                ),
+                                title=f"Pre-impact battery voltage sag: {volt_drop:.2f}V drop",
                                 severity="warning",
                                 score=40,
                                 description=(
-                                    f"EKF innovation ratio {col} exceeded 1.0 "
-                                    f"within {pre_window_sec}s before detected impact. "
-                                    "EKF divergence before impact may indicate estimation failure."
+                                    f"Battery voltage dropped {volt_drop:.2f}V within "
+                                    f"{pre_window_sec}s before the detected impact at "
+                                    f"t={impact_ts:.1f}s. This may be a pre-impact cause."
                                 ),
                                 evidence={
-                                    "ekf_field": col,
-                                    "max_abs_value": round(
-                                        float(pre[col].abs().max()), 3
-                                    ),
+                                    "volt_drop_v": round(volt_drop, 3),
+                                    "volt_at_window_start": round(float(pre[volt_col].iloc[0]), 3),
+                                    "volt_at_impact": round(float(pre[volt_col].iloc[-1]), 3),
+                                    "window_start": window_start,
+                                    "impact_ts": impact_ts,
                                     "finding_type": "pre_impact_anomaly",
                                 },
                                 timestamp_start=window_start,
                                 timestamp_end=impact_ts,
-                            ))
+                            )
+                        )
+
+        # EKF divergence in pre-impact window
+        if not flight.ekf.empty and "timestamp" in flight.ekf.columns:
+            innov_cols = [c for c in flight.ekf.columns if "innov" in c.lower()]
+            if innov_cols:
+                pre = flight.ekf[(flight.ekf["timestamp"] >= window_start) & (flight.ekf["timestamp"] < window_end)]
+                if not pre.empty:
+                    for col in innov_cols:
+                        if float(pre[col].abs().max()) > 1.0:
+                            findings.append(
+                                Finding(
+                                    plugin_name=self.name,
+                                    title=(f"Pre-impact EKF divergence: {col} reached {float(pre[col].abs().max()):.2f}"),
+                                    severity="warning",
+                                    score=40,
+                                    description=(
+                                        f"EKF innovation ratio {col} exceeded 1.0 "
+                                        f"within {pre_window_sec}s before detected impact. "
+                                        "EKF divergence before impact may indicate estimation failure."
+                                    ),
+                                    evidence={
+                                        "ekf_field": col,
+                                        "max_abs_value": round(float(pre[col].abs().max()), 3),
+                                        "finding_type": "pre_impact_anomaly",
+                                    },
+                                    timestamp_start=window_start,
+                                    timestamp_end=impact_ts,
+                                )
+                            )
                             break  # one EKF finding is enough
 
         return findings
@@ -471,8 +417,7 @@ class DamageImpactClassificationPlugin(Plugin):
                 "finding_type": "damage_sequence_indicator",
                 "assumptions": [
                     "Sequence classification depends on accuracy of impact timestamp estimate.",
-                    "Absence of pre-impact anomalies does not rule out a pre-impact cause "
-                    "if relevant data streams are missing.",
+                    "Absence of pre-impact anomalies does not rule out a pre-impact cause if relevant data streams are missing.",
                 ],
             },
             timestamp_start=impact_ts,

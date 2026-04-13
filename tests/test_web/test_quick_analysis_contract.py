@@ -34,10 +34,12 @@ def _best_fixture() -> Path:
 
 # ── App + auth setup ──────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="module")
 def client():
     os.environ.setdefault("GOOSE_API_TOKEN", "test-token-contract")
     from goose.web.app import create_app
+
     app = create_app()
     with TestClient(app, raise_server_exceptions=True) as c:
         yield c
@@ -64,6 +66,7 @@ def qa_response(client, auth):
 
 
 # ── Top-level shape ───────────────────────────────────────────────────────────
+
 
 class TestTopLevel:
     def test_ok_flag(self, qa_response):
@@ -100,9 +103,9 @@ class TestTopLevel:
 
 # ── Metadata fields (read by JS as meta.X) ────────────────────────────────────
 
+
 class TestMetadata:
-    REQUIRED = ["filename", "autopilot", "vehicle_type", "firmware_version",
-                "duration_sec", "primary_mode", "crashed"]
+    REQUIRED = ["filename", "autopilot", "vehicle_type", "firmware_version", "duration_sec", "primary_mode", "crashed"]
 
     def test_required_fields(self, qa_response):
         meta = qa_response["metadata"]
@@ -118,6 +121,7 @@ class TestMetadata:
 
 # ── Summary fields (read by JS as summary.X / bysev.X) ───────────────────────
 
+
 class TestSummary:
     def test_total_findings(self, qa_response):
         assert "total_findings" in qa_response["summary"]
@@ -132,6 +136,7 @@ class TestSummary:
 
 
 # ── Signal quality fields (the bug that prompted this test) ───────────────────
+
 
 class TestSignalQuality:
     # Frontend reads: s.stream_name, s.reliability_estimate, s.row_count, s.notes
@@ -169,11 +174,22 @@ class TestSignalQuality:
 
 # ── Findings fields (read by JS as f.X) ──────────────────────────────────────
 
+
 class TestFindings:
     # Canonical ForensicFinding fields
-    CANONICAL = ["finding_id", "plugin_id", "title", "severity", "score",
-                 "description", "start_time", "end_time", "supporting_metrics",
-                 "evidence_references", "phase"]
+    CANONICAL = [
+        "finding_id",
+        "plugin_id",
+        "title",
+        "severity",
+        "score",
+        "description",
+        "start_time",
+        "end_time",
+        "supporting_metrics",
+        "evidence_references",
+        "phase",
+    ]
     # Frontend alias fields (added by ForensicFinding.to_dict for SPA compat)
     ALIASES = ["plugin_name", "timestamp_start", "timestamp_end", "evidence"]
 
@@ -210,6 +226,7 @@ class TestFindings:
 
 # ── Hypotheses fields (read by JS as h.X) ────────────────────────────────────
 
+
 class TestHypotheses:
     def test_hypothesis_fields(self, qa_response):
         hyps = qa_response["hypotheses"]
@@ -227,12 +244,22 @@ class TestHypotheses:
 
 # ── Timeseries keys (read by JS as ts.X.timestamps, ts.X.colname) ────────────
 
+
 class TestTimeseries:
     # These are the keys the frontend _buildQAChart() reads
     EXPECTED_KEYS = [
-        "altitude", "attitude", "velocity", "battery", "motors",
-        "vibration", "gps", "ekf", "rc", "attitude_rate",
-        "mode_changes", "events",
+        "altitude",
+        "attitude",
+        "velocity",
+        "battery",
+        "motors",
+        "vibration",
+        "gps",
+        "ekf",
+        "rc",
+        "attitude_rate",
+        "mode_changes",
+        "events",
     ]
 
     def test_mode_changes_is_list(self, qa_response):
@@ -285,6 +312,7 @@ class TestTimeseries:
     def test_no_nan_in_timeseries(self, qa_response):
         """Frontend can't render NaN — backend must replace with null."""
         import math
+
         ts = qa_response["timeseries"]
         failures = []
         for key, series in ts.items():
@@ -300,6 +328,7 @@ class TestTimeseries:
 
 
 # ── Flight path shape ─────────────────────────────────────────────────────────
+
 
 class TestFlightPath:
     def test_flight_path_shape(self, qa_response):

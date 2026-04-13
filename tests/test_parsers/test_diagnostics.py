@@ -24,6 +24,7 @@ from goose.parsers.ulog import ULogParser
 # ParseDiagnostics model
 # ---------------------------------------------------------------------------
 
+
 class TestParseDiagnosticsModel:
     def test_default_fields(self) -> None:
         d = ParseDiagnostics()
@@ -65,6 +66,7 @@ class TestParseDiagnosticsModel:
 
     def test_to_json_is_valid(self) -> None:
         import json
+
         d = ParseDiagnostics(parser_selected="X", detected_format="ulog")
         parsed = json.loads(d.to_json())
         assert parsed["parser_selected"] == "X"
@@ -99,6 +101,7 @@ class TestParseDiagnosticsModel:
 # ParseResult model
 # ---------------------------------------------------------------------------
 
+
 class TestParseResultModel:
     def test_failure_has_no_flight(self) -> None:
         diag = ParseDiagnostics(errors=["bad file"])
@@ -108,19 +111,43 @@ class TestParseResultModel:
 
     def test_success_requires_flight_and_no_errors(self) -> None:
         from goose.core.flight import Flight, FlightMetadata
-        meta = FlightMetadata(autopilot="px4", log_format="ulog", source_file="x.ulg",
-                              duration_sec=10.0, firmware_version="1.0",
-                              vehicle_type="quadcopter", motor_count=4,
-                              frame_type=None, hardware=None, start_time_utc=None)
+
+        meta = FlightMetadata(
+            autopilot="px4",
+            log_format="ulog",
+            source_file="x.ulg",
+            duration_sec=10.0,
+            firmware_version="1.0",
+            vehicle_type="quadcopter",
+            motor_count=4,
+            frame_type=None,
+            hardware=None,
+            start_time_utc=None,
+        )
         import pandas as pd
-        flight = Flight(metadata=meta, position=pd.DataFrame(), position_setpoint=pd.DataFrame(),
-                        velocity=pd.DataFrame(), velocity_setpoint=pd.DataFrame(),
-                        attitude=pd.DataFrame(), attitude_setpoint=pd.DataFrame(),
-                        attitude_rate=pd.DataFrame(), attitude_rate_setpoint=pd.DataFrame(),
-                        battery=pd.DataFrame(), gps=pd.DataFrame(), motors=pd.DataFrame(),
-                        vibration=pd.DataFrame(), rc_input=pd.DataFrame(),
-                        ekf=pd.DataFrame(), cpu=pd.DataFrame(),
-                        mode_changes=[], events=[], parameters={}, primary_mode="manual")
+
+        flight = Flight(
+            metadata=meta,
+            position=pd.DataFrame(),
+            position_setpoint=pd.DataFrame(),
+            velocity=pd.DataFrame(),
+            velocity_setpoint=pd.DataFrame(),
+            attitude=pd.DataFrame(),
+            attitude_setpoint=pd.DataFrame(),
+            attitude_rate=pd.DataFrame(),
+            attitude_rate_setpoint=pd.DataFrame(),
+            battery=pd.DataFrame(),
+            gps=pd.DataFrame(),
+            motors=pd.DataFrame(),
+            vibration=pd.DataFrame(),
+            rc_input=pd.DataFrame(),
+            ekf=pd.DataFrame(),
+            cpu=pd.DataFrame(),
+            mode_changes=[],
+            events=[],
+            parameters={},
+            primary_mode="manual",
+        )
         diag = ParseDiagnostics(supported=True)  # no errors
         result = ParseResult(flight=flight, diagnostics=diag)
         assert result.success
@@ -129,18 +156,41 @@ class TestParseResultModel:
         import pandas as pd
 
         from goose.core.flight import Flight, FlightMetadata
-        meta = FlightMetadata(autopilot="px4", log_format="ulog", source_file="x.ulg",
-                              duration_sec=10.0, firmware_version="1.0",
-                              vehicle_type="quadcopter", motor_count=4,
-                              frame_type=None, hardware=None, start_time_utc=None)
-        flight = Flight(metadata=meta, position=pd.DataFrame(), position_setpoint=pd.DataFrame(),
-                        velocity=pd.DataFrame(), velocity_setpoint=pd.DataFrame(),
-                        attitude=pd.DataFrame(), attitude_setpoint=pd.DataFrame(),
-                        attitude_rate=pd.DataFrame(), attitude_rate_setpoint=pd.DataFrame(),
-                        battery=pd.DataFrame(), gps=pd.DataFrame(), motors=pd.DataFrame(),
-                        vibration=pd.DataFrame(), rc_input=pd.DataFrame(),
-                        ekf=pd.DataFrame(), cpu=pd.DataFrame(),
-                        mode_changes=[], events=[], parameters={}, primary_mode="manual")
+
+        meta = FlightMetadata(
+            autopilot="px4",
+            log_format="ulog",
+            source_file="x.ulg",
+            duration_sec=10.0,
+            firmware_version="1.0",
+            vehicle_type="quadcopter",
+            motor_count=4,
+            frame_type=None,
+            hardware=None,
+            start_time_utc=None,
+        )
+        flight = Flight(
+            metadata=meta,
+            position=pd.DataFrame(),
+            position_setpoint=pd.DataFrame(),
+            velocity=pd.DataFrame(),
+            velocity_setpoint=pd.DataFrame(),
+            attitude=pd.DataFrame(),
+            attitude_setpoint=pd.DataFrame(),
+            attitude_rate=pd.DataFrame(),
+            attitude_rate_setpoint=pd.DataFrame(),
+            battery=pd.DataFrame(),
+            gps=pd.DataFrame(),
+            motors=pd.DataFrame(),
+            vibration=pd.DataFrame(),
+            rc_input=pd.DataFrame(),
+            ekf=pd.DataFrame(),
+            cpu=pd.DataFrame(),
+            mode_changes=[],
+            events=[],
+            parameters={},
+            primary_mode="manual",
+        )
         diag = ParseDiagnostics(errors=["something went wrong"])
         result = ParseResult(flight=flight, diagnostics=diag)
         assert not result.success
@@ -149,6 +199,7 @@ class TestParseResultModel:
 # ---------------------------------------------------------------------------
 # Stub parsers
 # ---------------------------------------------------------------------------
+
 
 class TestStubParsers:
     """Stubs must not claim can_parse and must return unsupported diagnostics.
@@ -159,23 +210,32 @@ class TestStubParsers:
     Only TLogParser remains a stub.
     """
 
-    @pytest.mark.parametrize("parser_cls,ext", [
-        (TLogParser, ".tlog"),
-    ])
+    @pytest.mark.parametrize(
+        "parser_cls,ext",
+        [
+            (TLogParser, ".tlog"),
+        ],
+    )
     def test_not_implemented(self, parser_cls: type, ext: str) -> None:
         parser = parser_cls()
         assert not parser.implemented
 
-    @pytest.mark.parametrize("parser_cls,ext", [
-        (TLogParser, ".tlog"),
-    ])
+    @pytest.mark.parametrize(
+        "parser_cls,ext",
+        [
+            (TLogParser, ".tlog"),
+        ],
+    )
     def test_can_parse_returns_false(self, parser_cls: type, ext: str) -> None:
         parser = parser_cls()
         assert not parser.can_parse(f"file{ext}")
 
-    @pytest.mark.parametrize("parser_cls,ext", [
-        (TLogParser, ".tlog"),
-    ])
+    @pytest.mark.parametrize(
+        "parser_cls,ext",
+        [
+            (TLogParser, ".tlog"),
+        ],
+    )
     def test_parse_returns_failure_not_exception(self, parser_cls: type, ext: str, tmp_path: Path) -> None:
         parser = parser_cls()
         f = tmp_path / f"test{ext}"
@@ -204,6 +264,7 @@ class TestStubParsers:
 # ---------------------------------------------------------------------------
 # Detection module
 # ---------------------------------------------------------------------------
+
 
 class TestDetectModule:
     def test_detect_parser_returns_ulog_for_ulg(self, normal_flight_path: Path) -> None:
@@ -274,13 +335,14 @@ class TestDetectModule:
         implemented_names = {f["format_name"] for f in formats if f["implemented"]}
         assert "ulog" in implemented_names
         assert "csv" in implemented_names
-        assert "dataflash" in implemented_names   # graduated Sprint 5 Workstream B
+        assert "dataflash" in implemented_names  # graduated Sprint 5 Workstream B
         assert "tlog" not in implemented_names
 
 
 # ---------------------------------------------------------------------------
 # ULogParser diagnostics quality (with real fixture)
 # ---------------------------------------------------------------------------
+
 
 class TestULogDiagnosticsQuality:
     """Verify that ULogParser produces high-quality diagnostics on real logs."""
@@ -321,6 +383,7 @@ class TestULogDiagnosticsQuality:
 # Pre-Sprint-4 stabilization — contract versioning and confidence scope
 # ---------------------------------------------------------------------------
 
+
 class TestParserContractVersioning:
     """Verify schema version and contract fields are present and serialized.
 
@@ -343,6 +406,7 @@ class TestParserContractVersioning:
 
     def test_diagnostics_version_in_to_json(self) -> None:
         import json
+
         d = ParseDiagnostics()
         parsed = json.loads(d.to_json())
         assert parsed["diagnostics_version"] == "1.0"
@@ -378,9 +442,7 @@ class TestParserContractVersioning:
         d_back = ParseDiagnostics.from_dict(d.to_dict())
         assert d_back.confidence_scope == "parser_parse_quality"
 
-    def test_real_parse_confidence_scope_is_parser_parse_quality(
-        self, normal_flight_path: Path
-    ) -> None:
+    def test_real_parse_confidence_scope_is_parser_parse_quality(self, normal_flight_path: Path) -> None:
         """Ensure ULogParser sets the correct scope on real output."""
         parser = ULogParser()
         result = parser.parse(normal_flight_path)
@@ -390,12 +452,14 @@ class TestParserContractVersioning:
 
     def test_provenance_contract_version_field_exists(self) -> None:
         from goose.forensics.models import Provenance
+
         p = Provenance()
         assert hasattr(p, "contract_version")
         assert p.contract_version == "1.0"
 
     def test_provenance_contract_version_in_to_dict(self) -> None:
         from goose.forensics.models import Provenance
+
         p = Provenance()
         serialized = p.to_dict()
         assert "contract_version" in serialized
@@ -403,6 +467,7 @@ class TestParserContractVersioning:
 
     def test_provenance_contract_version_survives_roundtrip(self) -> None:
         from goose.forensics.models import Provenance
+
         p = Provenance(contract_version="1.0", parser_name="ULogParser")
         p_back = Provenance.from_dict(p.to_dict())
         assert p_back.contract_version == "1.0"
@@ -410,15 +475,14 @@ class TestParserContractVersioning:
     def test_provenance_from_dict_ignores_unknown_keys(self) -> None:
         """from_dict must not crash on keys from a future schema version."""
         from goose.forensics.models import Provenance
+
         p = Provenance()
         raw = p.to_dict()
         raw["future_field_v2"] = "some_value"
         recovered = Provenance.from_dict(raw)  # must not raise
         assert recovered.contract_version == "1.0"
 
-    def test_real_parse_provenance_has_contract_version(
-        self, normal_flight_path: Path
-    ) -> None:
+    def test_real_parse_provenance_has_contract_version(self, normal_flight_path: Path) -> None:
         parser = ULogParser()
         result = parser.parse(normal_flight_path)
         assert result.provenance is not None
@@ -441,13 +505,15 @@ class TestParserContractVersioning:
     def test_dataflash_failed_parse_has_zero_confidence(self) -> None:
         """A completely unrecognisable file must have parser_confidence == 0.0."""
         from goose.parsers.dataflash import DataFlashParser
+
         parser = DataFlashParser()
         import os
         import tempfile
+
         # Write a file with no FMT content and no binary header so the parser
         # cannot identify it as DataFlash at all → confidence 0.0
         with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
-            f.write(b"")   # empty file → explicit error, confidence 0.0
+            f.write(b"")  # empty file → explicit error, confidence 0.0
             tmp = f.name
         try:
             result = parser.parse(tmp)

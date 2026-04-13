@@ -22,6 +22,7 @@ router = APIRouter(tags=["charts"])
 async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, end: float = 0.0) -> JSONResponse:
     """Return time-series data for requested streams from canonical flight data."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -70,6 +71,7 @@ async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, e
             if ev_files:
                 try:
                     from goose.parsers.detect import parse_file
+
                     pr = parse_file(str(ev_files[0]))
                     if pr and pr.success and pr.flight:
                         flight = pr.flight
@@ -118,13 +120,24 @@ async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, e
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("Chart data re-parse failed: %s", exc)
 
-    return JSONResponse({
-        "ok": True,
-        "streams": result_streams,
-        "available_streams": [
-            "battery_voltage", "altitude_m", "altitude_msl", "velocity_m_s",
-            "roll_deg", "pitch_deg", "yaw_deg", "motor_0",
-            "gps_nsats", "vibration_x", "battery_current", "battery_remaining",
-        ],
-        "message": "" if result_streams else "No chart data available. Run analysis first or request valid stream names.",
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "streams": result_streams,
+            "available_streams": [
+                "battery_voltage",
+                "altitude_m",
+                "altitude_msl",
+                "velocity_m_s",
+                "roll_deg",
+                "pitch_deg",
+                "yaw_deg",
+                "motor_0",
+                "gps_nsats",
+                "vibration_x",
+                "battery_current",
+                "battery_remaining",
+            ],
+            "message": "" if result_streams else "No chart data available. Run analysis first or request valid stream names.",
+        }
+    )

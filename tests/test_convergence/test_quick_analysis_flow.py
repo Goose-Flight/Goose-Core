@@ -43,20 +43,17 @@ def client(tmp_case_service: CaseService) -> TestClient:
 # Smoke tests — route registration
 # ---------------------------------------------------------------------------
 
+
 class TestQuickAnalysisRoutesRegistered:
     def test_quick_analysis_route_rejects_empty_upload(self, client: TestClient):
         """With no file body the route should respond 400/422, not 404."""
         response = client.post("/api/quick-analysis")
-        assert response.status_code in (400, 422), (
-            f"Expected 400 or 422 (missing file), got {response.status_code}"
-        )
+        assert response.status_code in (400, 422), f"Expected 400 or 422 (missing file), got {response.status_code}"
 
     def test_save_as_case_route_rejects_empty_upload(self, client: TestClient):
         """With no file body the route should respond 400/422, not 404."""
         response = client.post("/api/quick-analysis/save-as-case")
-        assert response.status_code in (400, 422), (
-            f"Expected 400 or 422 (missing file), got {response.status_code}"
-        )
+        assert response.status_code in (400, 422), f"Expected 400 or 422 (missing file), got {response.status_code}"
 
     def test_quick_analysis_rejects_empty_file_bytes(self, client: TestClient):
         """Uploading a zero-byte file should return 400."""
@@ -71,6 +68,7 @@ class TestQuickAnalysisRoutesRegistered:
 # ---------------------------------------------------------------------------
 # save-as-case with real fixture ULG
 # ---------------------------------------------------------------------------
+
 
 class TestSaveAsCaseFlow:
     @pytest.fixture

@@ -45,6 +45,7 @@ ALL_FIXTURES = ULG_FIXTURES + DATAFLASH_FIXTURES
 # Contract helpers
 # ---------------------------------------------------------------------------
 
+
 def _assert_success_contract(result: ParseResult, label: str) -> None:
     """Assert full ParseResult contract for a successful parse."""
     assert result.success is True, f"{label}: success should be True, errors={result.diagnostics.errors}"
@@ -73,6 +74,7 @@ def _assert_failure_contract(result: ParseResult, label: str) -> None:
 # ---------------------------------------------------------------------------
 # Happy-path: all fixture files parse successfully
 # ---------------------------------------------------------------------------
+
 
 class TestFixtureParsing:
     @pytest.mark.parametrize("fixture_path", ULG_FIXTURES, ids=lambda p: p.name)
@@ -149,6 +151,7 @@ class TestFixtureParsing:
 # Edge cases — graceful failure
 # ---------------------------------------------------------------------------
 
+
 class TestEdgeCaseGracefulFailure:
     def test_nonexistent_file_returns_failure(self):
         result = parse_file("does_not_exist_at_all.ulg")
@@ -207,6 +210,7 @@ class TestEdgeCaseGracefulFailure:
 # ---------------------------------------------------------------------------
 # Detection helpers
 # ---------------------------------------------------------------------------
+
 
 class TestDetectionHelpers:
     def test_detect_parser_for_ulg(self):

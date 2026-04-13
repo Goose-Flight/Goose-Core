@@ -24,6 +24,7 @@ def safe_val(v: Any) -> Any:
         return None
     try:
         import numpy as np
+
         if isinstance(v, np.integer):
             return int(v)
         if isinstance(v, np.floating):
@@ -65,11 +66,7 @@ def df_to_series(
     result["timestamps"] = [safe_val(t) for t in ts_ds]
 
     stride = len(ts) / len(ts_ds) if len(ts) > max_points else 1
-    indices = (
-        [int(i * stride) for i in range(len(ts_ds))]
-        if stride > 1
-        else list(range(len(ts)))
-    )
+    indices = [int(i * stride) for i in range(len(ts_ds))] if stride > 1 else list(range(len(ts)))
 
     for col in columns:
         if col in df.columns:
@@ -109,6 +106,7 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
     # Attitude (convert radians → degrees for display)
     if not flight.attitude.empty:
         import numpy as np
+
         att_df = flight.attitude.copy()
         for col in ["roll", "pitch", "yaw"]:
             if col in att_df.columns:
@@ -120,6 +118,7 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
     # Attitude setpoint (convert radians → degrees)
     if not flight.attitude_setpoint.empty:
         import numpy as np
+
         sp_df = flight.attitude_setpoint.copy()
         for col in ["roll", "pitch", "yaw"]:
             if col in sp_df.columns:
@@ -164,6 +163,7 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
     # Attitude rate (deg/s)
     if not flight.attitude_rate.empty:
         import numpy as np
+
         ar_df = flight.attitude_rate.copy()
         for col in ["roll", "pitch", "yaw"]:
             if col in ar_df.columns:
@@ -175,6 +175,7 @@ def extract_timeseries(flight: Any) -> dict[str, Any]:
     # Attitude rate setpoint (deg/s)
     if not flight.attitude_rate_setpoint.empty:
         import numpy as np
+
         arsp_df = flight.attitude_rate_setpoint.copy()
         for col in ["roll", "pitch", "yaw"]:
             if col in arsp_df.columns:
@@ -366,9 +367,7 @@ def extract_setpoint_path(flight: Any, max_points: int = 1000) -> dict[str, Any]
 
     lat_list = df["lat"].tolist()
     lon_list = df["lon"].tolist()
-    alt_list = df["alt_rel"].tolist() if "alt_rel" in df.columns else (
-        df["alt_msl"].tolist() if "alt_msl" in df.columns else [0.0] * len(lat_list)
-    )
+    alt_list = df["alt_rel"].tolist() if "alt_rel" in df.columns else (df["alt_msl"].tolist() if "alt_msl" in df.columns else [0.0] * len(lat_list))
     ts_list = df["timestamp"].tolist() if "timestamp" in df.columns else []
 
     total = len(lat_list)
@@ -410,9 +409,7 @@ def extract_flight_path(flight: Any, max_points: int = 1000) -> dict[str, Any] |
     ts_list = df["timestamp"].tolist() if "timestamp" in df.columns else []
     lat_list = df["lat"].tolist()
     lon_list = df["lon"].tolist()
-    alt_list = df["alt_rel"].tolist() if "alt_rel" in df.columns else (
-        df["alt_msl"].tolist() if "alt_msl" in df.columns else [0.0] * len(lat_list)
-    )
+    alt_list = df["alt_rel"].tolist() if "alt_rel" in df.columns else (df["alt_msl"].tolist() if "alt_msl" in df.columns else [0.0] * len(lat_list))
 
     # Downsample all in lockstep
     total = len(lat_list)

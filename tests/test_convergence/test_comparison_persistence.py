@@ -24,6 +24,7 @@ from goose.forensics.diff import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _minimal_comparison(
     case_id: str = "CASE-001",
     run_a: str = "RUN-AAAA",
@@ -50,6 +51,7 @@ def _make_case_dir(tmp_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 # save_comparison
 # ---------------------------------------------------------------------------
+
 
 def test_save_comparison_creates_file(tmp_path):
     case_dir = _make_case_dir(tmp_path)
@@ -113,6 +115,7 @@ def test_save_multiple_comparisons_index_accumulates(tmp_path):
 # list_comparisons
 # ---------------------------------------------------------------------------
 
+
 def test_list_comparisons_empty_when_no_dir(tmp_path):
     case_dir = _make_case_dir(tmp_path)
     entries = list_comparisons(case_dir)
@@ -148,7 +151,7 @@ def test_list_comparisons_sorted_newest_first(tmp_path):
 
     entries = list_comparisons(case_dir)
     assert len(entries) == 2
-    assert entries[0]["comparison_id"] == "CMP-NEW"   # newest first
+    assert entries[0]["comparison_id"] == "CMP-NEW"  # newest first
     assert entries[1]["comparison_id"] == "CMP-OLD"
 
 
@@ -171,6 +174,7 @@ def test_list_comparisons_includes_summary_fields(tmp_path):
 # ---------------------------------------------------------------------------
 # load_comparison
 # ---------------------------------------------------------------------------
+
 
 def test_load_comparison_returns_none_for_missing_id(tmp_path):
     case_dir = _make_case_dir(tmp_path)
@@ -207,6 +211,7 @@ def test_load_comparison_handles_corrupted_file(tmp_path):
 # ---------------------------------------------------------------------------
 # find_comparison
 # ---------------------------------------------------------------------------
+
 
 def test_find_comparison_returns_none_when_no_match(tmp_path):
     case_dir = _make_case_dir(tmp_path)
@@ -267,6 +272,7 @@ def test_find_comparison_returns_newest_when_multiple_matches(tmp_path):
 # ---------------------------------------------------------------------------
 # compare_runs + save round-trip (integration)
 # ---------------------------------------------------------------------------
+
 
 def test_compare_runs_produces_valid_comparison_that_round_trips(tmp_path):
     """compare_runs() → save_comparison() → load_comparison() round-trip."""

@@ -23,9 +23,9 @@ class BaseParser(ABC):
       and should not appear in the detection registry as capable of parsing.
     """
 
-    format_name: str       # "ulog", "dataflash", "tlog", "csv"
+    format_name: str  # "ulog", "dataflash", "tlog", "csv"
     file_extensions: list[str]  # [".ulg"], [".bin", ".log"], etc.
-    implemented: bool = True   # set False for stub parsers
+    implemented: bool = True  # set False for stub parsers
 
     @abstractmethod
     def parse(self, filepath: str | Path) -> ParseResult:

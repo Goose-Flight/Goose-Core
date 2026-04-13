@@ -25,6 +25,7 @@ class CaseStatus(str, Enum):
 
 class AttachmentType(str, Enum):
     """v11 Strategy Sprint — types of non-telemetry attachments a user can add to a case."""
+
     PHOTO = "photo"
     VIDEO = "video"
     DOCUMENT = "document"
@@ -55,6 +56,7 @@ class AuditAction(str, Enum):
 # Evidence models
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EvidenceItem:
     """A single piece of evidence attached to a case.
@@ -63,17 +65,17 @@ class EvidenceItem:
     SHA-256 is always computed. SHA-512 is preferred when available.
     """
 
-    evidence_id: str               # e.g. "EV-0001"
-    filename: str                  # original filename (sanitized)
-    content_type: str              # e.g. "application/octet-stream"
+    evidence_id: str  # e.g. "EV-0001"
+    filename: str  # original filename (sanitized)
+    content_type: str  # e.g. "application/octet-stream"
     size_bytes: int
-    sha256: str                    # lowercase hex, always present
-    sha512: str | None             # lowercase hex, preferred
-    source_acquisition_mode: str   # "upload" | "local_copy" | "remote_fetch"
-    source_reference: str | None   # original path or URL if applicable
-    stored_path: str               # absolute path to immutable copy in case dir
+    sha256: str  # lowercase hex, always present
+    sha512: str | None  # lowercase hex, preferred
+    source_acquisition_mode: str  # "upload" | "local_copy" | "remote_fetch"
+    source_reference: str | None  # original path or URL if applicable
+    stored_path: str  # absolute path to immutable copy in case dir
     acquired_at: datetime
-    acquired_by: str               # "gui" | "cli" | "api" | user identifier
+    acquired_by: str  # "gui" | "cli" | "api" | user identifier
     immutable: bool = True
     notes: str = ""
 
@@ -127,6 +129,7 @@ class EvidenceManifest:
 # Case models
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AnalysisRun:
     """Record of a single analysis execution on a case.
@@ -139,11 +142,11 @@ class AnalysisRun:
     run_id: str
     started_at: datetime
     completed_at: datetime | None
-    plugin_versions: dict[str, str]    # plugin_id -> version string
+    plugin_versions: dict[str, str]  # plugin_id -> version string
     ruleset_version: str | None
     findings_count: int
-    status: str                        # "completed" | "failed" | "in_progress"
-    engine_version: str = ""           # goose version at time of run — required for replay
+    status: str  # "completed" | "failed" | "in_progress"
+    engine_version: str = ""  # goose version at time of run — required for replay
     tuning_profile: str | None = None  # named tuning profile if non-default
     error: str | None = None
     # --- Advanced Forensic Validation Sprint additions ---
@@ -242,13 +245,13 @@ class Case:
     keys for forward-compatibility with future fields.
     """
 
-    case_id: str                                       # e.g. "CASE-2026-000001"
+    case_id: str  # e.g. "CASE-2026-000001"
     created_at: datetime
-    created_by: str                                    # "gui" | "cli" | actor identifier
+    created_by: str  # "gui" | "cli" | actor identifier
     status: CaseStatus = CaseStatus.OPEN
     tags: list[str] = field(default_factory=list)
     notes: str = ""
-    engine_version: str = ""                           # goose package version at time of creation
+    engine_version: str = ""  # goose package version at time of creation
     ruleset_version: str | None = None
     plugin_policy_version: str | None = None
     evidence_items: list[EvidenceItem] = field(default_factory=list)
@@ -258,11 +261,11 @@ class Case:
     # --- v11 Strategy Sprint: operational context ---
     mission_id: str | None = None
     sortie_id: str | None = None
-    operation_type: str | None = None       # "training", "commercial", "research", "race", "test", "operational"
-    event_type: str | None = None           # "crash", "anomaly", "normal", "test_flight"
-    event_classification: str | None = None # "mishap", "incident", "close_call", "performance_issue", "none"
-    event_severity: str | None = None       # "critical", "major", "minor", "none"
-    date_time_start: str | None = None      # ISO timestamp of the actual event (not case creation)
+    operation_type: str | None = None  # "training", "commercial", "research", "race", "test", "operational"
+    event_type: str | None = None  # "crash", "anomaly", "normal", "test_flight"
+    event_classification: str | None = None  # "mishap", "incident", "close_call", "performance_issue", "none"
+    event_severity: str | None = None  # "critical", "major", "minor", "none"
+    date_time_start: str | None = None  # ISO timestamp of the actual event (not case creation)
     date_time_end: str | None = None
     location_name: str | None = None
     operating_area: str | None = None
@@ -270,14 +273,14 @@ class Case:
 
     # --- v11 Strategy Sprint: platform / system ---
     platform_name: str | None = None
-    platform_type: str | None = None        # "multirotor", "fixed_wing", "vtol", "helicopter"
+    platform_type: str | None = None  # "multirotor", "fixed_wing", "vtol", "helicopter"
     serial_number: str | None = None
     firmware_version: str | None = None
     hardware_config: str | None = None
     payload_config: str | None = None
     battery_config: str | None = None
     propulsion_notes: str | None = None
-    recent_changes: str | None = None       # "replaced motor 2, reflashed FC"
+    recent_changes: str | None = None  # "replaced motor 2, reflashed FC"
 
     # --- v11 Strategy Sprint: human / org ---
     operator_name: str | None = None
@@ -297,7 +300,7 @@ class Case:
     closure_notes: str | None = None
 
     # --- v11 Strategy Sprint: profile ---
-    profile: str = "default"   # "racer" | "research" | "shop_repair" | "factory_qa" | "gov_mil" | "advanced" | "default"
+    profile: str = "default"  # "racer" | "research" | "shop_repair" | "factory_qa" | "gov_mil" | "advanced" | "default"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -379,6 +382,7 @@ class Case:
 # Provenance model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Provenance:
     """Records the full lineage of parsed data back to source evidence.
@@ -396,8 +400,8 @@ class Provenance:
     confidence model, new canonical stream list).
     """
 
-    provenance_version: str = "1.0"     # schema version for this record
-    contract_version: str = "1.0"       # parser contract version (ParseResult API)
+    provenance_version: str = "1.0"  # schema version for this record
+    contract_version: str = "1.0"  # parser contract version (ParseResult API)
     source_evidence_id: str = ""
     parser_name: str = ""
     parser_version: str = ""
@@ -428,6 +432,7 @@ class Provenance:
 # Audit model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AuditEntry:
     """A single write-once audit record.
@@ -438,10 +443,10 @@ class AuditEntry:
 
     event_id: str
     timestamp: datetime
-    actor: str                    # "gui" | "cli" | "system" | user identifier
+    actor: str  # "gui" | "cli" | "system" | user identifier
     action: AuditAction
-    object_type: str              # "case" | "evidence" | "analysis" | "export"
-    object_id: str                # case_id, evidence_id, or run_id
+    object_type: str  # "case" | "evidence" | "analysis" | "export"
+    object_id: str  # case_id, evidence_id, or run_id
     details: dict[str, Any] = field(default_factory=dict)
     success: bool = True
     error: str | None = None
@@ -475,6 +480,7 @@ class AuditEntry:
 # Attachment model (v11 Strategy Sprint)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Attachment:
     """A non-telemetry attachment belonging to a case.
@@ -493,7 +499,7 @@ class Attachment:
     sha256: str
     attachment_type: AttachmentType
     stored_path: str
-    uploaded_at: str                 # ISO timestamp
+    uploaded_at: str  # ISO timestamp
     uploaded_by: str = "user"
     sha512: str = ""
     immutable: bool = True

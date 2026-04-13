@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 # ParseDiagnostics
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class StreamCoverage:
     """Coverage summary for a single telemetry stream/topic.
@@ -98,16 +99,16 @@ class ParseDiagnostics:
     diagnostics_version: str = "1.0"
 
     # Parser identity
-    parser_selected: str = ""           # parser class name, e.g. "ULogParser"
-    parser_version: str = ""            # semver or hash
+    parser_selected: str = ""  # parser class name, e.g. "ULogParser"
+    parser_version: str = ""  # semver or hash
 
     # Format detection
-    detected_format: str = ""           # "ulog" | "dataflash" | "tlog" | "csv" | "unknown"
-    format_confidence: float = 0.0      # 0.0–1.0
-    supported: bool = False             # False if format is not implemented
+    detected_format: str = ""  # "ulog" | "dataflash" | "tlog" | "csv" | "unknown"
+    format_confidence: float = 0.0  # 0.0–1.0
+    supported: bool = False  # False if format is not implemented
 
     # Parse quality — see "Confidence scope" in class docstring
-    parser_confidence: float = 0.0      # 0.0–1.0, parse/data-quality confidence ONLY
+    parser_confidence: float = 0.0  # 0.0–1.0, parse/data-quality confidence ONLY
     # Explicit label so consumers can never mistake the scope of this value:
     confidence_scope: str = "parser_parse_quality"  # always this value; not root-cause
 
@@ -155,9 +156,7 @@ class ParseDiagnostics:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> ParseDiagnostics:
         d = dict(d)
-        d["stream_coverage"] = [
-            StreamCoverage.from_dict(s) for s in d.get("stream_coverage", [])
-        ]
+        d["stream_coverage"] = [StreamCoverage.from_dict(s) for s in d.get("stream_coverage", [])]
         d["parse_started_at"] = datetime.fromisoformat(d["parse_started_at"])
         if d.get("parse_completed_at"):
             d["parse_completed_at"] = datetime.fromisoformat(d["parse_completed_at"])
@@ -175,10 +174,7 @@ class ParseDiagnostics:
             format_confidence=1.0 if ext else 0.0,
             supported=False,
             parser_confidence=0.0,
-            errors=[
-                f"Format '{ext}' is not supported. "
-                "Only .ulg (PX4 ULog) files are currently implemented."
-            ],
+            errors=[f"Format '{ext}' is not supported. Only .ulg (PX4 ULog) files are currently implemented."],
         )
 
     @classmethod
@@ -204,6 +200,7 @@ class ParseDiagnostics:
 # ---------------------------------------------------------------------------
 # ParseResult
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ParseResult:

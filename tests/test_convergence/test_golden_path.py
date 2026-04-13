@@ -88,6 +88,7 @@ def _upload_and_analyze(client: TestClient, fixture_path: Path, profile: str = "
 # Case creation
 # ---------------------------------------------------------------------------
 
+
 class TestCaseCreation:
     def test_create_case_returns_case_id(self, client: TestClient):
         res = client.post("/api/cases", json={"created_by": "test"})
@@ -114,6 +115,7 @@ class TestCaseCreation:
 # ---------------------------------------------------------------------------
 # Evidence ingest
 # ---------------------------------------------------------------------------
+
 
 class TestEvidenceIngest:
     def test_evidence_sha256_is_populated(self, client: TestClient):
@@ -154,17 +156,23 @@ class TestEvidenceIngest:
 # Golden-path analysis flow
 # ---------------------------------------------------------------------------
 
+
 class TestGoldenPathAnalysis:
-    @pytest.mark.parametrize("fixture_path", [
-        VIBRATION_CRASH, MOTOR_FAILURE, NORMAL_FLIGHT, ARDUPILOT,
-    ], ids=lambda p: p.name)
+    @pytest.mark.parametrize(
+        "fixture_path",
+        [
+            VIBRATION_CRASH,
+            MOTOR_FAILURE,
+            NORMAL_FLIGHT,
+            ARDUPILOT,
+        ],
+        ids=lambda p: p.name,
+    )
     def test_analysis_completes_successfully(self, client: TestClient, fixture_path: Path):
         if not fixture_path.exists():
             pytest.skip(f"Fixture not found: {fixture_path}")
         out = _upload_and_analyze(client, fixture_path)
-        assert out["analyze_res"].status_code == 200, (
-            f"analyze failed ({fixture_path.name}): {out['analyze_res'].text[:500]}"
-        )
+        assert out["analyze_res"].status_code == 200, f"analyze failed ({fixture_path.name}): {out['analyze_res'].text[:500]}"
 
     def test_analysis_returns_run_id(self, client: TestClient):
         if not VIBRATION_CRASH.exists():
@@ -205,9 +213,7 @@ class TestGoldenPathAnalysis:
             for field in ("finding_id", "title", "severity", "score", "description", "plugin_id"):
                 assert field in finding, f"Finding missing field {field!r}: {finding}"
             assert 0 <= finding["score"] <= 100, f"Score out of range: {finding['score']}"
-            assert finding["severity"] in ("critical", "warning", "info", "pass"), (
-                f"Invalid severity: {finding['severity']}"
-            )
+            assert finding["severity"] in ("critical", "warning", "info", "pass"), f"Invalid severity: {finding['severity']}"
 
     def test_hypotheses_have_valid_shape(self, client: TestClient):
         """Every hypothesis must have the required fields."""
@@ -230,22 +236,15 @@ class TestGoldenPathAnalysis:
         assert normal_out["analyze_res"].status_code == 200
         assert crash_out["analyze_res"].status_code == 200
 
-        normal_criticals = sum(
-            1 for f in normal_out["analyze_data"]["findings"]
-            if f.get("severity") == "critical"
-        )
-        crash_criticals = sum(
-            1 for f in crash_out["analyze_data"]["findings"]
-            if f.get("severity") == "critical"
-        )
-        assert crash_criticals >= normal_criticals, (
-            f"Expected crash ({crash_criticals}) >= normal ({normal_criticals}) critical findings"
-        )
+        normal_criticals = sum(1 for f in normal_out["analyze_data"]["findings"] if f.get("severity") == "critical")
+        crash_criticals = sum(1 for f in crash_out["analyze_data"]["findings"] if f.get("severity") == "critical")
+        assert crash_criticals >= normal_criticals, f"Expected crash ({crash_criticals}) >= normal ({normal_criticals}) critical findings"
 
 
 # ---------------------------------------------------------------------------
 # Case artifact files
 # ---------------------------------------------------------------------------
+
 
 class TestArtifactFiles:
     def test_findings_json_written(self, client: TestClient, svc: CaseService):
@@ -355,12 +354,14 @@ class TestArtifactFiles:
 # Plugin sweep — every plugin returns valid findings (no crash)
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzerSweep:
     """Run each plugin individually against real fixtures and check contract."""
 
     @pytest.fixture
     def parsed_vibration_crash(self):
         from goose.parsers.detect import parse_file
+
         result = parse_file(VIBRATION_CRASH)
         assert result.success, f"Fixture parse failed: {result.diagnostics.errors}"
         return result
@@ -368,12 +369,14 @@ class TestAnalyzerSweep:
     @pytest.fixture
     def parsed_normal_flight(self):
         from goose.parsers.detect import parse_file
+
         result = parse_file(NORMAL_FLIGHT)
         assert result.success, f"Fixture parse failed: {result.diagnostics.errors}"
         return result
 
     def test_all_plugins_return_list(self, parsed_vibration_crash):
         from goose.plugins import get_all_plugins
+
         plugins = get_all_plugins()
         assert len(plugins) >= 11  # We have at least 11 plugins
         for pid, plugin in plugins.items():
@@ -382,50 +385,47 @@ class TestAnalyzerSweep:
 
     def test_all_plugins_findings_have_required_fields(self, parsed_vibration_crash):
         from goose.plugins import get_all_plugins
+
         plugins = get_all_plugins()
         required_fields = ("title", "severity", "score", "description", "plugin_name")
         for pid, plugin in plugins.items():
             findings = plugin.analyze(parsed_vibration_crash.flight, {})
             for finding in findings:
                 for field in required_fields:
-                    assert hasattr(finding, field), (
-                        f"Plugin {pid!r} finding missing field {field!r}: {finding}"
-                    )
+                    assert hasattr(finding, field), f"Plugin {pid!r} finding missing field {field!r}: {finding}"
 
     def test_all_plugins_findings_have_evidence_dict(self, parsed_vibration_crash):
         from goose.plugins import get_all_plugins
+
         plugins = get_all_plugins()
         for pid, plugin in plugins.items():
             findings = plugin.analyze(parsed_vibration_crash.flight, {})
             for finding in findings:
-                assert hasattr(finding, "evidence") and isinstance(finding.evidence, dict), (
-                    f"Plugin {pid!r} finding has no evidence dict: {finding}"
-                )
+                assert hasattr(finding, "evidence") and isinstance(finding.evidence, dict), f"Plugin {pid!r} finding has no evidence dict: {finding}"
 
     def test_all_plugins_scores_in_range(self, parsed_vibration_crash):
         from goose.plugins import get_all_plugins
+
         plugins = get_all_plugins()
         for pid, plugin in plugins.items():
             findings = plugin.analyze(parsed_vibration_crash.flight, {})
             for finding in findings:
-                assert 0 <= finding.score <= 100, (
-                    f"Plugin {pid!r} finding score out of range: {finding.score}"
-                )
+                assert 0 <= finding.score <= 100, f"Plugin {pid!r} finding score out of range: {finding.score}"
 
     def test_all_plugins_severities_valid(self, parsed_vibration_crash):
         from goose.plugins import get_all_plugins
+
         valid_severities = {"critical", "warning", "info", "pass"}
         plugins = get_all_plugins()
         for pid, plugin in plugins.items():
             findings = plugin.analyze(parsed_vibration_crash.flight, {})
             for finding in findings:
-                assert finding.severity in valid_severities, (
-                    f"Plugin {pid!r} invalid severity: {finding.severity!r}"
-                )
+                assert finding.severity in valid_severities, f"Plugin {pid!r} invalid severity: {finding.severity!r}"
 
     def test_crash_plugins_fire_on_crash_log(self, parsed_vibration_crash):
         """Key crash-detection plugins should find something on crash logs."""
         from goose.plugins import get_all_plugins
+
         plugins = get_all_plugins()
         if "vibration" not in plugins:
             pytest.skip("vibration plugin not available")
@@ -435,6 +435,7 @@ class TestAnalyzerSweep:
     def test_all_plugins_work_on_ardupilot_fixture(self):
         from goose.parsers.detect import parse_file
         from goose.plugins import get_all_plugins
+
         result = parse_file(ARDUPILOT)
         if not result.success:
             pytest.skip(f"Ardupilot fixture parse failed: {result.diagnostics.errors}")
@@ -482,6 +483,7 @@ class TestAnalyzerSweep:
 # Analyze with no evidence — should return 422
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeEdgeCases:
     def test_analyze_with_no_evidence_returns_422(self, client: TestClient):
         """Analyzing a case with no evidence ingested should return 422."""
@@ -506,6 +508,4 @@ class TestAnalyzeEdgeCases:
             files={"file": ("empty.ulg", io.BytesIO(b""), "application/octet-stream")},
         )
         # Empty file should be rejected at ingest time (400)
-        assert ev_res.status_code == 400, (
-            f"Expected 400 for empty file upload, got {ev_res.status_code}: {ev_res.text}"
-        )
+        assert ev_res.status_code == 400, f"Expected 400 for empty file upload, got {ev_res.status_code}: {ev_res.text}"

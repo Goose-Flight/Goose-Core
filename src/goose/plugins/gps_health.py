@@ -13,10 +13,10 @@ from goose.plugins.base import Plugin
 from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Thresholds
-MIN_SATELLITES = 8          # below this is degraded GPS
-MAX_HDOP = 2.0              # above this is poor horizontal accuracy
+MIN_SATELLITES = 8  # below this is degraded GPS
+MAX_HDOP = 2.0  # above this is poor horizontal accuracy
 POSITION_JUMP_METERS = 5.0  # max plausible movement between consecutive samples (m)
-DROPOUT_GAP_SEC = 2.0       # gap longer than this = GPS dropout
+DROPOUT_GAP_SEC = 2.0  # gap longer than this = GPS dropout
 
 
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -33,9 +33,7 @@ class GPSHealthPlugin(Plugin):
     """Validate GPS signal quality throughout a flight."""
 
     name = "gps_health"
-    description = (
-        "Checks satellite count, HDOP, position jump anomalies, and GPS dropout intervals"
-    )
+    description = "Checks satellite count, HDOP, position jump anomalies, and GPS dropout intervals"
     version = "1.0.0"
     min_mode = "manual"
 
@@ -68,26 +66,30 @@ class GPSHealthPlugin(Plugin):
         dropout_sec = float(cfg.get("dropout_gap_sec", DROPOUT_GAP_SEC))
 
         if flight.gps is None or flight.gps.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No GPS data available",
-                severity="info",
-                score=50,
-                description="No GPS data found in the flight log. GPS health checks skipped.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No GPS data available",
+                    severity="info",
+                    score=50,
+                    description="No GPS data found in the flight log. GPS health checks skipped.",
+                )
+            )
             return findings
 
         gps = flight.gps.copy()
 
         # Require at minimum a timestamp column
         if "timestamp" not in gps.columns:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="GPS data missing timestamp column",
-                severity="info",
-                score=50,
-                description="GPS DataFrame present but has no 'timestamp' column.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="GPS data missing timestamp column",
+                    severity="info",
+                    score=50,
+                    description="GPS DataFrame present but has no 'timestamp' column.",
+                )
+            )
             return findings
 
         findings.extend(self._check_satellites(gps, min_sats))
@@ -117,18 +119,16 @@ class GPSHealthPlugin(Plugin):
         mean_sats = round(float(sats.mean()), 1)
 
         if n_below == 0:
-            return [Finding(
-                plugin_name=self.name,
-                title="Satellite count nominal",
-                severity="pass",
-                score=95,
-                description=(
-                    f"Satellite count remained at or above {MIN_SATELLITES} throughout the flight. "
-                    f"Mean: {mean_sats}, minimum: {min_sats}."
-                ),
-                evidence={"min_satellites": min_sats, "mean_satellites": mean_sats,
-                          "threshold": MIN_SATELLITES},
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="Satellite count nominal",
+                    severity="pass",
+                    score=95,
+                    description=(f"Satellite count remained at or above {MIN_SATELLITES} throughout the flight. Mean: {mean_sats}, minimum: {min_sats}."),
+                    evidence={"min_satellites": min_sats, "mean_satellites": mean_sats, "threshold": MIN_SATELLITES},
+                )
+            ]
 
         # Find the worst timestamp window
         ts = gps["timestamp"]
@@ -139,26 +139,28 @@ class GPSHealthPlugin(Plugin):
         severity = "critical" if pct_below > 20 else "warning"
         score = 20 if pct_below > 20 else 55
 
-        return [Finding(
-            plugin_name=self.name,
-            title=f"Low satellite count — below {MIN_SATELLITES} for {pct_below:.1f}% of flight",
-            severity=severity,
-            score=score,
-            description=(
-                f"Satellite count dropped below the minimum of {MIN_SATELLITES} "
-                f"in {n_below} samples ({pct_below:.1f}% of GPS data). "
-                f"Minimum observed: {min_sats}. Poor satellite coverage degrades position accuracy."
-            ),
-            evidence={
-                "threshold": MIN_SATELLITES,
-                "min_satellites": min_sats,
-                "mean_satellites": mean_sats,
-                "samples_below_threshold": n_below,
-                "percent_below": round(pct_below, 2),
-            },
-            timestamp_start=ts_start,
-            timestamp_end=ts_end,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"Low satellite count — below {MIN_SATELLITES} for {pct_below:.1f}% of flight",
+                severity=severity,
+                score=score,
+                description=(
+                    f"Satellite count dropped below the minimum of {MIN_SATELLITES} "
+                    f"in {n_below} samples ({pct_below:.1f}% of GPS data). "
+                    f"Minimum observed: {min_sats}. Poor satellite coverage degrades position accuracy."
+                ),
+                evidence={
+                    "threshold": MIN_SATELLITES,
+                    "min_satellites": min_sats,
+                    "mean_satellites": mean_sats,
+                    "samples_below_threshold": n_below,
+                    "percent_below": round(pct_below, 2),
+                },
+                timestamp_start=ts_start,
+                timestamp_end=ts_end,
+            )
+        ]
 
     # ------------------------------------------------------------------
     # HDOP
@@ -180,18 +182,16 @@ class GPSHealthPlugin(Plugin):
         mean_hdop = round(float(hdop.mean()), 3)
 
         if n_above == 0:
-            return [Finding(
-                plugin_name=self.name,
-                title="HDOP within acceptable range",
-                severity="pass",
-                score=95,
-                description=(
-                    f"HDOP remained below {MAX_HDOP} throughout the flight. "
-                    f"Mean HDOP: {mean_hdop}, peak: {max_hdop}."
-                ),
-                evidence={"max_hdop": max_hdop, "mean_hdop": mean_hdop,
-                          "threshold": MAX_HDOP},
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="HDOP within acceptable range",
+                    severity="pass",
+                    score=95,
+                    description=(f"HDOP remained below {MAX_HDOP} throughout the flight. Mean HDOP: {mean_hdop}, peak: {max_hdop}."),
+                    evidence={"max_hdop": max_hdop, "mean_hdop": mean_hdop, "threshold": MAX_HDOP},
+                )
+            ]
 
         ts = gps["timestamp"]
         high_hdop_idx = gps.index[gps["hdop"] > MAX_HDOP]
@@ -201,34 +201,34 @@ class GPSHealthPlugin(Plugin):
         severity = "critical" if pct_above > 25 or max_hdop > 5.0 else "warning"
         score = 25 if severity == "critical" else 55
 
-        return [Finding(
-            plugin_name=self.name,
-            title=f"Elevated HDOP — exceeded {MAX_HDOP} for {pct_above:.1f}% of flight",
-            severity=severity,
-            score=score,
-            description=(
-                f"HDOP exceeded the maximum acceptable value of {MAX_HDOP} "
-                f"in {n_above} samples ({pct_above:.1f}% of GPS data). "
-                f"Peak HDOP: {max_hdop}. High HDOP indicates poor horizontal position accuracy."
-            ),
-            evidence={
-                "threshold": MAX_HDOP,
-                "max_hdop": max_hdop,
-                "mean_hdop": mean_hdop,
-                "samples_above_threshold": n_above,
-                "percent_above": round(pct_above, 2),
-            },
-            timestamp_start=ts_start,
-            timestamp_end=ts_end,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"Elevated HDOP — exceeded {MAX_HDOP} for {pct_above:.1f}% of flight",
+                severity=severity,
+                score=score,
+                description=(
+                    f"HDOP exceeded the maximum acceptable value of {MAX_HDOP} "
+                    f"in {n_above} samples ({pct_above:.1f}% of GPS data). "
+                    f"Peak HDOP: {max_hdop}. High HDOP indicates poor horizontal position accuracy."
+                ),
+                evidence={
+                    "threshold": MAX_HDOP,
+                    "max_hdop": max_hdop,
+                    "mean_hdop": mean_hdop,
+                    "samples_above_threshold": n_above,
+                    "percent_above": round(pct_above, 2),
+                },
+                timestamp_start=ts_start,
+                timestamp_end=ts_end,
+            )
+        ]
 
     # ------------------------------------------------------------------
     # Position jumps
     # ------------------------------------------------------------------
 
-    def _check_position_jumps(
-        self, gps: pd.DataFrame, POSITION_JUMP_METERS: float = POSITION_JUMP_METERS
-    ) -> list[Finding]:
+    def _check_position_jumps(self, gps: pd.DataFrame, POSITION_JUMP_METERS: float = POSITION_JUMP_METERS) -> list[Finding]:
         """Detect unrealistically large position jumps between consecutive GPS samples."""
         if "lat" not in gps.columns or "lon" not in gps.columns:
             return []
@@ -249,17 +249,16 @@ class GPSHealthPlugin(Plugin):
         n_jumps = int(jump_mask.sum())
 
         if n_jumps == 0:
-            return [Finding(
-                plugin_name=self.name,
-                title="No GPS position jumps detected",
-                severity="pass",
-                score=95,
-                description=(
-                    f"All consecutive GPS samples are within {POSITION_JUMP_METERS}m of each other."
-                ),
-                evidence={"threshold_m": POSITION_JUMP_METERS,
-                          "max_step_m": round(float(dist_series.max()), 2)},
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="No GPS position jumps detected",
+                    severity="pass",
+                    score=95,
+                    description=(f"All consecutive GPS samples are within {POSITION_JUMP_METERS}m of each other."),
+                    evidence={"threshold_m": POSITION_JUMP_METERS, "max_step_m": round(float(dist_series.max()), 2)},
+                )
+            ]
 
         jump_indices = dist_series[jump_mask].index
         # Timestamps correspond to the *second* point in each pair (index i)
@@ -270,33 +269,33 @@ class GPSHealthPlugin(Plugin):
         severity = "critical" if n_jumps > 5 or max_jump > 50.0 else "warning"
         score = 15 if severity == "critical" else 50
 
-        return [Finding(
-            plugin_name=self.name,
-            title=f"GPS position jumps detected — {n_jumps} jump(s) exceeding {POSITION_JUMP_METERS}m",
-            severity=severity,
-            score=score,
-            description=(
-                f"Detected {n_jumps} instance(s) where consecutive GPS samples differ by "
-                f"more than {POSITION_JUMP_METERS}m. Largest jump: {max_jump}m. "
-                "This may indicate multipath interference, signal loss, or log corruption."
-            ),
-            evidence={
-                "threshold_m": POSITION_JUMP_METERS,
-                "jump_count": n_jumps,
-                "max_jump_m": max_jump,
-                "jump_timestamps": jump_timestamps[:20],  # cap evidence payload
-            },
-            timestamp_start=jump_timestamps[0] if jump_timestamps else None,
-            timestamp_end=jump_timestamps[-1] if jump_timestamps else None,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"GPS position jumps detected — {n_jumps} jump(s) exceeding {POSITION_JUMP_METERS}m",
+                severity=severity,
+                score=score,
+                description=(
+                    f"Detected {n_jumps} instance(s) where consecutive GPS samples differ by "
+                    f"more than {POSITION_JUMP_METERS}m. Largest jump: {max_jump}m. "
+                    "This may indicate multipath interference, signal loss, or log corruption."
+                ),
+                evidence={
+                    "threshold_m": POSITION_JUMP_METERS,
+                    "jump_count": n_jumps,
+                    "max_jump_m": max_jump,
+                    "jump_timestamps": jump_timestamps[:20],  # cap evidence payload
+                },
+                timestamp_start=jump_timestamps[0] if jump_timestamps else None,
+                timestamp_end=jump_timestamps[-1] if jump_timestamps else None,
+            )
+        ]
 
     # ------------------------------------------------------------------
     # Dropouts
     # ------------------------------------------------------------------
 
-    def _check_dropouts(
-        self, gps: pd.DataFrame, DROPOUT_GAP_SEC: float = DROPOUT_GAP_SEC
-    ) -> list[Finding]:
+    def _check_dropouts(self, gps: pd.DataFrame, DROPOUT_GAP_SEC: float = DROPOUT_GAP_SEC) -> list[Finding]:
         """Detect gaps in GPS data longer than DROPOUT_GAP_SEC seconds."""
         ts = gps["timestamp"].dropna().sort_values().reset_index(drop=True)
         if len(ts) < 2:
@@ -312,28 +311,29 @@ class GPSHealthPlugin(Plugin):
         n_dropouts = int(dropout_mask.sum())
 
         if n_dropouts == 0:
-            return [Finding(
-                plugin_name=self.name,
-                title="No GPS dropouts detected",
-                severity="pass",
-                score=95,
-                description=(
-                    f"GPS data is continuous with no gaps exceeding {DROPOUT_GAP_SEC}s."
-                ),
-                evidence={"threshold_sec": DROPOUT_GAP_SEC,
-                          "max_gap_sec": round(float(gaps.max()), 3)},
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="No GPS dropouts detected",
+                    severity="pass",
+                    score=95,
+                    description=(f"GPS data is continuous with no gaps exceeding {DROPOUT_GAP_SEC}s."),
+                    evidence={"threshold_sec": DROPOUT_GAP_SEC, "max_gap_sec": round(float(gaps.max()), 3)},
+                )
+            ]
 
         dropout_indices = gaps[dropout_mask].index
         dropout_details: list[dict[str, float]] = []
         for idx in dropout_indices:
             gap_start = float(ts.iloc[idx - 1])
             gap_end = float(ts.iloc[idx])
-            dropout_details.append({
-                "start": round(gap_start, 3),
-                "end": round(gap_end, 3),
-                "duration_sec": round(gap_end - gap_start, 3),
-            })
+            dropout_details.append(
+                {
+                    "start": round(gap_start, 3),
+                    "end": round(gap_end, 3),
+                    "duration_sec": round(gap_end - gap_start, 3),
+                }
+            )
 
         max_gap = round(float(max(d["duration_sec"] for d in dropout_details)), 3)
         total_dropout_sec = round(sum(d["duration_sec"] for d in dropout_details), 3)
@@ -341,23 +341,25 @@ class GPSHealthPlugin(Plugin):
         severity = "critical" if max_gap > 10.0 or n_dropouts > 10 else "warning"
         score = 20 if severity == "critical" else 50
 
-        return [Finding(
-            plugin_name=self.name,
-            title=f"GPS dropouts detected — {n_dropouts} gap(s), longest {max_gap}s",
-            severity=severity,
-            score=score,
-            description=(
-                f"Found {n_dropouts} GPS data gap(s) longer than {DROPOUT_GAP_SEC}s. "
-                f"Longest gap: {max_gap}s. Total dropout time: {total_dropout_sec}s. "
-                "During dropouts the autopilot may fall back to dead-reckoning or failsafe."
-            ),
-            evidence={
-                "threshold_sec": DROPOUT_GAP_SEC,
-                "dropout_count": n_dropouts,
-                "max_gap_sec": max_gap,
-                "total_dropout_sec": total_dropout_sec,
-                "dropouts": dropout_details[:20],  # cap evidence payload
-            },
-            timestamp_start=dropout_details[0]["start"] if dropout_details else None,
-            timestamp_end=dropout_details[-1]["end"] if dropout_details else None,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"GPS dropouts detected — {n_dropouts} gap(s), longest {max_gap}s",
+                severity=severity,
+                score=score,
+                description=(
+                    f"Found {n_dropouts} GPS data gap(s) longer than {DROPOUT_GAP_SEC}s. "
+                    f"Longest gap: {max_gap}s. Total dropout time: {total_dropout_sec}s. "
+                    "During dropouts the autopilot may fall back to dead-reckoning or failsafe."
+                ),
+                evidence={
+                    "threshold_sec": DROPOUT_GAP_SEC,
+                    "dropout_count": n_dropouts,
+                    "max_gap_sec": max_gap,
+                    "total_dropout_sec": total_dropout_sec,
+                    "dropouts": dropout_details[:20],  # cap evidence payload
+                },
+                timestamp_start=dropout_details[0]["start"] if dropout_details else None,
+                timestamp_end=dropout_details[-1]["end"] if dropout_details else None,
+            )
+        ]

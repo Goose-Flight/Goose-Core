@@ -50,8 +50,12 @@ class TestProfileRegistry:
             w = cfg.wording
             assert w.profile_id == pid
             for field_name in (
-                "workflow_label", "event_label", "operator_label",
-                "platform_label", "analysis_label", "summary_heading",
+                "workflow_label",
+                "event_label",
+                "operator_label",
+                "platform_label",
+                "analysis_label",
+                "summary_heading",
             ):
                 assert getattr(w, field_name), f"{pid} missing {field_name}"
 

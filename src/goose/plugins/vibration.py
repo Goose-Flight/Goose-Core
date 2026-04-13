@@ -152,22 +152,24 @@ class VibrationPlugin(Plugin):
                 time_range_end=None,
                 support_summary="No accelerometer data found in flight log.",
             )
-            forensic_findings.append(ForensicFinding(
-                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-                plugin_id=self.name,
-                plugin_version=self.manifest.version,
-                title="No vibration data available",
-                description="No accelerometer data found in flight log.",
-                severity=FindingSeverity.INFO,
-                score=50,
-                confidence=0.5,
-                confidence_scope="finding_analysis",
-                evidence_references=[ev_ref],
-                supporting_metrics={},
-                contradicting_metrics={},
-                assumptions=["Vibration data absence may indicate a parser limitation or hardware mismatch"],
-                run_id=run_id,
-            ))
+            forensic_findings.append(
+                ForensicFinding(
+                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    plugin_id=self.name,
+                    plugin_version=self.manifest.version,
+                    title="No vibration data available",
+                    description="No accelerometer data found in flight log.",
+                    severity=FindingSeverity.INFO,
+                    score=50,
+                    confidence=0.5,
+                    confidence_scope="finding_analysis",
+                    evidence_references=[ev_ref],
+                    supporting_metrics={},
+                    contradicting_metrics={},
+                    assumptions=["Vibration data absence may indicate a parser limitation or hardware mismatch"],
+                    run_id=run_id,
+                )
+            )
             elapsed_ms = (time.perf_counter() - t0) * 1000
             diag = PDiag(
                 plugin_id=self.manifest.plugin_id,
@@ -186,11 +188,7 @@ class VibrationPlugin(Plugin):
             "y": "accel_y",
             "z": "accel_z",
         }
-        available = {
-            axis: col
-            for axis, col in accel_cols.items()
-            if col in flight.vibration.columns
-        }
+        available = {axis: col for axis, col in accel_cols.items() if col in flight.vibration.columns}
 
         if not available:
             ev_ref = EvidenceReference(
@@ -200,22 +198,24 @@ class VibrationPlugin(Plugin):
                 time_range_end=vib_ts_end,
                 support_summary="Vibration data present but no accel_x/y/z columns found.",
             )
-            forensic_findings.append(ForensicFinding(
-                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-                plugin_id=self.name,
-                plugin_version=self.manifest.version,
-                title="No accelerometer axes found",
-                description="Vibration data present but no accel_x/y/z columns found.",
-                severity=FindingSeverity.INFO,
-                score=50,
-                confidence=0.5,
-                confidence_scope="finding_analysis",
-                evidence_references=[ev_ref],
-                supporting_metrics={},
-                contradicting_metrics={},
-                assumptions=["Sensor column naming may differ from PX4 standard (accel_x/y/z)"],
-                run_id=run_id,
-            ))
+            forensic_findings.append(
+                ForensicFinding(
+                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    plugin_id=self.name,
+                    plugin_version=self.manifest.version,
+                    title="No accelerometer axes found",
+                    description="Vibration data present but no accel_x/y/z columns found.",
+                    severity=FindingSeverity.INFO,
+                    score=50,
+                    confidence=0.5,
+                    confidence_scope="finding_analysis",
+                    evidence_references=[ev_ref],
+                    supporting_metrics={},
+                    contradicting_metrics={},
+                    assumptions=["Sensor column naming may differ from PX4 standard (accel_x/y/z)"],
+                    run_id=run_id,
+                )
+            )
             elapsed_ms = (time.perf_counter() - t0) * 1000
             diag = PDiag(
                 plugin_id=self.manifest.plugin_id,
@@ -290,14 +290,10 @@ class VibrationPlugin(Plugin):
             confidence = 0.8
 
         assumptions: list[str] = [
-            "Vibration thresholds are based on PX4 default IMU recommendations; "
-            "custom-mounted or non-standard flight controllers may have different baselines",
+            "Vibration thresholds are based on PX4 default IMU recommendations; custom-mounted or non-standard flight controllers may have different baselines",
         ]
         if is_forward:
-            assumptions.append(
-                f"Forward-flight scaling factor {fwd_factor:.1f}x applied to thresholds "
-                "— vehicle was in mission/position mode"
-            )
+            assumptions.append(f"Forward-flight scaling factor {fwd_factor:.1f}x applied to thresholds — vehicle was in mission/position mode")
 
         supporting_metrics: dict[str, Any] = {
             "axes": axis_results,
@@ -313,27 +309,30 @@ class VibrationPlugin(Plugin):
             time_range_start=vib_ts_start,
             time_range_end=vib_ts_end,
             support_summary=f"Vibration analysis over full flight window ({vib_ts_start:.1f}s–{vib_ts_end:.1f}s)."
-            if vib_ts_start is not None and vib_ts_end is not None else desc[:200],
+            if vib_ts_start is not None and vib_ts_end is not None
+            else desc[:200],
         )
 
-        forensic_findings.append(ForensicFinding(
-            finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-            plugin_id=self.name,
-            plugin_version=self.manifest.version,
-            title=title,
-            description=desc,
-            severity=severity,
-            score=score,
-            confidence=confidence,
-            confidence_scope="finding_analysis",
-            start_time=vib_ts_start,
-            end_time=vib_ts_end,
-            evidence_references=[ev_ref],
-            supporting_metrics=supporting_metrics,
-            contradicting_metrics={},
-            assumptions=assumptions,
-            run_id=run_id,
-        ))
+        forensic_findings.append(
+            ForensicFinding(
+                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                plugin_id=self.name,
+                plugin_version=self.manifest.version,
+                title=title,
+                description=desc,
+                severity=severity,
+                score=score,
+                confidence=confidence,
+                confidence_scope="finding_analysis",
+                start_time=vib_ts_start,
+                end_time=vib_ts_end,
+                evidence_references=[ev_ref],
+                supporting_metrics=supporting_metrics,
+                contradicting_metrics={},
+                assumptions=assumptions,
+                run_id=run_id,
+            )
+        )
 
         # Clipping detection
         clipping_finding = self._check_clipping(flight, available, clip_thr)
@@ -349,30 +348,33 @@ class VibrationPlugin(Plugin):
             for k, v in (clipping_finding.evidence or {}).items():
                 try:
                     import json as _json
+
                     _json.dumps(v)
                     clip_supporting[k] = v
                 except (TypeError, ValueError):
                     clip_supporting[k] = str(v)
-            forensic_findings.append(ForensicFinding(
-                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-                plugin_id=self.name,
-                plugin_version=self.manifest.version,
-                title=clipping_finding.title,
-                description=clipping_finding.description,
-                severity=FindingSeverity(clipping_finding.severity)
-                if clipping_finding.severity in FindingSeverity._value2member_map_
-                else FindingSeverity.WARNING,
-                score=int(clipping_finding.score),
-                confidence=round(int(clipping_finding.score) / 100.0, 2),
-                confidence_scope="finding_analysis",
-                start_time=vib_ts_start,
-                end_time=vib_ts_end,
-                evidence_references=[clip_ev_ref],
-                supporting_metrics=clip_supporting,
-                contradicting_metrics={},
-                assumptions=["Clipping threshold set at ~15.9g (156 m/s²) — standard PX4 IMU saturation point"],
-                run_id=run_id,
-            ))
+            forensic_findings.append(
+                ForensicFinding(
+                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    plugin_id=self.name,
+                    plugin_version=self.manifest.version,
+                    title=clipping_finding.title,
+                    description=clipping_finding.description,
+                    severity=FindingSeverity(clipping_finding.severity)
+                    if clipping_finding.severity in FindingSeverity._value2member_map_
+                    else FindingSeverity.WARNING,
+                    score=int(clipping_finding.score),
+                    confidence=round(int(clipping_finding.score) / 100.0, 2),
+                    confidence_scope="finding_analysis",
+                    start_time=vib_ts_start,
+                    end_time=vib_ts_end,
+                    evidence_references=[clip_ev_ref],
+                    supporting_metrics=clip_supporting,
+                    contradicting_metrics={},
+                    assumptions=["Clipping threshold set at ~15.9g (156 m/s²) — standard PX4 IMU saturation point"],
+                    run_id=run_id,
+                )
+            )
 
         # Degradation detection
         degradation_finding = self._check_degradation(flight, vib_data, available)
@@ -388,33 +390,35 @@ class VibrationPlugin(Plugin):
             for k, v in (degradation_finding.evidence or {}).items():
                 try:
                     import json as _json
+
                     _json.dumps(v)
                     deg_supporting[k] = v
                 except (TypeError, ValueError):
                     deg_supporting[k] = str(v)
-            forensic_findings.append(ForensicFinding(
-                finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
-                plugin_id=self.name,
-                plugin_version=self.manifest.version,
-                title=degradation_finding.title,
-                description=degradation_finding.description,
-                severity=FindingSeverity(degradation_finding.severity)
-                if degradation_finding.severity in FindingSeverity._value2member_map_
-                else FindingSeverity.WARNING,
-                score=int(degradation_finding.score),
-                confidence=round(int(degradation_finding.score) / 100.0, 2),
-                confidence_scope="finding_analysis",
-                start_time=vib_ts_start,
-                end_time=vib_ts_end,
-                evidence_references=[deg_ev_ref],
-                supporting_metrics=deg_supporting,
-                contradicting_metrics={},
-                assumptions=[
-                    "Vibration increase is measured across first vs last flight quarter; "
-                    "short flights (<100 samples) are excluded from this check"
-                ],
-                run_id=run_id,
-            ))
+            forensic_findings.append(
+                ForensicFinding(
+                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    plugin_id=self.name,
+                    plugin_version=self.manifest.version,
+                    title=degradation_finding.title,
+                    description=degradation_finding.description,
+                    severity=FindingSeverity(degradation_finding.severity)
+                    if degradation_finding.severity in FindingSeverity._value2member_map_
+                    else FindingSeverity.WARNING,
+                    score=int(degradation_finding.score),
+                    confidence=round(int(degradation_finding.score) / 100.0, 2),
+                    confidence_scope="finding_analysis",
+                    start_time=vib_ts_start,
+                    end_time=vib_ts_end,
+                    evidence_references=[deg_ev_ref],
+                    supporting_metrics=deg_supporting,
+                    contradicting_metrics={},
+                    assumptions=[
+                        "Vibration increase is measured across first vs last flight quarter; short flights (<100 samples) are excluded from this check"
+                    ],
+                    run_id=run_id,
+                )
+            )
 
         elapsed_ms = (time.perf_counter() - t0) * 1000
         diag = PDiag(
@@ -439,13 +443,15 @@ class VibrationPlugin(Plugin):
         clip_thr = float(cfg.get("clipping_threshold_ms2", CLIPPING_THRESHOLD_MS2))
 
         if flight.vibration.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No vibration data available",
-                severity="info",
-                score=50,
-                description="No accelerometer data found in flight log.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No vibration data available",
+                    severity="info",
+                    score=50,
+                    description="No accelerometer data found in flight log.",
+                )
+            )
             return findings
 
         accel_cols = {
@@ -453,19 +459,17 @@ class VibrationPlugin(Plugin):
             "y": "accel_y",
             "z": "accel_z",
         }
-        available = {
-            axis: col
-            for axis, col in accel_cols.items()
-            if col in flight.vibration.columns
-        }
+        available = {axis: col for axis, col in accel_cols.items() if col in flight.vibration.columns}
         if not available:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No accelerometer axes found",
-                severity="info",
-                score=50,
-                description="Vibration data present but no accel_x/y/z columns found.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No accelerometer axes found",
+                    severity="info",
+                    score=50,
+                    description="Vibration data present but no accel_x/y/z columns found.",
+                )
+            )
             return findings
 
         # Remove gravity from Z axis for vibration analysis
@@ -528,18 +532,20 @@ class VibrationPlugin(Plugin):
                 "Inspect props, motors, frame, and vibration damping."
             )
 
-        findings.append(Finding(
-            plugin_name=self.name,
-            title=title,
-            severity=severity,
-            score=score,
-            description=desc,
-            evidence={
-                "axes": axis_results,
-                "flight_mode": flight.primary_mode,
-                "forward_flight_scaling": is_forward,
-            },
-        ))
+        findings.append(
+            Finding(
+                plugin_name=self.name,
+                title=title,
+                severity=severity,
+                score=score,
+                description=desc,
+                evidence={
+                    "axes": axis_results,
+                    "flight_mode": flight.primary_mode,
+                    "forward_flight_scaling": is_forward,
+                },
+            )
+        )
 
         # Clipping detection
         clipping_finding = self._check_clipping(flight, available, clip_thr)

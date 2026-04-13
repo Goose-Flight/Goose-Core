@@ -9,10 +9,21 @@ from __future__ import annotations
 
 from typing import Any
 
-_SKIP_KEYWORDS = frozenset([
-    "skipped", "not available", "not found", "no data", "no battery",
-    "no attitude", "no gps", "no motor", "no rc", "no ekf", "no position",
-])
+_SKIP_KEYWORDS = frozenset(
+    [
+        "skipped",
+        "not available",
+        "not found",
+        "no data",
+        "no battery",
+        "no attitude",
+        "no gps",
+        "no motor",
+        "no rc",
+        "no ekf",
+        "no position",
+    ]
+)
 
 
 def _is_data_missing(finding: Any) -> bool:
@@ -97,10 +108,7 @@ def generate_narrative(
                 parts.append(line)
         else:
             warning_names = ", ".join(f.title for f in warnings[:3])
-            parts.append(
-                f"{len(warnings)} warnings detected: {warning_names}"
-                + (f", and {len(warnings) - 3} more." if len(warnings) > 3 else ".")
-            )
+            parts.append(f"{len(warnings)} warnings detected: {warning_names}" + (f", and {len(warnings) - 3} more." if len(warnings) > 3 else "."))
 
     # ── Passes (brief summary) ───────────────────────────
     if passes:
@@ -115,10 +123,7 @@ def generate_narrative(
     missing = [f for f in findings if _is_data_missing(f)]
     if missing:
         missing_plugins = sorted(set(f.plugin_name for f in missing))
-        parts.append(
-            f"Data not available for: {', '.join(missing_plugins)} "
-            f"(excluded from scoring)."
-        )
+        parts.append(f"Data not available for: {', '.join(missing_plugins)} (excluded from scoring).")
 
     # ── No findings at all ───────────────────────────────
     if not findings:
@@ -132,7 +137,7 @@ def _first_sentence(text: str) -> str:
     for end in (". ", ".\n", ".\t"):
         idx = text.find(end)
         if idx != -1:
-            return text[:idx + 1]
+            return text[: idx + 1]
     if text.endswith("."):
         return text
     return text.split("\n")[0].rstrip(".") + "."
@@ -144,9 +149,17 @@ def _format_key_evidence(evidence: dict[str, Any] | None) -> str:
         return ""
     # Priority keys that are most useful in a summary
     priority = [
-        "peak_value", "max_value", "min_value", "mean_value",
-        "threshold", "drop_volts", "sag_percent", "rms",
-        "duration_sec", "count", "max_error_deg",
+        "peak_value",
+        "max_value",
+        "min_value",
+        "mean_value",
+        "threshold",
+        "drop_volts",
+        "sag_percent",
+        "rms",
+        "duration_sec",
+        "count",
+        "max_error_deg",
     ]
     selected: list[str] = []
     for key in priority:
@@ -172,6 +185,7 @@ def _format_key_evidence(evidence: dict[str, Any] | None) -> str:
 # ══════════════════════════════════════════════════════════════
 # Human-readable "investigator" narrative
 # ══════════════════════════════════════════════════════════════
+
 
 def generate_human_narrative(
     findings: list[Any],
@@ -265,7 +279,8 @@ def _simplify_description(desc: str) -> str:
     sentence = _first_sentence(desc)
     # Remove parenthetical technical details
     import re
-    sentence = re.sub(r'\([^)]*\)', '', sentence).strip()
+
+    sentence = re.sub(r"\([^)]*\)", "", sentence).strip()
     # Remove trailing periods if doubled
     sentence = sentence.rstrip(".") + "."
     return sentence

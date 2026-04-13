@@ -20,6 +20,7 @@ FIXTURE = Path(__file__).parent.parent / "fixtures" / "ardupilot_minimal.log"
 # Helper — parse the fixture once
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def parsed():
     parser = DataFlashParser()
@@ -29,6 +30,7 @@ def parsed():
 # ---------------------------------------------------------------------------
 # 1. Format detection
 # ---------------------------------------------------------------------------
+
 
 def test_dataflash_text_detects_format():
     """detect_parser() must return the DataFlash parser for a .log file."""
@@ -41,17 +43,17 @@ def test_dataflash_text_detects_format():
 # 2. Parse succeeds
 # ---------------------------------------------------------------------------
 
+
 def test_dataflash_text_parse_succeeds(parsed):
     """Parsing the minimal fixture must succeed."""
-    assert parsed.success is True, (
-        f"Parse failed. errors={parsed.diagnostics.errors}"
-    )
+    assert parsed.success is True, f"Parse failed. errors={parsed.diagnostics.errors}"
     assert parsed.flight is not None
 
 
 # ---------------------------------------------------------------------------
 # 3. Attitude extracted
 # ---------------------------------------------------------------------------
+
 
 def test_dataflash_text_flight_has_attitude(parsed):
     """ATT messages must produce a non-empty attitude DataFrame with roll/pitch/yaw."""
@@ -68,6 +70,7 @@ def test_dataflash_text_flight_has_attitude(parsed):
 # 4. Battery extracted
 # ---------------------------------------------------------------------------
 
+
 def test_dataflash_text_flight_has_battery(parsed):
     """BAT messages must produce a non-empty battery DataFrame with voltage."""
     bat = parsed.flight.battery
@@ -80,6 +83,7 @@ def test_dataflash_text_flight_has_battery(parsed):
 # ---------------------------------------------------------------------------
 # 5. GPS extracted
 # ---------------------------------------------------------------------------
+
 
 def test_dataflash_text_flight_has_gps(parsed):
     """GPS messages must produce a non-empty gps DataFrame with lat/lon."""
@@ -95,6 +99,7 @@ def test_dataflash_text_flight_has_gps(parsed):
 # 6. Mode changes extracted
 # ---------------------------------------------------------------------------
 
+
 def test_dataflash_text_mode_changes_extracted(parsed):
     """MODE messages must produce at least 2 ModeChange entries."""
     mc = parsed.flight.mode_changes
@@ -102,6 +107,7 @@ def test_dataflash_text_mode_changes_extracted(parsed):
     assert len(mc) >= 2, f"Expected >= 2 mode changes, got {len(mc)}: {mc}"
     # Verify structure
     from goose.core.flight import ModeChange
+
     for m in mc:
         assert isinstance(m, ModeChange)
         assert isinstance(m.timestamp, float)
@@ -112,12 +118,11 @@ def test_dataflash_text_mode_changes_extracted(parsed):
 # 7. Diagnostics structure
 # ---------------------------------------------------------------------------
 
+
 def test_dataflash_diagnostics_structure(parsed):
     """ParseDiagnostics must have a confidence >= 0.5 and non-empty stream_coverage."""
     diag = parsed.diagnostics
-    assert diag.parser_confidence >= 0.5, (
-        f"parser_confidence too low: {diag.parser_confidence}"
-    )
+    assert diag.parser_confidence >= 0.5, f"parser_confidence too low: {diag.parser_confidence}"
     assert diag.stream_coverage, "stream_coverage is empty"
     # All StreamCoverage entries must have a name
     for sc in diag.stream_coverage:
@@ -129,6 +134,7 @@ def test_dataflash_diagnostics_structure(parsed):
 # ---------------------------------------------------------------------------
 # 8. Provenance recorded
 # ---------------------------------------------------------------------------
+
 
 def test_dataflash_provenance_recorded(parsed):
     """Provenance must be populated with correct parser_name."""
@@ -143,6 +149,7 @@ def test_dataflash_provenance_recorded(parsed):
 # 9. Metadata autopilot
 # ---------------------------------------------------------------------------
 
+
 def test_dataflash_metadata_autopilot(parsed):
     """Flight metadata must identify ArduPilot as the autopilot."""
     meta = parsed.flight.metadata
@@ -153,6 +160,7 @@ def test_dataflash_metadata_autopilot(parsed):
 # ---------------------------------------------------------------------------
 # 10. Empty file does not crash
 # ---------------------------------------------------------------------------
+
 
 def test_dataflash_empty_file_does_not_crash(tmp_path):
     """Parsing an empty file must return success=False without raising."""
@@ -168,9 +176,11 @@ def test_dataflash_empty_file_does_not_crash(tmp_path):
 # 11. Malformed binary file does not crash
 # ---------------------------------------------------------------------------
 
+
 def test_dataflash_malformed_file_does_not_crash(tmp_path):
     """Parsing random bytes must not raise an exception."""
     import os
+
     bad = tmp_path / "garbage.bin"
     bad.write_bytes(os.urandom(512))
     parser = DataFlashParser()

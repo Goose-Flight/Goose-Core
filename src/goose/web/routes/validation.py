@@ -71,20 +71,25 @@ async def run_validation_endpoint() -> JSONResponse:
     try:
         results_file = _results_dir() / _LAST_RESULT_FILENAME
         results_file.write_text(
-            json.dumps({
-                "summary": summary.to_dict(),
-                "quality_report": quality_report.to_dict(),
-            }, indent=2),
+            json.dumps(
+                {
+                    "summary": summary.to_dict(),
+                    "quality_report": quality_report.to_dict(),
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
     except OSError:
         logger.warning("Failed to persist validation result", exc_info=True)
 
-    return JSONResponse({
-        "ok": True,
-        "summary": summary.to_dict(),
-        "quality_report": quality_report.to_dict(),
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "summary": summary.to_dict(),
+            "quality_report": quality_report.to_dict(),
+        }
+    )
 
 
 @router.get("/results")
@@ -92,19 +97,23 @@ async def get_validation_results() -> JSONResponse:
     """Return the most recent validation result, if any."""
     results_file = _results_dir() / _LAST_RESULT_FILENAME
     if not results_file.exists():
-        return JSONResponse({
-            "ok": True,
-            "summary": None,
-            "quality_report": None,
-            "message": "No validation run yet.",
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "summary": None,
+                "quality_report": None,
+                "message": "No validation run yet.",
+            }
+        )
 
     try:
         data = json.loads(results_file.read_text(encoding="utf-8"))
-        return JSONResponse({
-            "ok": True,
-            "summary": data.get("summary"),
-            "quality_report": data.get("quality_report"),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "summary": data.get("summary"),
+                "quality_report": data.get("quality_report"),
+            }
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Cannot read results: {exc}") from exc

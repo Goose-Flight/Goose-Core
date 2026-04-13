@@ -34,6 +34,7 @@ def sample_log(tmp_path: Path) -> Path:
 # Case creation
 # ---------------------------------------------------------------------------
 
+
 class TestCreateCase:
     def test_creates_case_with_id(self, svc: CaseService):
         case = svc.create_case(created_by="cli")
@@ -84,6 +85,7 @@ class TestCreateCase:
 # ---------------------------------------------------------------------------
 # Evidence ingest
 # ---------------------------------------------------------------------------
+
 
 class TestIngestEvidence:
     def test_returns_evidence_item(self, svc: CaseService, sample_log: Path):
@@ -186,10 +188,8 @@ class TestIngestEvidence:
 
     def test_ingest_bytes(self, svc: CaseService):
         case = svc.create_case()
-        content = b"ULog\x00" + b"\xAB" * 256
-        ev = svc.ingest_evidence_bytes(
-            case.case_id, "upload.ulg", content, acquired_by="gui"
-        )
+        content = b"ULog\x00" + b"\xab" * 256
+        ev = svc.ingest_evidence_bytes(case.case_id, "upload.ulg", content, acquired_by="gui")
         assert ev.evidence_id == "EV-0001"
         assert ev.filename == "upload.ulg"
         assert ev.source_acquisition_mode == "upload"
@@ -201,6 +201,7 @@ class TestIngestEvidence:
 # ---------------------------------------------------------------------------
 # Evidence integrity verification
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyEvidence:
     def test_verify_intact_evidence(self, svc: CaseService, sample_log: Path):
@@ -217,6 +218,7 @@ class TestVerifyEvidence:
 # ---------------------------------------------------------------------------
 # Case listing and status
 # ---------------------------------------------------------------------------
+
 
 class TestCaseListing:
     def test_list_cases_empty(self, svc: CaseService):
@@ -251,6 +253,7 @@ class TestCaseListing:
 # ---------------------------------------------------------------------------
 # Audit log integrity
 # ---------------------------------------------------------------------------
+
 
 class TestAuditLog:
     def test_audit_log_is_jsonl(self, svc: CaseService):

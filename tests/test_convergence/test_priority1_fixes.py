@@ -18,6 +18,7 @@ from pathlib import Path
 # A1: Legacy /api/analyze endpoint returns 410
 # ---------------------------------------------------------------------------
 
+
 class TestLegacyAnalyzeEndpoint:
     def test_legacy_analyze_returns_410(self):
         from fastapi.testclient import TestClient
@@ -68,6 +69,7 @@ class TestLegacyAnalyzeEndpoint:
 # B1: Replay drift_cats list/set intersection no longer crashes
 # ---------------------------------------------------------------------------
 
+
 class TestReplayDriftStatusDetermination:
     def test_drift_status_determination_no_crash(self):
         """The old bug used list & set which raises TypeError. This must not raise."""
@@ -75,8 +77,10 @@ class TestReplayDriftStatusDetermination:
 
         drift_cats = [DriftCategory.ENGINE_VERSION, DriftCategory.PLUGIN_VERSION]
         version_drift_categories = {
-            DriftCategory.ENGINE_VERSION, DriftCategory.PARSER_VERSION,
-            DriftCategory.PLUGIN_VERSION, DriftCategory.TUNING_PROFILE,
+            DriftCategory.ENGINE_VERSION,
+            DriftCategory.PARSER_VERSION,
+            DriftCategory.PLUGIN_VERSION,
+            DriftCategory.TUNING_PROFILE,
         }
         # This should NOT raise TypeError (old code did `list & set`)
         has_version_drift = bool(set(drift_cats) & version_drift_categories)
@@ -87,8 +91,10 @@ class TestReplayDriftStatusDetermination:
 
         drift_cats_empty: list = []
         version_drift_categories = {
-            DriftCategory.ENGINE_VERSION, DriftCategory.PARSER_VERSION,
-            DriftCategory.PLUGIN_VERSION, DriftCategory.TUNING_PROFILE,
+            DriftCategory.ENGINE_VERSION,
+            DriftCategory.PARSER_VERSION,
+            DriftCategory.PLUGIN_VERSION,
+            DriftCategory.TUNING_PROFILE,
         }
         has_drift_empty = bool(set(drift_cats_empty) & version_drift_categories)
         assert has_drift_empty is False
@@ -99,8 +105,10 @@ class TestReplayDriftStatusDetermination:
 
         drift_cats = [DriftCategory.FINDINGS_CHANGED, DriftCategory.CONFIDENCE_SHIFTED]
         version_drift_categories = {
-            DriftCategory.ENGINE_VERSION, DriftCategory.PARSER_VERSION,
-            DriftCategory.PLUGIN_VERSION, DriftCategory.TUNING_PROFILE,
+            DriftCategory.ENGINE_VERSION,
+            DriftCategory.PARSER_VERSION,
+            DriftCategory.PLUGIN_VERSION,
+            DriftCategory.TUNING_PROFILE,
         }
         has_version_drift = bool(set(drift_cats) & version_drift_categories)
         assert has_version_drift is False
@@ -109,6 +117,7 @@ class TestReplayDriftStatusDetermination:
 # ---------------------------------------------------------------------------
 # C1: Run-specific findings files are written and read correctly
 # ---------------------------------------------------------------------------
+
 
 class TestRunSpecificFindingsFiles:
     def test_run_specific_file_preferred_over_shared_pointer(self):
@@ -192,6 +201,7 @@ class TestRunSpecificFindingsFiles:
 # C2: compare_runs uses distinct run artifacts
 # ---------------------------------------------------------------------------
 
+
 class TestCompareRunsDistinctArtifacts:
     def test_compare_runs_detects_severity_change(self):
         """compare_runs should find finding differences between two distinct runs."""
@@ -215,14 +225,22 @@ class TestCompareRunsDistinctArtifacts:
             (case_dir / "case.json").write_text(json.dumps(case_data))
 
             # Different findings for each run
-            findings_a = [{
-                "finding_id": "F-001", "title": "Vibration high",
-                "severity": "warning", "confidence": 0.8,
-            }]
-            findings_b = [{
-                "finding_id": "F-001", "title": "Vibration high",
-                "severity": "critical", "confidence": 0.9,
-            }]
+            findings_a = [
+                {
+                    "finding_id": "F-001",
+                    "title": "Vibration high",
+                    "severity": "warning",
+                    "confidence": 0.8,
+                }
+            ]
+            findings_b = [
+                {
+                    "finding_id": "F-001",
+                    "title": "Vibration high",
+                    "severity": "critical",
+                    "confidence": 0.9,
+                }
+            ]
 
             bundle_a = {"findings_version": "2.0", "run_id": run_a_id, "findings": findings_a}
             bundle_b = {"findings_version": "2.0", "run_id": run_b_id, "findings": findings_b}

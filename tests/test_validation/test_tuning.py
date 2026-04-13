@@ -87,14 +87,13 @@ def test_all_builtin_plugins_have_config():
     profile = TuningProfile.default()
     configured_ids = {c.plugin_id for c in profile.analyzer_configs}
     for plugin_id in PLUGIN_REGISTRY:
-        assert plugin_id in configured_ids, (
-            f"Plugin {plugin_id} has no entry in default tuning profile"
-        )
+        assert plugin_id in configured_ids, f"Plugin {plugin_id} has no entry in default tuning profile"
 
 
 def test_crash_detection_thresholds_match_source_constants():
     """Sanity check — default crash_detection thresholds match source constants."""
     from goose.plugins.crash_detection import CrashDetectionPlugin
+
     src_defaults = CrashDetectionPlugin.DEFAULT_CONFIG
 
     profile = TuningProfile.default()
@@ -125,6 +124,7 @@ class _ThresholdCapturePlugin:
             PluginManifest,
             PluginTrustState,
         )
+
         self.manifest = PluginManifest(
             plugin_id=plugin_id,
             name=plugin_id,
@@ -177,9 +177,7 @@ def test_forensic_analyze_merges_tuning_profile_thresholds():
     cfg = profile.get_config_for_plugin("crash_detection")
     assert cfg is not None and cfg.thresholds is not None
     for k, v in cfg.thresholds.values.items():
-        assert stub.captured_config.get(k) == v, (
-            f"Profile threshold {k}={v} did not reach analyze() config"
-        )
+        assert stub.captured_config.get(k) == v, f"Profile threshold {k}={v} did not reach analyze() config"
 
 
 def test_forensic_analyze_explicit_config_overrides_profile():
@@ -223,6 +221,5 @@ def test_all_registered_plugins_have_matching_default_constants():
             has_attr = hasattr(cls, upper_attr)
             in_default = bool(default_config) and key in default_config
             assert has_attr or in_default, (
-                f"{plugin_id}: tuning key '{key}' has no DEFAULT_ constant "
-                f"(expected class attr {upper_attr} or DEFAULT_CONFIG['{key}'])"
+                f"{plugin_id}: tuning key '{key}' has no DEFAULT_ constant (expected class attr {upper_attr} or DEFAULT_CONFIG['{key}'])"
             )

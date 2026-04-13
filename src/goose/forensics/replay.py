@@ -73,9 +73,19 @@ class FindingDifference:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> FindingDifference:
-        return cls(**{k: v for k, v in d.items() if k in {
-            "finding_id", "change_type", "original_value", "replay_value",
-        }})
+        return cls(
+            **{
+                k: v
+                for k, v in d.items()
+                if k
+                in {
+                    "finding_id",
+                    "change_type",
+                    "original_value",
+                    "replay_value",
+                }
+            }
+        )
 
 
 @dataclass
@@ -110,18 +120,27 @@ class ReplayDifferenceSummary:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> ReplayDifferenceSummary:
         d = dict(d)
-        d["findings_changed"] = [
-            FindingDifference.from_dict(f) for f in d.get("findings_changed", [])
-        ]
-        d["drift_categories"] = [
-            DriftCategory(c) for c in d.get("drift_categories", [])
-        ]
-        return cls(**{k: v for k, v in d.items() if k in {
-            "findings_added", "findings_removed", "findings_changed",
-            "finding_titles_added", "finding_titles_removed",
-            "hypotheses_added", "hypotheses_removed", "parser_confidence_delta",
-            "plugin_execution_changes", "drift_categories",
-        }})
+        d["findings_changed"] = [FindingDifference.from_dict(f) for f in d.get("findings_changed", [])]
+        d["drift_categories"] = [DriftCategory(c) for c in d.get("drift_categories", [])]
+        return cls(
+            **{
+                k: v
+                for k, v in d.items()
+                if k
+                in {
+                    "findings_added",
+                    "findings_removed",
+                    "findings_changed",
+                    "finding_titles_added",
+                    "finding_titles_removed",
+                    "hypotheses_added",
+                    "hypotheses_removed",
+                    "parser_confidence_delta",
+                    "plugin_execution_changes",
+                    "drift_categories",
+                }
+            }
+        )
 
 
 @dataclass
@@ -169,16 +188,24 @@ class ReplayVerificationRecord:
     def from_dict(cls, d: dict[str, Any]) -> ReplayVerificationRecord:
         d = dict(d)
         d["status"] = ReplayStatus(d["status"])
-        d["difference_summary"] = ReplayDifferenceSummary.from_dict(
-            d.get("difference_summary", {})
-        )
+        d["difference_summary"] = ReplayDifferenceSummary.from_dict(d.get("difference_summary", {}))
         known = {
-            "replay_id", "source_case_id", "source_run_id", "replay_run_id",
-            "status", "original_engine_version", "replay_engine_version",
-            "original_parser_version", "replay_parser_version",
-            "original_plugin_versions", "replay_plugin_versions",
-            "original_tuning_profile", "replay_tuning_profile",
-            "difference_summary", "verified_at", "notes",
+            "replay_id",
+            "source_case_id",
+            "source_run_id",
+            "replay_run_id",
+            "status",
+            "original_engine_version",
+            "replay_engine_version",
+            "original_parser_version",
+            "replay_parser_version",
+            "original_plugin_versions",
+            "replay_plugin_versions",
+            "original_tuning_profile",
+            "replay_tuning_profile",
+            "difference_summary",
+            "verified_at",
+            "notes",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -186,6 +213,7 @@ class ReplayVerificationRecord:
 # ---------------------------------------------------------------------------
 # Diff helpers
 # ---------------------------------------------------------------------------
+
 
 def _diff_findings(
     original_findings: list[dict[str, Any]],
@@ -213,19 +241,23 @@ def _diff_findings(
         o = orig_map[fid]
         r = replay_map[fid]
         if o.get("severity") != r.get("severity"):
-            changed.append(FindingDifference(
-                finding_id=fid,
-                change_type="severity_changed",
-                original_value={"severity": o.get("severity")},
-                replay_value={"severity": r.get("severity")},
-            ))
+            changed.append(
+                FindingDifference(
+                    finding_id=fid,
+                    change_type="severity_changed",
+                    original_value={"severity": o.get("severity")},
+                    replay_value={"severity": r.get("severity")},
+                )
+            )
         elif o.get("confidence") != r.get("confidence"):
-            changed.append(FindingDifference(
-                finding_id=fid,
-                change_type="confidence_changed",
-                original_value={"confidence": o.get("confidence")},
-                replay_value={"confidence": r.get("confidence")},
-            ))
+            changed.append(
+                FindingDifference(
+                    finding_id=fid,
+                    change_type="confidence_changed",
+                    original_value={"confidence": o.get("confidence")},
+                    replay_value={"confidence": r.get("confidence")},
+                )
+            )
 
     return added, removed, changed
 
@@ -233,6 +265,7 @@ def _diff_findings(
 # ---------------------------------------------------------------------------
 # Replay execution
 # ---------------------------------------------------------------------------
+
 
 def execute_replay(
     case_dir: Path,
@@ -253,7 +286,10 @@ def execute_replay(
     case_json_path = case_dir / "case.json"
     if not case_json_path.exists():
         return _incompatible_record(
-            replay_id, "", source_run_id, replay_run_id,
+            replay_id,
+            "",
+            source_run_id,
+            replay_run_id,
             "Case JSON not found",
         )
 
@@ -270,7 +306,10 @@ def execute_replay(
 
     if source_run is None:
         return _incompatible_record(
-            replay_id, case_id, source_run_id, replay_run_id,
+            replay_id,
+            case_id,
+            source_run_id,
+            replay_run_id,
             f"Source run {source_run_id} not found in case",
         )
 
@@ -312,7 +351,10 @@ def execute_replay(
     evidence_items = case_data.get("evidence_items", [])
     if not evidence_items:
         return _incompatible_record(
-            replay_id, case_id, source_run_id, replay_run_id,
+            replay_id,
+            case_id,
+            source_run_id,
+            replay_run_id,
             "No evidence items in case — cannot replay",
         )
 
@@ -320,23 +362,33 @@ def execute_replay(
     ev_path = last_ev.get("stored_path", "")
     if not ev_path or not Path(ev_path).exists():
         return _incompatible_record(
-            replay_id, case_id, source_run_id, replay_run_id,
+            replay_id,
+            case_id,
+            source_run_id,
+            replay_run_id,
             f"Evidence file not found: {ev_path}",
         )
 
     # 5. Re-run parse + analysis
     try:
         from goose.parsers.detect import parse_file
+
         parse_result = parse_file(ev_path)
     except Exception as exc:  # noqa: BLE001
         return _incompatible_record(
-            replay_id, case_id, source_run_id, replay_run_id,
+            replay_id,
+            case_id,
+            source_run_id,
+            replay_run_id,
             f"Parse failed during replay: {exc}",
         )
 
     if parse_result is None or not parse_result.success:
         return _incompatible_record(
-            replay_id, case_id, source_run_id, replay_run_id,
+            replay_id,
+            case_id,
+            source_run_id,
+            replay_run_id,
             "Parse did not succeed during replay",
         )
 
@@ -358,20 +410,25 @@ def execute_replay(
         fp = fingerprint_plugin(plugin)
         allowed, reason = trust_policy.evaluate(plugin.manifest, fp)
         if not allowed:
-            replay_plugin_diagnostics.append(PDiag(
-                plugin_id=plugin.manifest.plugin_id,
-                plugin_version=plugin.manifest.version,
-                run_id=replay_run_id,
-                executed=False,
-                blocked=True,
-                block_reason=reason,
-                trust_state=plugin.manifest.trust_state.value,
-            ))
+            replay_plugin_diagnostics.append(
+                PDiag(
+                    plugin_id=plugin.manifest.plugin_id,
+                    plugin_version=plugin.manifest.version,
+                    run_id=replay_run_id,
+                    executed=False,
+                    blocked=True,
+                    block_reason=reason,
+                    trust_state=plugin.manifest.trust_state.value,
+                )
+            )
             continue
         try:
             ff_list, p_diag = plugin.forensic_analyze(
-                flight, last_ev.get("evidence_id", ""), replay_run_id,
-                {}, parse_result.diagnostics,
+                flight,
+                last_ev.get("evidence_id", ""),
+                replay_run_id,
+                {},
+                parse_result.diagnostics,
             )
             replay_forensic_findings.extend(ff_list)
             replay_plugin_diagnostics.append(p_diag)
@@ -380,6 +437,7 @@ def execute_replay(
 
     # Generate replay hypotheses
     from goose.forensics.lifting import generate_hypotheses
+
     replay_hypotheses = generate_hypotheses(replay_forensic_findings, run_id=replay_run_id)
 
     # 6. Compare outputs
@@ -457,10 +515,15 @@ def execute_replay(
 
     # 7. Determine status
     # drift_cats is a list — convert to set before intersection to avoid TypeError
-    has_version_drift = bool(set(drift_cats) & {
-        DriftCategory.ENGINE_VERSION, DriftCategory.PARSER_VERSION,
-        DriftCategory.PLUGIN_VERSION, DriftCategory.TUNING_PROFILE,
-    })
+    has_version_drift = bool(
+        set(drift_cats)
+        & {
+            DriftCategory.ENGINE_VERSION,
+            DriftCategory.PARSER_VERSION,
+            DriftCategory.PLUGIN_VERSION,
+            DriftCategory.TUNING_PROFILE,
+        }
+    )
     has_output_drift = bool(added or removed or changed)
 
     if not has_version_drift and not has_output_drift:
@@ -493,7 +556,8 @@ def execute_replay(
     exports_dir.mkdir(exist_ok=True)
     replay_path = exports_dir / f"replay_{replay_id}.json"
     replay_path.write_text(
-        json.dumps(record.to_dict(), indent=2), encoding="utf-8",
+        json.dumps(record.to_dict(), indent=2),
+        encoding="utf-8",
     )
 
     # 9. Audit entry

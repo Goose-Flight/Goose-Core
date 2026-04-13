@@ -218,9 +218,7 @@ class TestFailsafeEventsCritical:
     def test_emergency_transition_detected(self, plugin: FailsafeEventsPlugin) -> None:
         flight = _make_flight_critical_failsafe()
         findings = plugin.analyze(flight, {})
-        transition_findings = [
-            f for f in findings if "transition" in f.title.lower()
-        ]
+        transition_findings = [f for f in findings if "transition" in f.title.lower()]
         assert len(transition_findings) >= 1
 
     def test_evidence_failsafe_count(self, plugin: FailsafeEventsPlugin) -> None:
@@ -256,15 +254,11 @@ class TestFailsafeEventsEmergencyTransitions:
     def test_detects_rtl_transition(self, plugin: FailsafeEventsPlugin) -> None:
         flight = _make_flight_emergency_transitions()
         findings = plugin.analyze(flight, {})
-        transition_findings = [
-            f for f in findings if "transition" in f.title.lower()
-        ]
+        transition_findings = [f for f in findings if "transition" in f.title.lower()]
         assert len(transition_findings) >= 1
 
     def test_transition_finding_mentions_rtl(self, plugin: FailsafeEventsPlugin) -> None:
         flight = _make_flight_emergency_transitions()
         findings = plugin.analyze(flight, {})
-        rtl_findings = [
-            f for f in findings if "rtl" in f.title.lower()
-        ]
+        rtl_findings = [f for f in findings if "rtl" in f.title.lower()]
         assert len(rtl_findings) >= 1

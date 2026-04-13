@@ -84,17 +84,21 @@ def _build_timeline(findings: list[Finding]) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
     for f in findings:
         if f.timestamp_start is not None:
-            events.append({
-                "timestamp": f.timestamp_start,
-                "event": f.title,
-                "severity": f.severity,
-            })
+            events.append(
+                {
+                    "timestamp": f.timestamp_start,
+                    "event": f.title,
+                    "severity": f.severity,
+                }
+            )
         if f.timestamp_end is not None and f.timestamp_end != f.timestamp_start:
-            events.append({
-                "timestamp": f.timestamp_end,
-                "event": f"{f.title} (end)",
-                "severity": f.severity,
-            })
+            events.append(
+                {
+                    "timestamp": f.timestamp_end,
+                    "event": f"{f.title} (end)",
+                    "severity": f.severity,
+                }
+            )
     events.sort(key=lambda e: e["timestamp"])
     return events
 
@@ -106,10 +110,7 @@ def _find_crash_findings(findings: list[Finding]) -> list[Finding]:
 
 def _find_critical_findings(findings: list[Finding]) -> list[Finding]:
     """Find all critical-severity findings (excluding crash_detection itself)."""
-    return [
-        f for f in findings
-        if f.severity == "critical" and f.plugin_name != "crash_detection"
-    ]
+    return [f for f in findings if f.severity == "critical" and f.plugin_name != "crash_detection"]
 
 
 def _classify_from_findings(findings: list[Finding]) -> tuple[str, str, float]:
@@ -129,9 +130,7 @@ def _classify_from_findings(findings: list[Finding]) -> tuple[str, str, float]:
             continue
 
         # Weight by severity
-        weight = {"critical": 3.0, "warning": 1.5, "info": 0.5, "pass": 0.0}.get(
-            f.severity, 0.0
-        )
+        weight = {"critical": 3.0, "warning": 1.5, "info": 0.5, "pass": 0.0}.get(f.severity, 0.0)
         # Also factor in low score (lower score = more evidence of failure)
         score_weight = max(0.0, (100 - f.score) / 100.0)
         combined = weight * (1.0 + score_weight)

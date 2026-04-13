@@ -67,9 +67,15 @@ class AnalyzerQualitySnapshot:
         d.pop("precision", None)
         d.pop("recall", None)
         known = {
-            "plugin_id", "plugin_version", "validation_run_id",
-            "total_corpus_cases", "cases_ran", "cases_skipped",
-            "true_positives", "false_positives", "false_negatives",
+            "plugin_id",
+            "plugin_version",
+            "validation_run_id",
+            "total_corpus_cases",
+            "cases_ran",
+            "cases_skipped",
+            "true_positives",
+            "false_positives",
+            "false_negatives",
             "avg_confidence",
         }
         inst = cls(**{k: v for k, v in d.items() if k in known})
@@ -98,9 +104,7 @@ class AnalyzerQualityReport:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> AnalyzerQualityReport:
         d = dict(d)
-        d["analyzers"] = [
-            AnalyzerQualitySnapshot.from_dict(a) for a in d.get("analyzers", [])
-        ]
+        d["analyzers"] = [AnalyzerQualitySnapshot.from_dict(a) for a in d.get("analyzers", [])]
         known = {"validation_run_id", "generated_at", "engine_version", "analyzers", "summary"}
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -136,9 +140,7 @@ def compute_quality_report(validation_summary: ValidationSummary) -> AnalyzerQua
 
         # For each expected finding, check if it was found (TP) or not (FN)
         for exp_finding in expected.expected_findings:
-            found = any(
-                exp_finding.lower() in t.lower() for t in observed.findings_found
-            )
+            found = any(exp_finding.lower() in t.lower() for t in observed.findings_found)
             # Attribute to the most likely plugin based on finding text
             # (simplified: attribute to first plugin that matches)
             attributed_pid = _attribute_finding_to_plugin(exp_finding)
@@ -150,9 +152,7 @@ def compute_quality_report(validation_summary: ValidationSummary) -> AnalyzerQua
 
         # For each not-expected finding that was found (FP)
         for bad_finding in expected.not_expected_findings:
-            found = any(
-                bad_finding.lower() in t.lower() for t in observed.findings_found
-            )
+            found = any(bad_finding.lower() in t.lower() for t in observed.findings_found)
             if found:
                 attributed_pid = _attribute_finding_to_plugin(bad_finding)
                 if attributed_pid and attributed_pid in plugin_stats:
@@ -163,26 +163,25 @@ def compute_quality_report(validation_summary: ValidationSummary) -> AnalyzerQua
     total_cases = validation_summary.total_cases
 
     for pid, stats in sorted(plugin_stats.items()):
-        snapshots.append(AnalyzerQualitySnapshot(
-            plugin_id=pid,
-            plugin_version=stats["version"],
-            validation_run_id=validation_summary.validation_id,
-            total_corpus_cases=total_cases,
-            cases_ran=stats["cases_ran"],
-            cases_skipped=stats["cases_skipped"],
-            true_positives=stats["true_positives"],
-            false_positives=stats["false_positives"],
-            false_negatives=stats["false_negatives"],
-        ))
+        snapshots.append(
+            AnalyzerQualitySnapshot(
+                plugin_id=pid,
+                plugin_version=stats["version"],
+                validation_run_id=validation_summary.validation_id,
+                total_corpus_cases=total_cases,
+                cases_ran=stats["cases_ran"],
+                cases_skipped=stats["cases_skipped"],
+                true_positives=stats["true_positives"],
+                false_positives=stats["false_positives"],
+                false_negatives=stats["false_negatives"],
+            )
+        )
 
     # Summary
     total_tp = sum(s.true_positives for s in snapshots)
     total_fp = sum(s.false_positives for s in snapshots)
     total_fn = sum(s.false_negatives for s in snapshots)
-    summary = (
-        f"{len(snapshots)} analyzers evaluated across {total_cases} corpus cases. "
-        f"Aggregate: {total_tp} TP, {total_fp} FP, {total_fn} FN."
-    )
+    summary = f"{len(snapshots)} analyzers evaluated across {total_cases} corpus cases. Aggregate: {total_tp} TP, {total_fp} FP, {total_fn} FN."
 
     return AnalyzerQualityReport(
         validation_run_id=validation_summary.validation_id,

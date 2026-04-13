@@ -295,9 +295,7 @@ class CaseService:
         safe = _sanitize_filename(filename)
         suffix = Path(filename).suffix or ".bin"
 
-        with tempfile.NamedTemporaryFile(
-            suffix=suffix, prefix="goose_ingest_", delete=False
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=suffix, prefix="goose_ingest_", delete=False) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
 
@@ -381,9 +379,7 @@ class CaseService:
             evidence=list(case.evidence_items),
         )
         path = self.base_dir / case.case_id / "manifests" / "evidence_manifest.json"
-        path.write_text(
-            json.dumps(manifest.to_dict(), indent=2), encoding="utf-8"
-        )
+        path.write_text(json.dumps(manifest.to_dict(), indent=2), encoding="utf-8")
 
     def _append_audit(self, case_id: str, entry: AuditEntry) -> None:
         path = self.base_dir / case_id / "audit" / "audit_log.jsonl"
@@ -399,6 +395,7 @@ class CaseService:
         Old CASE-YYYY-NNNNNN sequential IDs are still accepted by the validator.
         """
         import secrets
+
         year = datetime.now().year
         rnd = secrets.token_hex(4).upper()  # 8 random hex chars
         candidate = f"CASE-{year}-{rnd}"

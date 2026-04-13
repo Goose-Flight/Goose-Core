@@ -55,6 +55,7 @@ async def ingest_evidence(
         )
 
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -97,14 +98,17 @@ async def ingest_evidence(
 async def list_evidence(case_id: str) -> JSONResponse:
     """List all evidence items attached to a case."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         case = svc.get_case(case_id)
-        return JSONResponse({
-            "ok": True,
-            "evidence": [_serialize_evidence(ev) for ev in case.evidence_items],
-            "count": len(case.evidence_items),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "evidence": [_serialize_evidence(ev) for ev in case.evidence_items],
+                "count": len(case.evidence_items),
+            }
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid case identifier") from exc
     except FileNotFoundError as exc:

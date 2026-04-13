@@ -52,13 +52,15 @@ class EkfConsistencyPlugin(Plugin):
         crit = float(cfg.get("innovation_critical", INNOV_CRITICAL))
 
         if flight.ekf is None or flight.ekf.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No EKF data available",
-                severity="info",
-                score=50,
-                description="No EKF data found in the flight log. Filter health checks skipped.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No EKF data available",
+                    severity="info",
+                    score=50,
+                    description="No EKF data found in the flight log. Filter health checks skipped.",
+                )
+            )
             return findings
 
         ekf = flight.ekf.copy()
@@ -91,8 +93,11 @@ class EkfConsistencyPlugin(Plugin):
             return []
 
         return self._check_innovation_group(
-            ekf, available, group="velocity",
-            INNOV_WARNING=INNOV_WARNING, INNOV_CRITICAL=INNOV_CRITICAL,
+            ekf,
+            available,
+            group="velocity",
+            INNOV_WARNING=INNOV_WARNING,
+            INNOV_CRITICAL=INNOV_CRITICAL,
         )
 
     # ------------------------------------------------------------------
@@ -117,8 +122,11 @@ class EkfConsistencyPlugin(Plugin):
             return []
 
         return self._check_innovation_group(
-            ekf, available, group="position",
-            INNOV_WARNING=INNOV_WARNING, INNOV_CRITICAL=INNOV_CRITICAL,
+            ekf,
+            available,
+            group="position",
+            INNOV_WARNING=INNOV_WARNING,
+            INNOV_CRITICAL=INNOV_CRITICAL,
         )
 
     # ------------------------------------------------------------------
@@ -169,21 +177,21 @@ class EkfConsistencyPlugin(Plugin):
             return []
 
         if worst == "pass":
-            return [Finding(
-                plugin_name=self.name,
-                title=f"EKF {group} innovations within limits",
-                severity="pass",
-                score=95,
-                description=(
-                    f"All {group} innovation ratios remained below the warning threshold of {INNOV_WARNING}."
-                ),
-                evidence={
-                    "group": group,
-                    "axes": axis_results,
-                    "warning_threshold": INNOV_WARNING,
-                    "critical_threshold": INNOV_CRITICAL,
-                },
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title=f"EKF {group} innovations within limits",
+                    severity="pass",
+                    score=95,
+                    description=(f"All {group} innovation ratios remained below the warning threshold of {INNOV_WARNING}."),
+                    evidence={
+                        "group": group,
+                        "axes": axis_results,
+                        "warning_threshold": INNOV_WARNING,
+                        "critical_threshold": INNOV_CRITICAL,
+                    },
+                )
+            ]
 
         if worst == "critical":
             severity = "critical"
@@ -215,20 +223,22 @@ class EkfConsistencyPlugin(Plugin):
                     if ts_start is None or t < ts_start:
                         ts_start = t
 
-        return [Finding(
-            plugin_name=self.name,
-            title=title,
-            severity=severity,
-            score=score,
-            description=desc,
-            evidence={
-                "group": group,
-                "axes": axis_results,
-                "warning_threshold": INNOV_WARNING,
-                "critical_threshold": INNOV_CRITICAL,
-            },
-            timestamp_start=ts_start,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=title,
+                severity=severity,
+                score=score,
+                description=desc,
+                evidence={
+                    "group": group,
+                    "axes": axis_results,
+                    "warning_threshold": INNOV_WARNING,
+                    "critical_threshold": INNOV_CRITICAL,
+                },
+                timestamp_start=ts_start,
+            )
+        ]
 
     # ------------------------------------------------------------------
     # EKF fault flag checks
@@ -251,14 +261,16 @@ class EkfConsistencyPlugin(Plugin):
 
         faulted = flags[flags != 0]
         if faulted.empty:
-            return [Finding(
-                plugin_name=self.name,
-                title="No EKF fault flags set",
-                severity="pass",
-                score=95,
-                description=f"EKF fault flag column '{found_col}' showed no fault conditions during flight.",
-                evidence={"fault_col": found_col, "fault_count": 0},
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="No EKF fault flags set",
+                    severity="pass",
+                    score=95,
+                    description=f"EKF fault flag column '{found_col}' showed no fault conditions during flight.",
+                    evidence={"fault_col": found_col, "fault_count": 0},
+                )
+            ]
 
         fault_count = int(len(faulted))
         pct_faulted = round(fault_count / len(flags) * 100, 2)
@@ -273,22 +285,24 @@ class EkfConsistencyPlugin(Plugin):
         severity = "critical" if pct_faulted > 5.0 else "warning"
         score = 10 if severity == "critical" else 40
 
-        return [Finding(
-            plugin_name=self.name,
-            title=f"EKF fault flags active — {fault_count} samples ({pct_faulted}% of flight)",
-            severity=severity,
-            score=score,
-            description=(
-                f"EKF reported fault conditions in {fault_count} samples ({pct_faulted}% of flight). "
-                f"Unique flag values observed: {unique_flags}. "
-                "Fault conditions indicate the filter rejected sensor data or detected inconsistency."
-            ),
-            evidence={
-                "fault_col": found_col,
-                "fault_count": fault_count,
-                "pct_faulted": pct_faulted,
-                "unique_flag_values": unique_flags,
-                "total_samples": int(len(flags)),
-            },
-            timestamp_start=ts_start,
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"EKF fault flags active — {fault_count} samples ({pct_faulted}% of flight)",
+                severity=severity,
+                score=score,
+                description=(
+                    f"EKF reported fault conditions in {fault_count} samples ({pct_faulted}% of flight). "
+                    f"Unique flag values observed: {unique_flags}. "
+                    "Fault conditions indicate the filter rejected sensor data or detected inconsistency."
+                ),
+                evidence={
+                    "fault_col": found_col,
+                    "fault_count": fault_count,
+                    "pct_faulted": pct_faulted,
+                    "unique_flag_values": unique_flags,
+                    "total_samples": int(len(flags)),
+                },
+                timestamp_start=ts_start,
+            )
+        ]

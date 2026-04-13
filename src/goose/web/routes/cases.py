@@ -25,6 +25,7 @@ router = APIRouter(tags=["cases"])
 # Request models
 # ---------------------------------------------------------------------------
 
+
 class CreateCaseRequest(BaseModel):
     """Case creation body.
 
@@ -32,8 +33,10 @@ class CreateCaseRequest(BaseModel):
     and merged into the created ``Case`` before it is persisted. Extra/unknown
     keys at the HTTP layer are ignored by pydantic.
     """
+
     # L-3: validate length and character set for audit-log fields
     from pydantic import Field as _Field
+
     created_by: str = _Field(default="gui", max_length=64, pattern=r"^[\w\-. @]+$")
     tags: list[str] = []
     notes: str = _Field(default="", max_length=4096)
@@ -87,6 +90,7 @@ class UpdateStatusRequest(BaseModel):
 # Serializers
 # ---------------------------------------------------------------------------
 
+
 def _serialize_evidence(ev: Any) -> dict[str, Any]:
     return {
         "evidence_id": ev.evidence_id,
@@ -133,16 +137,39 @@ def _serialize_case_detail(case: Any) -> dict[str, Any]:
     summary["exports"] = [x.to_dict() for x in case.exports]
     # v11 Strategy Sprint — full extended metadata on detail view
     for f in (
-        "mission_id", "sortie_id", "operation_type", "event_type",
-        "event_classification", "event_severity", "date_time_start", "date_time_end",
-        "location_name", "operating_area", "environment_summary",
-        "platform_name", "platform_type", "serial_number", "firmware_version",
-        "hardware_config", "payload_config", "battery_config", "propulsion_notes",
+        "mission_id",
+        "sortie_id",
+        "operation_type",
+        "event_type",
+        "event_classification",
+        "event_severity",
+        "date_time_start",
+        "date_time_end",
+        "location_name",
+        "operating_area",
+        "environment_summary",
+        "platform_name",
+        "platform_type",
+        "serial_number",
+        "firmware_version",
+        "hardware_config",
+        "payload_config",
+        "battery_config",
+        "propulsion_notes",
         "recent_changes",
-        "operator_name", "team_name", "unit_name", "organization",
-        "customer_name", "ticket_id", "technician_name", "tester_name",
-        "damage_summary", "loss_summary", "recommendations",
-        "corrective_actions", "closure_notes",
+        "operator_name",
+        "team_name",
+        "unit_name",
+        "organization",
+        "customer_name",
+        "ticket_id",
+        "technician_name",
+        "tester_name",
+        "damage_summary",
+        "loss_summary",
+        "recommendations",
+        "corrective_actions",
+        "closure_notes",
     ):
         summary[f] = getattr(case, f, None)
     return summary
@@ -154,16 +181,39 @@ def _serialize_case_detail(case: Any) -> dict[str, Any]:
 
 _V11_METADATA_FIELDS = (
     "profile",
-    "mission_id", "sortie_id", "operation_type", "event_type",
-    "event_classification", "event_severity", "date_time_start", "date_time_end",
-    "location_name", "operating_area", "environment_summary",
-    "platform_name", "platform_type", "serial_number", "firmware_version",
-    "hardware_config", "payload_config", "battery_config", "propulsion_notes",
+    "mission_id",
+    "sortie_id",
+    "operation_type",
+    "event_type",
+    "event_classification",
+    "event_severity",
+    "date_time_start",
+    "date_time_end",
+    "location_name",
+    "operating_area",
+    "environment_summary",
+    "platform_name",
+    "platform_type",
+    "serial_number",
+    "firmware_version",
+    "hardware_config",
+    "payload_config",
+    "battery_config",
+    "propulsion_notes",
     "recent_changes",
-    "operator_name", "team_name", "unit_name", "organization",
-    "customer_name", "ticket_id", "technician_name", "tester_name",
-    "damage_summary", "loss_summary", "recommendations",
-    "corrective_actions", "closure_notes",
+    "operator_name",
+    "team_name",
+    "unit_name",
+    "organization",
+    "customer_name",
+    "ticket_id",
+    "technician_name",
+    "tester_name",
+    "damage_summary",
+    "loss_summary",
+    "recommendations",
+    "corrective_actions",
+    "closure_notes",
 )
 
 
@@ -172,6 +222,7 @@ async def create_case(body: CreateCaseRequest) -> JSONResponse:
     """Create a new forensic case and return its metadata."""
     try:
         from goose.web.cases_api import get_service
+
         svc = get_service()
         case = svc.create_case(
             created_by=body.created_by,
@@ -199,13 +250,16 @@ async def list_cases() -> JSONResponse:
     """Return all cases (summary only) sorted by creation time descending."""
     try:
         from goose.web.cases_api import get_service
+
         svc = get_service()
         cases = svc.list_cases()
-        return JSONResponse({
-            "ok": True,
-            "cases": [_serialize_case_summary(c) for c in cases],
-            "count": len(cases),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "cases": [_serialize_case_summary(c) for c in cases],
+                "count": len(cases),
+            }
+        )
     except Exception as exc:
         logger.exception("Failed to list cases")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -221,15 +275,18 @@ async def get_case(case_id: str) -> JSONResponse:
     """
     try:
         from goose.web.cases_api import get_service
+
         svc = get_service()
         case = svc.get_case(case_id)
         detail = _serialize_case_detail(case)
         profile_cfg = get_profile(getattr(case, "profile", "default") or "default")
-        return JSONResponse({
-            "ok": True,
-            "case": detail,
-            "profile_config": profile_cfg.to_dict(),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "case": detail,
+                "profile_config": profile_cfg.to_dict(),
+            }
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
     except Exception as exc:
@@ -248,6 +305,7 @@ async def get_case_completeness(case_id: str) -> JSONResponse:
     """
     try:
         from goose.web.cases_api import get_service
+
         svc = get_service()
         case = svc.get_case(case_id)
     except FileNotFoundError as exc:
@@ -292,15 +350,10 @@ async def get_case_completeness(case_id: str) -> JSONResponse:
     attachments_dir = case_dir / "attachments"
     attachment_count = 0
     if attachments_dir.exists():
-        attachment_count = len([
-            f for f in attachments_dir.iterdir()
-            if f.is_file() and not f.name.startswith(".")
-        ])
+        attachment_count = len([f for f in attachments_dir.iterdir() if f.is_file() and not f.name.startswith(".")])
     attachments_issues: list[str] = []
     if attachment_count == 0:
-        attachments_issues.append(
-            "No attachments uploaded — photos or video recommended for forensic completeness"
-        )
+        attachments_issues.append("No attachments uploaded — photos or video recommended for forensic completeness")
     attachments_section = {
         "present": attachment_count > 0,
         "count": attachment_count,
@@ -353,9 +406,7 @@ async def get_case_completeness(case_id: str) -> JSONResponse:
     export_count = len(case.exports)
     exports_issues: list[str] = []
     if export_count == 0:
-        exports_issues.append(
-            "No export bundle created — export recommended before case closure"
-        )
+        exports_issues.append("No export bundle created — export recommended before case closure")
     exports_section = {
         "present": export_count > 0,
         "count": export_count,
@@ -366,10 +417,7 @@ async def get_case_completeness(case_id: str) -> JSONResponse:
     # Metadata section
     # -------------------------------------------------------------------------
     _key_metadata_fields = ["operator_name", "event_type", "platform_name", "platform_type"]
-    missing_fields: list[str] = [
-        f for f in _key_metadata_fields
-        if not getattr(case, f, None)
-    ]
+    missing_fields: list[str] = [f for f in _key_metadata_fields if not getattr(case, f, None)]
     metadata_complete = len(missing_fields) == 0
     metadata_issues: list[str] = []
     if missing_fields:
@@ -444,22 +492,24 @@ async def get_case_completeness(case_id: str) -> JSONResponse:
     if not exports_section["present"] and run_count > 0:
         recommendations.append("Create an export bundle for archival before closing the case")
 
-    return JSONResponse({
-        "ok": True,
-        "case_id": case_id,
-        "profile": profile,
-        "completeness_score": completeness_score,
-        "sections": {
-            "evidence": evidence_section,
-            "analysis": analysis_section,
-            "attachments": attachments_section,
-            "hypotheses": hypotheses_section,
-            "timeline": timeline_section,
-            "exports": exports_section,
-            "metadata": metadata_section,
-        },
-        "recommendations": recommendations,
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "case_id": case_id,
+            "profile": profile,
+            "completeness_score": completeness_score,
+            "sections": {
+                "evidence": evidence_section,
+                "analysis": analysis_section,
+                "attachments": attachments_section,
+                "hypotheses": hypotheses_section,
+                "timeline": timeline_section,
+                "exports": exports_section,
+                "metadata": metadata_section,
+            },
+            "recommendations": recommendations,
+        }
+    )
 
 
 @router.get("/{case_id}/runs/compare")
@@ -497,17 +547,13 @@ async def compare_runs_get(
 
     recommendation: str
     if risk == "regression":
-        sev_changes = [
-            d for d in comparison.finding_differences
-            if d.change_type == "severity_changed"
-        ]
+        sev_changes = [d for d in comparison.finding_differences if d.change_type == "severity_changed"]
         plugin_area = ""
         if sev_changes:
             # Attempt to infer plugin from finding data
             plugin_area = f" — check findings: {', '.join(d.finding_id for d in sev_changes[:3])}"
         recommendation = (
-            f"Run B shows regression in finding severity{plugin_area}. "
-            "Review the escalated findings and compare plugin diagnostic output between runs."
+            f"Run B shows regression in finding severity{plugin_area}. Review the escalated findings and compare plugin diagnostic output between runs."
         )
     elif risk == "improvement":
         recommendation = (
@@ -516,21 +562,20 @@ async def compare_runs_get(
         )
     elif risk == "version_drift":
         recommendation = (
-            "Only plugin version changes detected. No finding regressions. "
-            "Update your baseline run to this version to avoid future false drift alerts."
+            "Only plugin version changes detected. No finding regressions. Update your baseline run to this version to avoid future false drift alerts."
         )
     else:
-        recommendation = (
-            "Runs are equivalent. No action required."
-        )
+        recommendation = "Runs are equivalent. No action required."
 
-    return JSONResponse({
-        "ok": True,
-        "comparison": comp_dict,
-        "executive_summary": summary,
-        "risk_assessment": risk,
-        "recommendation": recommendation,
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "comparison": comp_dict,
+            "executive_summary": summary,
+            "risk_assessment": risk,
+            "recommendation": recommendation,
+        }
+    )
 
 
 @router.patch("/{case_id}/status")
@@ -546,6 +591,7 @@ async def update_case_status(case_id: str, body: UpdateStatusRequest) -> JSONRes
         ) from exc
     try:
         from goose.web.cases_api import get_service
+
         svc = get_service()
         case = svc.update_status(case_id, status, actor=body.actor)
         return JSONResponse({"ok": True, "case": _serialize_case_summary(case)})

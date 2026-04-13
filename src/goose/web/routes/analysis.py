@@ -51,15 +51,18 @@ async def analyze_case(case_id: str) -> JSONResponse:
     started_at = datetime.now()
 
     # --- Audit: parse started -----------------------------------------------
-    svc._append_audit(case_id, AuditEntry(
-        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
-        timestamp=started_at,
-        actor="api",
-        action=AuditAction.PARSE_STARTED,
-        object_type="evidence",
-        object_id=ev.evidence_id,
-        details={"evidence_path": evidence_path, "run_id": run_id},
-    ))
+    svc._append_audit(
+        case_id,
+        AuditEntry(
+            event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+            timestamp=started_at,
+            actor="api",
+            action=AuditAction.PARSE_STARTED,
+            object_type="evidence",
+            object_id=ev.evidence_id,
+            details={"evidence_path": evidence_path, "run_id": run_id},
+        ),
+    )
 
     # --- Parse via formal contract -------------------------------------------
     try:
@@ -72,17 +75,20 @@ async def analyze_case(case_id: str) -> JSONResponse:
         _parse_exc = None
 
     if parse_result is None:
-        svc._append_audit(case_id, AuditEntry(
-            event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
-            timestamp=datetime.now(),
-            actor="api",
-            action=AuditAction.PARSE_FAILED,
-            object_type="evidence",
-            object_id=ev.evidence_id,
-            details={"error": str(_parse_exc)},
-            success=False,
-            error=str(_parse_exc),
-        ))
+        svc._append_audit(
+            case_id,
+            AuditEntry(
+                event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+                timestamp=datetime.now(),
+                actor="api",
+                action=AuditAction.PARSE_FAILED,
+                object_type="evidence",
+                object_id=ev.evidence_id,
+                details={"error": str(_parse_exc)},
+                success=False,
+                error=str(_parse_exc),
+            ),
+        )
         raise HTTPException(status_code=500, detail=f"Internal parse error: {_parse_exc}")
 
     # Attach evidence_id to provenance
@@ -106,22 +112,25 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     # --- Audit: parse completed/failed ---------------------------------------
     parse_audit_action = AuditAction.PARSE_COMPLETED if parse_result.success else AuditAction.PARSE_FAILED
-    svc._append_audit(case_id, AuditEntry(
-        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
-        timestamp=datetime.now(),
-        actor="api",
-        action=parse_audit_action,
-        object_type="evidence",
-        object_id=ev.evidence_id,
-        details={
-            "parser": parse_result.diagnostics.parser_selected,
-            "parser_confidence": parse_result.diagnostics.parser_confidence,
-            "warnings": len(parse_result.diagnostics.warnings),
-            "errors": len(parse_result.diagnostics.errors),
-        },
-        success=parse_result.success,
-        error="; ".join(parse_result.diagnostics.errors) if not parse_result.success else None,
-    ))
+    svc._append_audit(
+        case_id,
+        AuditEntry(
+            event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+            timestamp=datetime.now(),
+            actor="api",
+            action=parse_audit_action,
+            object_type="evidence",
+            object_id=ev.evidence_id,
+            details={
+                "parser": parse_result.diagnostics.parser_selected,
+                "parser_confidence": parse_result.diagnostics.parser_confidence,
+                "warnings": len(parse_result.diagnostics.warnings),
+                "errors": len(parse_result.diagnostics.errors),
+            },
+            success=parse_result.success,
+            error="; ".join(parse_result.diagnostics.errors) if not parse_result.success else None,
+        ),
+    )
 
     if not parse_result.success:
         raise HTTPException(
@@ -137,15 +146,18 @@ async def analyze_case(case_id: str) -> JSONResponse:
     flight = parse_result.flight  # guaranteed non-None here
 
     # --- Audit: analysis started ---------------------------------------------
-    svc._append_audit(case_id, AuditEntry(
-        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
-        timestamp=datetime.now(),
-        actor="api",
-        action=AuditAction.ANALYSIS_STARTED,
-        object_type="analysis",
-        object_id=run_id,
-        details={"evidence_id": ev.evidence_id},
-    ))
+    svc._append_audit(
+        case_id,
+        AuditEntry(
+            event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+            timestamp=datetime.now(),
+            actor="api",
+            action=AuditAction.ANALYSIS_STARTED,
+            object_type="analysis",
+            object_id=run_id,
+            details={"evidence_id": ev.evidence_id},
+        ),
+    )
 
     # --- Run plugins (Sprint 5: forensic contract) ----------------------------
     from goose.forensics.profiles import get_profile
@@ -173,14 +185,8 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     registry_ids = list(merged_registry.keys())
     primary_ids = [pid for pid in profile_cfg.default_plugins if pid in merged_registry]
-    secondary_ids = [
-        pid for pid in profile_cfg.secondary_plugins
-        if pid in merged_registry and pid not in primary_ids
-    ]
-    deprioritized_ids = [
-        pid for pid in profile_cfg.deprioritized_plugins
-        if pid in merged_registry and pid not in primary_ids and pid not in secondary_ids
-    ]
+    secondary_ids = [pid for pid in profile_cfg.secondary_plugins if pid in merged_registry and pid not in primary_ids]
+    deprioritized_ids = [pid for pid in profile_cfg.deprioritized_plugins if pid in merged_registry and pid not in primary_ids and pid not in secondary_ids]
     placed = set(primary_ids) | set(secondary_ids) | set(deprioritized_ids)
     remaining_ids = [pid for pid in registry_ids if pid not in placed]
 
@@ -188,9 +194,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
         # Advanced / unopinionated profile — run all plugins in registry order.
         ordered_plugin_ids = registry_ids
     else:
-        ordered_plugin_ids = (
-            primary_ids + secondary_ids + remaining_ids + deprioritized_ids
-        )
+        ordered_plugin_ids = primary_ids + secondary_ids + remaining_ids + deprioritized_ids
 
     plugins = [merged_registry[pid] for pid in ordered_plugin_ids]
     all_findings: list[Any] = []
@@ -210,20 +214,26 @@ async def analyze_case(case_id: str) -> JSONResponse:
         # Evaluate trust policy
         allowed, reason = trust_policy.evaluate(plugin.manifest, fp)
         if not allowed:
-            all_plugin_diagnostics.append(PDiag(
-                plugin_id=plugin.manifest.plugin_id,
-                plugin_version=plugin.manifest.version,
-                run_id=run_id,
-                executed=False,
-                blocked=True,
-                block_reason=reason,
-                trust_state=plugin.manifest.trust_state.value,
-            ))
+            all_plugin_diagnostics.append(
+                PDiag(
+                    plugin_id=plugin.manifest.plugin_id,
+                    plugin_version=plugin.manifest.version,
+                    run_id=run_id,
+                    executed=False,
+                    blocked=True,
+                    block_reason=reason,
+                    trust_state=plugin.manifest.trust_state.value,
+                )
+            )
             continue
 
         try:
             ff_list, p_diag = plugin.forensic_analyze(
-                flight, ev.evidence_id, run_id, {}, parse_result.diagnostics,
+                flight,
+                ev.evidence_id,
+                run_id,
+                {},
+                parse_result.diagnostics,
                 tuning_profile=tuning_profile,
             )
             forensic_findings.extend(ff_list)
@@ -246,6 +256,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     # --- Hypotheses and signal quality (still use lifting layer) -------------
     from goose.forensics.lifting import build_signal_quality, generate_hypotheses
+
     hypotheses = generate_hypotheses(
         forensic_findings,
         run_id=run_id,
@@ -263,7 +274,10 @@ async def analyze_case(case_id: str) -> JSONResponse:
         return sv.value if hasattr(sv, "value") else str(sv)
 
     sev_priority_list = list(profile_cfg.findings_sort_priority) or [
-        "critical", "warning", "info", "pass",
+        "critical",
+        "warning",
+        "info",
+        "pass",
     ]
     # Ensure critical always comes first
     if "critical" in sev_priority_list:
@@ -331,6 +345,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     # timeline.json (v11 Strategy Sprint — structured event timeline)
     from goose.forensics.timeline import build_full_timeline
+
     timeline_events = build_full_timeline(flight, forensic_findings, run_id, hypotheses=hypotheses)
     timeline_bundle = {
         "timeline_version": "2.0",
@@ -338,9 +353,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
         "generated_at": completed_at.isoformat(),
         "events": [e.to_dict() for e in timeline_events],
     }
-    (analysis_dir / "timeline.json").write_text(
-        json.dumps(timeline_bundle, indent=2), encoding="utf-8"
-    )
+    (analysis_dir / "timeline.json").write_text(json.dumps(timeline_bundle, indent=2), encoding="utf-8")
 
     # signal_quality.json
     sq_bundle = {
@@ -349,9 +362,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
         "generated_at": completed_at.isoformat(),
         "streams": [sq.to_dict() for sq in signal_quality],
     }
-    (analysis_dir / "signal_quality.json").write_text(
-        json.dumps(sq_bundle, indent=2), encoding="utf-8"
-    )
+    (analysis_dir / "signal_quality.json").write_text(json.dumps(sq_bundle, indent=2), encoding="utf-8")
 
     plugin_diag = {
         "run_id": run_id,
@@ -373,16 +384,15 @@ async def analyze_case(case_id: str) -> JSONResponse:
         "profile_deprioritized_plugins": list(deprioritized_ids),
         "plugin_execution_order": [p.manifest.plugin_id for p in plugins],
     }
-    (analysis_dir / "plugin_diagnostics.json").write_text(
-        json.dumps(plugin_diag, indent=2), encoding="utf-8"
-    )
+    (analysis_dir / "plugin_diagnostics.json").write_text(json.dumps(plugin_diag, indent=2), encoding="utf-8")
 
     # --- Write tuning profile used for this run ------------------------------
     # tuning_profile was resolved above and passed to each plugin's
     # forensic_analyze() call — persist it alongside the run artifacts so
     # downstream replay/validation can reconstruct the exact thresholds.
     (analysis_dir / "tuning_profile.json").write_text(
-        json.dumps(tuning_profile.to_dict(), indent=2), encoding="utf-8",
+        json.dumps(tuning_profile.to_dict(), indent=2),
+        encoding="utf-8",
     )
 
     # --- Record analysis run in case -----------------------------------------
@@ -431,19 +441,22 @@ async def analyze_case(case_id: str) -> JSONResponse:
     svc.save_case(case)
 
     # --- Audit: analysis completed -------------------------------------------
-    svc._append_audit(case_id, AuditEntry(
-        event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
-        timestamp=completed_at,
-        actor="api",
-        action=AuditAction.ANALYSIS_COMPLETED,
-        object_type="analysis",
-        object_id=run_id,
-        details={
-            "findings_count": run.findings_count,
-            "plugins_run": len(plugins),
-            "overall_score": overall_score,
-        },
-    ))
+    svc._append_audit(
+        case_id,
+        AuditEntry(
+            event_id=f"AUD-{uuid.uuid4().hex[:8].upper()}",
+            timestamp=completed_at,
+            actor="api",
+            action=AuditAction.ANALYSIS_COMPLETED,
+            object_type="analysis",
+            object_id=run_id,
+            details={
+                "findings_count": run.findings_count,
+                "plugins_run": len(plugins),
+                "overall_score": overall_score,
+            },
+        ),
+    )
 
     # --- Build response ------------------------------------------------------
     meta = flight.metadata
@@ -464,6 +477,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
 
     try:
         from goose.core.narrative import generate_human_narrative, generate_narrative
+
         narr_meta = {
             "duration_str": duration_str,
             "vehicle_type": meta.vehicle_type,
@@ -480,49 +494,52 @@ async def analyze_case(case_id: str) -> JSONResponse:
         logger.debug("Narrative generation failed: %s", exc)
         narrative = narrative_human = None
 
-    return JSONResponse({
-        "ok": True,
-        "case_id": case_id,
-        "run_id": run.run_id,
-        "evidence_id": ev.evidence_id,
-        "profile": profile_cfg.to_dict(),
-        "overall_score": overall_score,
-        "narrative": narrative,
-        "narrative_human": narrative_human,
-        "timeseries": timeseries,
-        "metadata": {
-            "filename": ev.filename,
-            "autopilot": meta.autopilot,
-            "vehicle_type": meta.vehicle_type,
-            "firmware_version": meta.firmware_version,
-            "hardware": meta.hardware,
-            "duration_sec": round(duration_sec, 1),
-            "duration_str": duration_str,
-            "start_time_utc": start_time_str,
-            "log_format": meta.log_format,
-            "motor_count": meta.motor_count,
-            "primary_mode": flight.primary_mode,
-            "crashed": flight.crashed,
-            "crash_confidence": flight.crash_confidence,
-            "crash_signals": flight.crash_signals,
-        },
-        "parse_diagnostics": parse_result.diagnostics.to_dict(),
-        "summary": {
-            "total_findings": len(all_findings),
-            "by_severity": findings_by_severity,
-            "plugins_run": len(plugins),
-            "plugin_errors": plugin_errors,
-            "hypotheses_count": len(hypotheses),
-        },
-        "findings": [f.to_dict() for f in forensic_findings],
-        "hypotheses": [h.to_dict() for h in hypotheses],
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "case_id": case_id,
+            "run_id": run.run_id,
+            "evidence_id": ev.evidence_id,
+            "profile": profile_cfg.to_dict(),
+            "overall_score": overall_score,
+            "narrative": narrative,
+            "narrative_human": narrative_human,
+            "timeseries": timeseries,
+            "metadata": {
+                "filename": ev.filename,
+                "autopilot": meta.autopilot,
+                "vehicle_type": meta.vehicle_type,
+                "firmware_version": meta.firmware_version,
+                "hardware": meta.hardware,
+                "duration_sec": round(duration_sec, 1),
+                "duration_str": duration_str,
+                "start_time_utc": start_time_str,
+                "log_format": meta.log_format,
+                "motor_count": meta.motor_count,
+                "primary_mode": flight.primary_mode,
+                "crashed": flight.crashed,
+                "crash_confidence": flight.crash_confidence,
+                "crash_signals": flight.crash_signals,
+            },
+            "parse_diagnostics": parse_result.diagnostics.to_dict(),
+            "summary": {
+                "total_findings": len(all_findings),
+                "by_severity": findings_by_severity,
+                "plugins_run": len(plugins),
+                "plugin_errors": plugin_errors,
+                "hypotheses_count": len(hypotheses),
+            },
+            "findings": [f.to_dict() for f in forensic_findings],
+            "hypotheses": [h.to_dict() for h in hypotheses],
+        }
+    )
 
 
 @router.get("/{case_id}/findings")
 async def get_findings(case_id: str) -> JSONResponse:
     """Return forensic findings from the most recent analysis run."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -537,14 +554,16 @@ async def get_findings(case_id: str) -> JSONResponse:
         bundle = json.loads(findings_path.read_text(encoding="utf-8"))
         if isinstance(bundle, dict) and "findings" in bundle:
             findings = bundle["findings"]
-            return JSONResponse({
-                "ok": True,
-                "findings_version": bundle.get("findings_version"),
-                "run_id": bundle.get("run_id"),
-                "evidence_id": bundle.get("evidence_id"),
-                "findings": findings,
-                "count": len(findings),
-            })
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "findings_version": bundle.get("findings_version"),
+                    "run_id": bundle.get("run_id"),
+                    "evidence_id": bundle.get("evidence_id"),
+                    "findings": findings,
+                    "count": len(findings),
+                }
+            )
         if isinstance(bundle, list):
             return JSONResponse({"ok": True, "findings": bundle, "count": len(bundle), "findings_version": "1.0"})
         return JSONResponse({"ok": True, "findings": [], "count": 0, "findings_version": None})
@@ -556,6 +575,7 @@ async def get_findings(case_id: str) -> JSONResponse:
 async def get_hypotheses(case_id: str) -> JSONResponse:
     """Return hypothesis candidates from the most recent analysis run."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -569,13 +589,15 @@ async def get_hypotheses(case_id: str) -> JSONResponse:
     try:
         bundle = json.loads(hyp_path.read_text(encoding="utf-8"))
         hyps = bundle.get("hypotheses", []) if isinstance(bundle, dict) else []
-        return JSONResponse({
-            "ok": True,
-            "hypotheses_version": bundle.get("hypotheses_version") if isinstance(bundle, dict) else None,
-            "run_id": bundle.get("run_id") if isinstance(bundle, dict) else None,
-            "hypotheses": hyps,
-            "count": len(hyps),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "hypotheses_version": bundle.get("hypotheses_version") if isinstance(bundle, dict) else None,
+                "run_id": bundle.get("run_id") if isinstance(bundle, dict) else None,
+                "hypotheses": hyps,
+                "count": len(hyps),
+            }
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -584,6 +606,7 @@ async def get_hypotheses(case_id: str) -> JSONResponse:
 async def get_diagnostics(case_id: str) -> JSONResponse:
     """Return parse diagnostics from the most recent analysis run."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -605,15 +628,18 @@ async def get_diagnostics(case_id: str) -> JSONResponse:
 async def get_audit_log(case_id: str) -> JSONResponse:
     """Return the audit log for a case (oldest first)."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
         entries = svc.get_audit_log(case_id)
-        return JSONResponse({
-            "ok": True,
-            "audit": [e.to_dict() for e in entries],
-            "count": len(entries),
-        })
+        return JSONResponse(
+            {
+                "ok": True,
+                "audit": [e.to_dict() for e in entries],
+                "count": len(entries),
+            }
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Case not found: {case_id}") from exc
     except Exception as exc:
@@ -624,6 +650,7 @@ async def get_audit_log(case_id: str) -> JSONResponse:
 async def get_plugins(case_id: str) -> JSONResponse:
     """Return plugin manifests and (if available) per-plugin run diagnostics."""
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -643,10 +670,7 @@ async def get_plugins(case_id: str) -> JSONResponse:
         if plugin_inst:
             fp = fingerprint_plugin(plugin_inst)
             md["computed_fingerprint"] = fp
-            md["trust_verified"] = (
-                m.trust_state == "builtin_trusted"
-                or (m.sha256_hash and m.sha256_hash == fp)
-            )
+            md["trust_verified"] = m.trust_state == "builtin_trusted" or (m.sha256_hash and m.sha256_hash == fp)
         else:
             md["computed_fingerprint"] = ""
             md["trust_verified"] = False
@@ -662,10 +686,12 @@ async def get_plugins(case_id: str) -> JSONResponse:
         except (json.JSONDecodeError, ValueError, KeyError, OSError) as exc:
             logger.debug("Failed to load plugin diagnostics: %s", exc)
 
-    return JSONResponse({
-        "ok": True,
-        "manifests": manifests,
-        "plugin_run_info": plugin_run_info,
-        "count": len(manifests),
-        "policy_mode": trust_policy.mode.value,
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "manifests": manifests,
+            "plugin_run_info": plugin_run_info,
+            "count": len(manifests),
+            "policy_mode": trust_policy.mode.value,
+        }
+    )

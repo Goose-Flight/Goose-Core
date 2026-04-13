@@ -73,57 +73,60 @@ class AttitudeTrackingPlugin(Plugin):
         cfg = config or {}
         warn_deg = float(cfg.get("tracking_error_warning_deg", TRACKING_ERROR_WARNING_DEG))
         crit_deg = float(cfg.get("tracking_error_critical_deg", TRACKING_ERROR_CRITICAL_DEG))
-        osc_per_sec = float(
-            cfg.get("oscillation_sign_changes_per_sec", OSCILLATION_SIGN_CHANGES_PER_SEC)
-        )
+        osc_per_sec = float(cfg.get("oscillation_sign_changes_per_sec", OSCILLATION_SIGN_CHANGES_PER_SEC))
         merge_tol = float(cfg.get("merge_tolerance_sec", MERGE_TOLERANCE_SEC))
 
         # Need both attitude and setpoint data
         if flight.attitude is None or flight.attitude.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No attitude data available",
-                severity="info",
-                score=50,
-                description="No attitude data found in the flight log. Tracking error analysis skipped.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No attitude data available",
+                    severity="info",
+                    score=50,
+                    description="No attitude data found in the flight log. Tracking error analysis skipped.",
+                )
+            )
             return findings
 
         if not flight.has_attitude_setpoints or flight.attitude_setpoint.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="No attitude setpoint data available",
-                severity="info",
-                score=50,
-                description=(
-                    "Attitude setpoint data is not available. "
-                    "Tracking error analysis requires both attitude and attitude_setpoint streams."
-                ),
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="No attitude setpoint data available",
+                    severity="info",
+                    score=50,
+                    description=("Attitude setpoint data is not available. Tracking error analysis requires both attitude and attitude_setpoint streams."),
+                )
+            )
             return findings
 
         att = flight.attitude.copy()
         sp = flight.attitude_setpoint.copy()
 
         if "timestamp" not in att.columns or "timestamp" not in sp.columns:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="Attitude data missing timestamp column",
-                severity="info",
-                score=50,
-                description="Cannot merge attitude and setpoint data without 'timestamp' column.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="Attitude data missing timestamp column",
+                    severity="info",
+                    score=50,
+                    description="Cannot merge attitude and setpoint data without 'timestamp' column.",
+                )
+            )
             return findings
 
         merged = self._merge_on_timestamp(att, sp, merge_tol)
         if merged.empty:
-            findings.append(Finding(
-                plugin_name=self.name,
-                title="Could not merge attitude and setpoint data",
-                severity="info",
-                score=50,
-                description="No overlapping timestamps found between attitude and attitude_setpoint streams.",
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=self.name,
+                    title="Could not merge attitude and setpoint data",
+                    severity="info",
+                    score=50,
+                    description="No overlapping timestamps found between attitude and attitude_setpoint streams.",
+                )
+            )
             return findings
 
         findings.extend(self._check_tracking_error(merged, flight, warn_deg, crit_deg))
@@ -146,9 +149,7 @@ class AttitudeTrackingPlugin(Plugin):
         sp_sorted = sp.sort_values("timestamp").reset_index(drop=True)
 
         # Rename setpoint columns to avoid collisions (suffix _sp)
-        sp_renamed = sp_sorted.rename(
-            columns={c: f"{c}_sp" for c in sp_sorted.columns if c != "timestamp"}
-        )
+        sp_renamed = sp_sorted.rename(columns={c: f"{c}_sp" for c in sp_sorted.columns if c != "timestamp"})
 
         # Use merge_asof for nearest-timestamp join
         merged = pd.merge_asof(
@@ -227,40 +228,36 @@ class AttitudeTrackingPlugin(Plugin):
             }
 
         if not axis_results:
-            return [Finding(
-                plugin_name=self.name,
-                title="No matching attitude axes found for tracking analysis",
-                severity="info",
-                score=50,
-                description=(
-                    "Could not find matching roll/pitch/yaw columns in both attitude and setpoint data."
-                ),
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="No matching attitude axes found for tracking analysis",
+                    severity="info",
+                    score=50,
+                    description=("Could not find matching roll/pitch/yaw columns in both attitude and setpoint data."),
+                )
+            ]
 
         if worst == "pass":
-            return [Finding(
-                plugin_name=self.name,
-                title="Attitude tracking error within limits",
-                severity="pass",
-                score=95,
-                description=(
-                    f"All axes showed RMS tracking error below the warning threshold of "
-                    f"{TRACKING_ERROR_WARNING_DEG} degrees."
-                ),
-                evidence={
-                    "axes": axis_results,
-                    "warning_threshold_deg": TRACKING_ERROR_WARNING_DEG,
-                    "critical_threshold_deg": TRACKING_ERROR_CRITICAL_DEG,
-                },
-            )]
+            return [
+                Finding(
+                    plugin_name=self.name,
+                    title="Attitude tracking error within limits",
+                    severity="pass",
+                    score=95,
+                    description=(f"All axes showed RMS tracking error below the warning threshold of {TRACKING_ERROR_WARNING_DEG} degrees."),
+                    evidence={
+                        "axes": axis_results,
+                        "warning_threshold_deg": TRACKING_ERROR_WARNING_DEG,
+                        "critical_threshold_deg": TRACKING_ERROR_CRITICAL_DEG,
+                    },
+                )
+            ]
 
         if worst == "critical":
             severity = "critical"
             score = 15
-            title = (
-                f"Critical attitude tracking error — {worst_axis} RMS {worst_rms:.1f}° "
-                f"(threshold {TRACKING_ERROR_CRITICAL_DEG}°)"
-            )
+            title = f"Critical attitude tracking error — {worst_axis} RMS {worst_rms:.1f}° (threshold {TRACKING_ERROR_CRITICAL_DEG}°)"
             desc = (
                 f"Attitude tracking error is critically high on the {worst_axis} axis "
                 f"(RMS {worst_rms:.1f}°). "
@@ -269,28 +266,27 @@ class AttitudeTrackingPlugin(Plugin):
         else:
             severity = "warning"
             score = 50
-            title = (
-                f"Elevated attitude tracking error — {worst_axis} RMS {worst_rms:.1f}° "
-                f"(threshold {TRACKING_ERROR_WARNING_DEG}°)"
-            )
+            title = f"Elevated attitude tracking error — {worst_axis} RMS {worst_rms:.1f}° (threshold {TRACKING_ERROR_WARNING_DEG}°)"
             desc = (
                 f"Attitude tracking error exceeds the warning threshold on the {worst_axis} axis "
                 f"(RMS {worst_rms:.1f}°). "
                 "Check PID tuning and mechanical balance."
             )
 
-        return [Finding(
-            plugin_name=self.name,
-            title=title,
-            severity=severity,
-            score=score,
-            description=desc,
-            evidence={
-                "axes": axis_results,
-                "warning_threshold_deg": TRACKING_ERROR_WARNING_DEG,
-                "critical_threshold_deg": TRACKING_ERROR_CRITICAL_DEG,
-            },
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=title,
+                severity=severity,
+                score=score,
+                description=desc,
+                evidence={
+                    "axes": axis_results,
+                    "warning_threshold_deg": TRACKING_ERROR_WARNING_DEG,
+                    "critical_threshold_deg": TRACKING_ERROR_CRITICAL_DEG,
+                },
+            )
+        ]
 
     # ------------------------------------------------------------------
     # Oscillation detection
@@ -344,21 +340,23 @@ class AttitudeTrackingPlugin(Plugin):
         if not oscillating:
             return []
 
-        return [Finding(
-            plugin_name=self.name,
-            title=f"Attitude oscillation detected on {', '.join(oscillating)} axis/axes",
-            severity="warning",
-            score=40,
-            description=(
-                f"Rapid sign changes in tracking error detected on {oscillating} axes, "
-                f"suggesting oscillatory behavior. "
-                "This typically indicates PID gains are too aggressive. "
-                "Reduce P/D gains on the affected axes."
-            ),
-            evidence={
-                "oscillating_axes": oscillating,
-                "oscillation_threshold_per_sec": OSCILLATION_SIGN_CHANGES_PER_SEC,
-                "flight_duration_sec": round(duration, 1),
-                "axes": osc_evidence,
-            },
-        )]
+        return [
+            Finding(
+                plugin_name=self.name,
+                title=f"Attitude oscillation detected on {', '.join(oscillating)} axis/axes",
+                severity="warning",
+                score=40,
+                description=(
+                    f"Rapid sign changes in tracking error detected on {oscillating} axes, "
+                    f"suggesting oscillatory behavior. "
+                    "This typically indicates PID gains are too aggressive. "
+                    "Reduce P/D gains on the affected axes."
+                ),
+                evidence={
+                    "oscillating_axes": oscillating,
+                    "oscillation_threshold_per_sec": OSCILLATION_SIGN_CHANGES_PER_SEC,
+                    "flight_duration_sec": round(duration, 1),
+                    "axes": osc_evidence,
+                },
+            )
+        ]

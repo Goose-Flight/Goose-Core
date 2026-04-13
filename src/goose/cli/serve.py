@@ -18,9 +18,7 @@ def serve(host: str, port: int, live_reload: bool) -> None:
     try:
         import uvicorn
     except ImportError as exc:
-        raise click.ClickException(
-            "uvicorn is required to run the server. Install it with: pip install uvicorn"
-        ) from exc
+        raise click.ClickException("uvicorn is required to run the server. Install it with: pip install uvicorn") from exc
 
     click.echo(f"Goose API server starting on {host}:{port}")
     uvicorn.run(

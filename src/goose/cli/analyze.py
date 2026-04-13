@@ -64,13 +64,15 @@ def analyze(
         try:
             findings.extend(plugin.analyze(flight, {}))
         except Exception as exc:  # noqa: BLE001
-            findings.append(Finding(
-                plugin_name=plugin.name,
-                title=f"{plugin.name} plugin error",
-                severity="info",
-                score=50,
-                description=str(exc),
-            ))
+            findings.append(
+                Finding(
+                    plugin_name=plugin.name,
+                    title=f"{plugin.name} plugin error",
+                    severity="info",
+                    score=50,
+                    description=str(exc),
+                )
+            )
 
     if fmt == "json":
         report: dict[str, Any] = {

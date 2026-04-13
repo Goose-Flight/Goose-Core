@@ -26,6 +26,7 @@ async def get_timeline(case_id: str) -> JSONResponse:
     back to a legacy findings-derived view if the case has no analysis run yet.
     """
     from goose.web.cases_api import get_service
+
     try:
         svc = get_service()
         svc.get_case(case_id)
@@ -40,14 +41,16 @@ async def get_timeline(case_id: str) -> JSONResponse:
         try:
             bundle = json.loads(timeline_path.read_text(encoding="utf-8"))
             events = bundle.get("events", [])
-            return JSONResponse({
-                "ok": True,
-                "timeline_version": bundle.get("timeline_version", "2.0"),
-                "run_id": bundle.get("run_id"),
-                "events": events,
-                "count": len(events),
-                "message": "Structured timeline from latest analysis run.",
-            })
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "timeline_version": bundle.get("timeline_version", "2.0"),
+                    "run_id": bundle.get("run_id"),
+                    "events": events,
+                    "count": len(events),
+                    "message": "Structured timeline from latest analysis run.",
+                }
+            )
         except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass  # fall through to legacy reconstruction
 
@@ -61,18 +64,20 @@ async def get_timeline(case_id: str) -> JSONResponse:
             for f in bundle.get("findings", []):
                 t = f.get("start_time") or f.get("end_time")
                 if t is not None:
-                    events.append({
-                        "event_id": f.get("finding_id"),
-                        "event_type": "finding",
-                        "event_category": "finding",
-                        "label": f.get("title", ""),
-                        "start_time": t,
-                        "end_time": f.get("end_time"),
-                        "source": "plugin",
-                        "severity": f.get("severity"),
-                        "related_finding_ids": [f.get("finding_id")] if f.get("finding_id") else [],
-                        "notes": (f.get("description") or "")[:200],
-                    })
+                    events.append(
+                        {
+                            "event_id": f.get("finding_id"),
+                            "event_type": "finding",
+                            "event_category": "finding",
+                            "label": f.get("title", ""),
+                            "start_time": t,
+                            "end_time": f.get("end_time"),
+                            "source": "plugin",
+                            "severity": f.get("severity"),
+                            "related_finding_ids": [f.get("finding_id")] if f.get("finding_id") else [],
+                            "notes": (f.get("description") or "")[:200],
+                        }
+                    )
         except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
@@ -81,16 +86,18 @@ async def get_timeline(case_id: str) -> JSONResponse:
         try:
             diag = json.loads(diag_path.read_text(encoding="utf-8"))
             for mc in diag.get("mode_changes", []):
-                events.append({
-                    "event_id": None,
-                    "event_type": "mode_change",
-                    "event_category": "system",
-                    "label": f"Mode: {mc.get('from_mode', '?')} -> {mc.get('to_mode', '?')}",
-                    "start_time": mc.get("timestamp", 0),
-                    "end_time": None,
-                    "source": "parser",
-                    "severity": None,
-                })
+                events.append(
+                    {
+                        "event_id": None,
+                        "event_type": "mode_change",
+                        "event_category": "system",
+                        "label": f"Mode: {mc.get('from_mode', '?')} -> {mc.get('to_mode', '?')}",
+                        "start_time": mc.get("timestamp", 0),
+                        "end_time": None,
+                        "source": "parser",
+                        "severity": None,
+                    }
+                )
         except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
@@ -100,35 +107,42 @@ async def get_timeline(case_id: str) -> JSONResponse:
             prov = json.loads(prov_path.read_text(encoding="utf-8"))
             duration = prov.get("flight_duration_sec")
             if duration:
-                events.append({
-                    "event_id": None,
-                    "event_type": "phase",
-                    "event_category": "flight_phase",
-                    "label": "Flight start",
-                    "start_time": 0,
-                    "end_time": None,
-                    "source": "parser",
-                    "severity": None,
-                })
-                events.append({
-                    "event_id": None,
-                    "event_type": "phase",
-                    "event_category": "flight_phase",
-                    "label": "Flight end",
-                    "start_time": duration,
-                    "end_time": None,
-                    "source": "parser",
-                    "severity": None,
-                })
+                events.append(
+                    {
+                        "event_id": None,
+                        "event_type": "phase",
+                        "event_category": "flight_phase",
+                        "label": "Flight start",
+                        "start_time": 0,
+                        "end_time": None,
+                        "source": "parser",
+                        "severity": None,
+                    }
+                )
+                events.append(
+                    {
+                        "event_id": None,
+                        "event_type": "phase",
+                        "event_category": "flight_phase",
+                        "label": "Flight end",
+                        "start_time": duration,
+                        "end_time": None,
+                        "source": "parser",
+                        "severity": None,
+                    }
+                )
         except (json.JSONDecodeError, ValueError, KeyError, OSError):
             pass
 
     events.sort(key=lambda e: e.get("start_time") or 0)
-    return JSONResponse({
-        "ok": True,
-        "timeline_version": "2.0-legacy",
-        "events": events,
-        "count": len(events),
-        "message": "Timeline reconstructed from case artifacts (no analysis/timeline.json present)."
-                   if events else "No parsed data available yet. Run analysis first.",
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "timeline_version": "2.0-legacy",
+            "events": events,
+            "count": len(events),
+            "message": "Timeline reconstructed from case artifacts (no analysis/timeline.json present)."
+            if events
+            else "No parsed data available yet. Run analysis first.",
+        }
+    )

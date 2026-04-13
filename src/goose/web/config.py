@@ -50,9 +50,7 @@ class GooseSettings:
     def __init__(self) -> None:
         self.max_upload_mb = int(os.environ.get("GOOSE_MAX_UPLOAD_MB", "500"))
         self.max_attachment_mb = int(os.environ.get("GOOSE_MAX_ATTACHMENT_MB", "50"))
-        self.allowed_log_extensions = frozenset(
-            {".ulg", ".bin", ".log", ".tlog", ".csv"}
-        )
+        self.allowed_log_extensions = frozenset({".ulg", ".bin", ".log", ".tlog", ".csv"})
         self.api_token = os.environ.get("GOOSE_API_TOKEN") or None
         self.bind_host = os.environ.get("GOOSE_BIND_HOST", "127.0.0.1")
         self.port = int(os.environ.get("GOOSE_PORT", "8000"))

@@ -99,12 +99,16 @@ class TuningProfile:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> TuningProfile:
         d = dict(d)
-        d["analyzer_configs"] = [
-            AnalyzerConfigProfile.from_dict(c) for c in d.get("analyzer_configs", [])
-        ]
+        d["analyzer_configs"] = [AnalyzerConfigProfile.from_dict(c) for c in d.get("analyzer_configs", [])]
         known = {
-            "profile_id", "name", "version", "description", "created_at",
-            "is_default", "target_vehicle_class", "target_log_type",
+            "profile_id",
+            "name",
+            "version",
+            "description",
+            "created_at",
+            "is_default",
+            "target_vehicle_class",
+            "target_log_type",
             "analyzer_configs",
         }
         return cls(**{k: v for k, v in d.items() if k in known})
@@ -291,9 +295,7 @@ def _build_default_configs() -> list[AnalyzerConfigProfile]:
             thresholds=ThresholdSet(
                 threshold_set_id="payload_change_detection_default",
                 name="Payload Change Detection Defaults",
-                description=(
-                    "Conservative Phase 1 thresholds for candidate event detection"
-                ),
+                description=("Conservative Phase 1 thresholds for candidate event detection"),
                 values={
                     "current_delta_threshold": 3.0,
                     "sustained_duration_s": 1.5,

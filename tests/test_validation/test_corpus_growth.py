@@ -28,9 +28,7 @@ CORPUS_DIR = Path(__file__).parent.parent / "corpus"
 def test_corpus_has_at_least_ten_cases():
     """The corpus must have grown to at least 10 cases."""
     cases = load_corpus_manifest(CORPUS_DIR)
-    assert len(cases) >= 10, (
-        f"Expected at least 10 corpus cases, found {len(cases)}"
-    )
+    assert len(cases) >= 10, f"Expected at least 10 corpus cases, found {len(cases)}"
 
 
 def test_corpus_contains_required_new_cases():
@@ -72,9 +70,7 @@ def test_every_case_evidence_file_exists():
     cases = load_corpus_manifest(CORPUS_DIR)
     for c in cases:
         evidence = CORPUS_DIR / "cases" / c.corpus_id / "evidence" / c.evidence_filename
-        assert evidence.exists(), (
-            f"Evidence missing for {c.corpus_id}: {evidence}"
-        )
+        assert evidence.exists(), f"Evidence missing for {c.corpus_id}: {evidence}"
 
 
 # ---------------------------------------------------------------------------

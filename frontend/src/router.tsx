@@ -16,6 +16,17 @@ import { CreateCase } from '@/pages/cases/CreateCase'
 import { CaseDetail } from '@/pages/cases/CaseDetail'
 import { Settings } from '@/pages/Settings'
 import { Fleet } from '@/pages/Fleet'
+// Pro — Validation
+import { CampaignsPage } from '@/pages/pro/CampaignsPage'
+import { CampaignDetailPage } from '@/pages/pro/CampaignDetailPage'
+import { AccuracyPage } from '@/pages/pro/AccuracyPage'
+import { TrajectoryPage } from '@/pages/pro/TrajectoryPage'
+import { GPSDenialPage } from '@/pages/pro/GPSDenialPage'
+import { FleetProPage } from '@/pages/pro/FleetProPage'
+import { ReportsProPage } from '@/pages/pro/ReportsProPage'
+// Pro — Admin
+import { UsersPage } from '@/pages/pro/UsersPage'
+import { AuditTrailPage } from '@/pages/pro/AuditTrailPage'
 
 function ComingSoon({ title }: { title: string }) {
   return (
@@ -58,6 +69,19 @@ export const router = createBrowserRouter([
 
       // Settings
       { path: 'settings', element: <Settings /> },
+
+      // Pro — Validation
+      { path: 'pro/campaigns', element: <CampaignsPage /> },
+      { path: 'pro/campaigns/:campaignId', element: <CampaignDetailPage /> },
+      { path: 'pro/campaigns/:campaignId/accuracy', element: <AccuracyPage /> },
+      { path: 'pro/campaigns/:campaignId/trajectory', element: <TrajectoryPage /> },
+      { path: 'pro/campaigns/:campaignId/gps-denial', element: <GPSDenialPage /> },
+      { path: 'pro/fleet', element: <FleetProPage /> },
+      { path: 'pro/reports', element: <ReportsProPage /> },
+
+      // Pro — Admin
+      { path: 'pro/users', element: <UsersPage /> },
+      { path: 'pro/audit', element: <AuditTrailPage /> },
     ],
   },
 ])

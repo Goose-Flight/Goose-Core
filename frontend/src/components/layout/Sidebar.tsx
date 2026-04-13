@@ -34,6 +34,21 @@ const subsystemNav: (Omit<NavItem, 'path'> & { subpath: string })[] = [
   { subpath: '/timeline', label: 'Timeline', icon: <span className="text-base">📊</span>, color: 'text-goose-chart-6' },
 ]
 
+const proNav: NavItem[] = [
+  { path: '/pro/campaigns', label: 'Campaigns', section: 'VALIDATION', icon: <Icon d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /> },
+  { path: '/pro/fleet', label: 'Nav Systems', icon: <Icon d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /> },
+  { path: '/pro/reports', label: 'Reports', section: 'REPORTING', icon: <Icon d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /> },
+  { path: '/pro/users', label: 'Users', section: 'ADMIN', icon: <Icon d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /> },
+  { path: '/pro/audit', label: 'Audit Trail', icon: <Icon d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /> },
+]
+
+const campaignSubNav: (Omit<NavItem, 'path'> & { subpath: string })[] = [
+  { subpath: '', label: 'Overview', section: 'CAMPAIGN', icon: <Icon d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />, color: 'text-goose-accent' },
+  { subpath: '/accuracy', label: 'Accuracy', icon: <span className="text-base">🎯</span>, color: 'text-goose-chart-1' },
+  { subpath: '/trajectory', label: 'Trajectory', icon: <span className="text-base">🗺️</span>, color: 'text-goose-chart-2' },
+  { subpath: '/gps-denial', label: 'GPS Denial', icon: <span className="text-base">📡</span>, color: 'text-goose-chart-7' },
+]
+
 const bottomNav: NavItem[] = [
   { path: '/cases', label: 'Cases', section: 'INVESTIGATION', icon: <Icon d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /> },
   { path: '/fleet', label: 'Drone Fleet', section: 'FLEET', icon: <Icon d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /> },
@@ -74,6 +89,11 @@ export function Sidebar() {
   const analysisMatch = location.pathname.match(/^\/analyze\/([^/]+)/)
   const analysisId = analysisMatch?.[1] || currentAnalysis?.quick_analysis_id
   const hasAnalysis = !!analysisId
+
+  // Detect if we're in a campaign context
+  const campaignMatch = location.pathname.match(/^\/pro\/campaigns\/([^/]+)/)
+  const campaignId = campaignMatch?.[1]
+  const hasCampaign = !!campaignId
 
   let lastSection = ''
 
@@ -160,6 +180,50 @@ export function Sidebar() {
         {/* Separator */}
         <div className="my-2 mx-2 border-t border-goose-border" />
 
+        {/* Pro sections */}
+        {(() => { lastSection = '' })()}
+        {proNav.map((item) => {
+          const isActive = location.pathname === item.path ||
+            (item.path !== '/' && location.pathname.startsWith(item.path))
+          return (
+            <div key={item.path}>
+              {item.section && renderSection(item.section)}
+              <NavButton
+                item={item}
+                isActive={isActive}
+                collapsed={sidebarCollapsed}
+                onClick={() => navigate(item.path)}
+              />
+            </div>
+          )
+        })}
+
+        {/* Campaign subsystem nav — only when in a campaign */}
+        {hasCampaign && (
+          <>
+            {!sidebarCollapsed && (
+              <div className="px-3 pt-4 pb-1 text-[10px] font-semibold text-goose-text-muted uppercase tracking-widest">
+                CAMPAIGN
+              </div>
+            )}
+            {campaignSubNav.map((item) => {
+              const fullPath = `/pro/campaigns/${campaignId}${item.subpath}`
+              const isActive = item.subpath === ''
+                ? location.pathname === fullPath
+                : location.pathname.startsWith(fullPath)
+              return (
+                <NavButton
+                  key={item.subpath || 'campaign-overview'}
+                  item={{ ...item, path: fullPath }}
+                  isActive={isActive}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate(fullPath)}
+                />
+              )
+            })}
+          </>
+        )}
+
         {/* Bottom nav */}
         {bottomNav.map((item) => {
           const isActive = location.pathname === item.path ||
@@ -182,7 +246,7 @@ export function Sidebar() {
       <div className="px-3 py-3 border-t border-goose-border shrink-0">
         {!sidebarCollapsed && (
           <div className="text-[10px] text-goose-text-muted text-center">
-            Goose v1.3.5 &middot; Community
+            Goose v1.3.5 &middot; <span className="text-goose-accent font-semibold">PRO</span>
           </div>
         )}
         <button

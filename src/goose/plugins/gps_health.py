@@ -303,6 +303,11 @@ class GPSHealthPlugin(Plugin):
             return []
 
         gaps = ts.diff().dropna()
+        # Guard against uint64 timestamp overflow producing huge values
+        # Max reasonable gap is 24 hours (86400 seconds)
+        gaps = gaps[gaps < 86400]
+        if len(gaps) == 0:
+            return []
         dropout_mask = gaps > DROPOUT_GAP_SEC
         n_dropouts = int(dropout_mask.sum())
 

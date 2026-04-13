@@ -192,7 +192,8 @@ def create_app() -> FastAPI:
     # Static files — React frontend build takes priority over legacy
     # ------------------------------------------------------------------
     if _FRONTEND_DIR.exists() and (_FRONTEND_DIR / "index.html").exists():
-        app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIR / "assets")), name="frontend-assets")
+        _assets = _FRONTEND_DIR / "assets"
+        app.mount("/assets", StaticFiles(directory=str(_assets)), name="frontend-assets")
     if _STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
@@ -258,7 +259,8 @@ def create_app() -> FastAPI:
         @app.get("/{full_path:path}", include_in_schema=False)
         async def spa_catchall(full_path: str) -> Response:
             # Don't catch API routes or static assets
-            if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("assets/"):
+            skip = ("api/", "static/", "assets/")
+            if any(full_path.startswith(p) for p in skip):
                 raise HTTPException(status_code=404)
             # Check if it's a real file in the frontend dist
             file_path = _FRONTEND_DIR / full_path

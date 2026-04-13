@@ -71,7 +71,15 @@ export function TimeSeriesChart({
   const chartRef = useRef<uPlot | null>(null)
 
   useEffect(() => {
-    if (!containerRef.current || !data || data[0].length === 0) return
+    if (!containerRef.current || !data || !data[0] || data[0].length === 0) return
+
+    // Ensure data array length matches series + 1 (timestamps + N series)
+    // If mismatch, uPlot will crash with "Cannot read properties of undefined"
+    const expectedCols = series.length + 1
+    if (data.length < expectedCols) {
+      console.warn(`TimeSeriesChart: data has ${data.length} columns but ${series.length} series defined. Skipping render.`)
+      return
+    }
 
     const sync = getSync(syncKey)
 

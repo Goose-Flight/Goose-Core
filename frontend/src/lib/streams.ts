@@ -22,10 +22,16 @@ export function buildChartData(
 
   const keys = fields || Object.keys(stream).filter((k) => k !== 'timestamps')
   for (const key of keys) {
-    if (stream[key] && Array.isArray(stream[key])) {
+    const vals = stream[key]
+    if (vals && Array.isArray(vals) && vals.length > 0) {
       fieldNames.push(key)
-      arrays.push(stream[key])
+      arrays.push(vals)
     }
+  }
+
+  // If no data columns found, return empty
+  if (arrays.length <= 1) {
+    return { data: [new Float64Array(0)], fieldNames: [] }
   }
 
   return { data: arrays as uPlot.AlignedData, fieldNames }

@@ -163,7 +163,7 @@ export function UploadWizard() {
               </p>
               <p className="text-sm text-goose-accent mt-1">
                 {phase === 'uploading'
-                  ? `Uploading ${file?.name || 'file'}... ${uploadPct}%`
+                  ? uploadPct > 0 ? `Uploading... ${uploadPct}%` : 'Starting upload...'
                   : phase === 'done'
                     ? 'Preparing results...'
                     : analysisStages[stageIndex]
@@ -171,9 +171,15 @@ export function UploadWizard() {
               </p>
               {file && (
                 <p className="text-xs text-goose-text-muted mt-1">
-                  {(file.size / 1024 / 1024).toFixed(1)} MB
-                  {phase === 'analyzing' && file.size > 50 * 1024 * 1024 && ' — large file, this may take a minute'}
-                  {phase === 'analyzing' && file.size > 200 * 1024 * 1024 && ' or more'}
+                  {file.name} &middot; {(file.size / 1024 / 1024).toFixed(1)} MB
+                  {phase === 'uploading' && file.size > 50 * 1024 * 1024 && ' — large file, upload may take a moment'}
+                  {phase === 'analyzing' && file.size > 50 * 1024 * 1024 && ' — large file, analysis in progress...'}
+                  {phase === 'analyzing' && file.size > 200 * 1024 * 1024 && ' (this may take 1-2 minutes)'}
+                </p>
+              )}
+              {phase === 'analyzing' && (
+                <p className="text-[10px] text-goose-text-muted mt-2 animate-pulse">
+                  Still working — do not close this page
                 </p>
               )}
             </div>

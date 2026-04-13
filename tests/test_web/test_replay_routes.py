@@ -17,8 +17,8 @@ def client_and_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path)
 
     # Reset the case service so it picks up the new cwd
-    from goose.web import cases_api
     from goose.forensics import CaseService
+    from goose.web import cases_api
     cases_api._set_service(CaseService(base_dir=tmp_path / "cases"))
 
     from goose.web.app import create_app

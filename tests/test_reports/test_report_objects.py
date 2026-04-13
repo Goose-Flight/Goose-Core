@@ -26,7 +26,6 @@ from goose.forensics.reports import (
     EvidenceManifestReport,
     ForensicCaseReport,
     MissionSummaryReport,
-    QAValidationReport,
     QuickAnalysisSummary,
     ServiceRepairSummary,
     generate_evidence_manifest_report,
@@ -446,7 +445,7 @@ class TestFeatureTierMatrix:
         assert is_feature_enabled("something_not_in_matrix") is True
 
     def test_is_feature_enabled_gates_on_level(self):
-        from goose.features import FeatureGate, EntitlementLevel, is_feature_enabled
+        from goose.features import EntitlementLevel, FeatureGate, is_feature_enabled
         FeatureGate.set_level(EntitlementLevel.OSS_CORE)
         try:
             assert is_feature_enabled("quick_analysis") is True

@@ -20,14 +20,9 @@ from goose.forensics.models import AuditAction, AuditEntry, CaseExport
 from goose.forensics.reports import (
     AnomalyReport,
     CrashMishapReport,
-    EvidenceManifestReport,
-    ForensicCaseReport,
     MissionSummaryReport,
-    QAValidationReport,
-    QuickAnalysisSummary,
     ReplayMatchState,
     ReplayVerificationReport,
-    ServiceRepairSummary,
     generate_evidence_manifest_report,
     generate_forensic_case_report,
     generate_qa_validation_report,
@@ -100,7 +95,7 @@ async def get_exports(case_id: str) -> JSONResponse:
     from goose.web.cases_api import get_service
     try:
         svc = get_service()
-        case = svc.get_case(case_id)
+        svc.get_case(case_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Case not found: {case_id}")
 
@@ -373,7 +368,7 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
     # Get current versions
     from goose.plugins import PLUGIN_REGISTRY
     current_plugins: dict[str, str] = {}
-    for pid, p in PLUGIN_REGISTRY.items():
+    for _pid, p in PLUGIN_REGISTRY.items():
         current_plugins[p.name] = getattr(p, "version", "unknown")
 
     current_parser = ""
@@ -401,7 +396,7 @@ async def verify_replay(case_id: str, body: VerifyReplayRequest) -> JSONResponse
     # Check for missing data
     has_findings = bundle.get("findings") is not None
     has_hypotheses = bundle.get("hypotheses") is not None
-    has_provenance = bundle.get("provenance") is not None
+    bundle.get("provenance") is not None
 
     if drifts:
         match_state = ReplayMatchState.VERSION_DRIFT

@@ -8,8 +8,8 @@ import pytest
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight
-from goose.plugins.vibration import VibrationPlugin
 from goose.parsers.detect import parse_file
+from goose.plugins.vibration import VibrationPlugin
 
 
 @pytest.fixture
@@ -91,7 +91,7 @@ class TestVibrationCrashFlight:
         findings = plugin.analyze(vibration_crash_flight, {})
         overall = findings[0]
         if overall.evidence and "axes" in overall.evidence:
-            for axis, data in overall.evidence["axes"].items():
+            for _axis, data in overall.evidence["axes"].items():
                 assert "rms_ms2" in data
                 assert "classification" in data
 
@@ -131,6 +131,6 @@ class TestVibrationPluginInterface:
         findings = plugin.analyze(normal_flight, {})
         overall = findings[0]
         if overall.evidence and "axes" in overall.evidence:
-            for axis, data in overall.evidence["axes"].items():
+            for _axis, data in overall.evidence["axes"].items():
                 assert data["rms_ms2"] >= 0
                 assert data["peak_ms2"] >= 0

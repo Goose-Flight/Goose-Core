@@ -225,7 +225,7 @@ class PayloadChangeDetectionPlugin(Plugin):
         if df.empty:
             return None
         df = df.sort_values("timestamp").reset_index(drop=True)
-        return [(float(t), float(c)) for t, c in zip(df["timestamp"], df["current"])]
+        return [(float(t), float(c)) for t, c in zip(df["timestamp"], df["current"], strict=False)]
 
     def _get_throttle_stream(
         self, flight: Flight
@@ -251,7 +251,7 @@ class PayloadChangeDetectionPlugin(Plugin):
                     avg = df[motor_cols].mean(axis=1)
                     return [
                         (float(t), float(v))
-                        for t, v in zip(df["timestamp"], avg)
+                        for t, v in zip(df["timestamp"], avg, strict=False)
                     ]
 
         # Fallback: rc_input throttle channel
@@ -269,7 +269,7 @@ class PayloadChangeDetectionPlugin(Plugin):
                     df = df.sort_values("timestamp").reset_index(drop=True)
                     return [
                         (float(t), float(v))
-                        for t, v in zip(df["timestamp"], df[col])
+                        for t, v in zip(df["timestamp"], df[col], strict=False)
                     ]
 
         return None

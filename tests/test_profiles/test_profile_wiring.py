@@ -21,11 +21,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from goose.forensics.case_service import CaseService
-from goose.forensics.profiles import PROFILE_CONFIGS, get_profile
+from goose.forensics.profiles import get_profile
 from goose.plugins import PLUGIN_REGISTRY
 from goose.web import cases_api
 from goose.web.app import create_app
-
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 SAMPLE_ULG = FIXTURES / "px4_normal_flight.ulg"
@@ -117,7 +116,7 @@ class TestAnalyzeUsesProfilePlugins:
     def test_racer_runs_its_default_plugins(self, client: TestClient):
         case_id = _create_case_with_profile(client, "racer")
         _ingest(client, case_id)
-        data = _analyze(client, case_id)
+        _analyze(client, case_id)
 
         # The racer profile primary plugins should all appear in the
         # recorded plugin run list (unless they aren't registered).

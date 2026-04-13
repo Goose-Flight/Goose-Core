@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from goose.forensics.canonical import (
     EvidenceReference,
     FindingSeverity,

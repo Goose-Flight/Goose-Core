@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from goose.forensics.case_service import CaseService
-from goose.forensics.models import Attachment, AttachmentType, Case, CaseStatus
+from goose.forensics.models import Attachment, AttachmentType, Case
 from goose.web import cases_api
 from goose.web.app import create_app
 

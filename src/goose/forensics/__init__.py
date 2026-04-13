@@ -26,11 +26,11 @@ from goose.forensics.lifting import (
     lift_findings,
 )
 from goose.forensics.models import (
+    AnalysisRun,
     Attachment,
     AttachmentType,
     AuditAction,
     AuditEntry,
-    AnalysisRun,
     Case,
     CaseExport,
     CaseStatus,

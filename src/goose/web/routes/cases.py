@@ -7,14 +7,13 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from goose.forensics import CaseService, CaseStatus
+from goose.forensics import CaseStatus
 from goose.forensics.profiles import get_profile
 
 logger = logging.getLogger(__name__)

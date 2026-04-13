@@ -11,8 +11,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from goose.forensics.diff import (
     RunComparison,
     compare_runs,
@@ -21,7 +19,6 @@ from goose.forensics.diff import (
     load_comparison,
     save_comparison,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +16,6 @@ from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.core.scoring import compute_overall_score
 from goose.parsers.detect import parse_file
-from goose.plugins.base import Plugin
 
 
 def _parse_log(filepath: Path) -> Flight:

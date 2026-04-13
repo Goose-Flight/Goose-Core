@@ -54,7 +54,7 @@ def run(db_path: Path, top_n: int, export: str | None) -> None:
         sys.exit(0)
 
     available = [c for c in FEATURE_COLS if c in df.columns]
-    X_all = df[available].fillna(-1)
+    X_all = df[available].fillna(-1).replace([np.inf, -np.inf], -1)
 
     # Train on clean baseline (no crash signals, score > 40)
     clean_mask = (df["crash_confidence"] == 0.0) & (df["score"].fillna(0) > 40)

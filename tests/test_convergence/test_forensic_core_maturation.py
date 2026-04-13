@@ -10,15 +10,11 @@ Covers:
 
 from __future__ import annotations
 
-import io
-import json
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import pytest
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightMetadata
@@ -27,7 +23,6 @@ from goose.forensics.canonical import (
     FindingSeverity,
     ForensicFinding,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -447,8 +442,6 @@ class TestReplayDiffSummaryDescriptive:
     ) -> Any:
         """Build a RunComparison directly using diff internals for unit-testing."""
         from goose.forensics.diff import (
-            FindingDifference,
-            HypothesisDifference,
             RunComparison,
             _diff_findings,
         )
@@ -623,6 +616,7 @@ class TestCaseCompletenessEndpoint:
 
     def _make_client(self):
         from fastapi.testclient import TestClient
+
         from goose.web.app import create_app
         return TestClient(create_app(), raise_server_exceptions=False)
 
@@ -718,6 +712,7 @@ class TestCompletenessScoreIncreasesAfterAnalysis:
         # We directly test the scoring logic by checking that a case with
         # evidence has a higher score than one without, using the endpoint.
         from fastapi.testclient import TestClient
+
         from goose.web.app import create_app
 
         client = TestClient(create_app(), raise_server_exceptions=False)
@@ -744,6 +739,7 @@ class TestCompletenessScoreIncreasesAfterAnalysis:
     def test_completeness_score_is_bounded_0_100(self):
         """completeness_score must always be between 0 and 100 inclusive."""
         from fastapi.testclient import TestClient
+
         from goose.web.app import create_app
 
         client = TestClient(create_app(), raise_server_exceptions=False)
@@ -765,6 +761,7 @@ class TestMultiRunCompareEndpoint:
 
     def _make_client(self):
         from fastapi.testclient import TestClient
+
         from goose.web.app import create_app
         return TestClient(create_app(), raise_server_exceptions=False)
 

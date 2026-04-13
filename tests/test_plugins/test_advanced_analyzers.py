@@ -14,14 +14,12 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightMetadata
-from goose.plugins.environment_conditions import EnvironmentConditionsPlugin
 from goose.plugins.damage_impact_classification import DamageImpactClassificationPlugin
+from goose.plugins.environment_conditions import EnvironmentConditionsPlugin
 from goose.plugins.link_telemetry_health import LinkTelemetryHealthPlugin
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -411,7 +409,7 @@ class TestLinkTelemetryHealthDetection:
         # Create timestamps with deliberate gaps of 2 seconds
         ts_parts = []
         base = 0.0
-        for i in range(4):
+        for _i in range(4):
             chunk = np.arange(20, dtype=float) * 0.1 + base
             ts_parts.append(chunk)
             base = chunk[-1] + 2.5  # 2.5s gap between chunks

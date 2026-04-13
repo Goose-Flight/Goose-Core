@@ -73,7 +73,6 @@ def doctor(fix: bool) -> None:
     # Check parser
     console.print("  Parsers:", style="bold")
     try:
-        from goose.parsers.ulog import ULogParser
         console.print("  [green]OK[/green] ULog parser available")
     except Exception as exc:  # noqa: BLE001
         console.print(f"  [red]FAIL[/red] ULog parser: {exc}")

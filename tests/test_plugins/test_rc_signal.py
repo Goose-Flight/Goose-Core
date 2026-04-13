@@ -12,7 +12,6 @@ from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightMetadata
 from goose.plugins.rc_signal import RcSignalPlugin
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

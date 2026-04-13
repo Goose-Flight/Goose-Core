@@ -7,7 +7,7 @@ from typing import Any
 from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightEvent, ModeChange
 from goose.plugins.base import Plugin
-from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
+from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Modes that indicate an autonomous emergency response
 EMERGENCY_MODES = {"rtl", "return", "land", "emergency", "failsafe", "parachute", "termination"}

@@ -37,23 +37,23 @@ if TYPE_CHECKING:
 # Core built-in plugin classes
 # ---------------------------------------------------------------------------
 
-from goose.plugins.crash_detection import CrashDetectionPlugin
-from goose.plugins.vibration import VibrationPlugin
-from goose.plugins.battery_sag import BatterySagPlugin
-from goose.plugins.gps_health import GPSHealthPlugin
-from goose.plugins.motor_saturation import MotorSaturationPlugin
-from goose.plugins.ekf_consistency import EkfConsistencyPlugin
-from goose.plugins.rc_signal import RcSignalPlugin
 from goose.plugins.attitude_tracking import AttitudeTrackingPlugin
-from goose.plugins.position_tracking import PositionTrackingPlugin
-from goose.plugins.failsafe_events import FailsafeEventsPlugin
-from goose.plugins.log_health import LogHealthPlugin
-from goose.plugins.payload_change_detection import PayloadChangeDetectionPlugin
-from goose.plugins.mission_phase_anomaly import MissionPhaseAnomalyPlugin
-from goose.plugins.operator_action_sequence import OperatorActionSequencePlugin
-from goose.plugins.environment_conditions import EnvironmentConditionsPlugin
+from goose.plugins.battery_sag import BatterySagPlugin
+from goose.plugins.crash_detection import CrashDetectionPlugin
 from goose.plugins.damage_impact_classification import DamageImpactClassificationPlugin
+from goose.plugins.ekf_consistency import EkfConsistencyPlugin
+from goose.plugins.environment_conditions import EnvironmentConditionsPlugin
+from goose.plugins.failsafe_events import FailsafeEventsPlugin
+from goose.plugins.gps_health import GPSHealthPlugin
 from goose.plugins.link_telemetry_health import LinkTelemetryHealthPlugin
+from goose.plugins.log_health import LogHealthPlugin
+from goose.plugins.mission_phase_anomaly import MissionPhaseAnomalyPlugin
+from goose.plugins.motor_saturation import MotorSaturationPlugin
+from goose.plugins.operator_action_sequence import OperatorActionSequencePlugin
+from goose.plugins.payload_change_detection import PayloadChangeDetectionPlugin
+from goose.plugins.position_tracking import PositionTrackingPlugin
+from goose.plugins.rc_signal import RcSignalPlugin
+from goose.plugins.vibration import VibrationPlugin
 
 # Ordered list of Core built-in plugin classes.  Order here becomes the default
 # execution order when no profile preference is specified.

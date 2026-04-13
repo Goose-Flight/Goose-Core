@@ -5,10 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pandas as pd
-import pytest
 
 from goose.core.crash_detector import (
-    MECHANICAL,
     MOTOR_FAILURE,
     POWER_LOSS,
     UNKNOWN,

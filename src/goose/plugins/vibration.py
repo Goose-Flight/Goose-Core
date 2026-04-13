@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 
 from goose.core.finding import Finding
-from goose.core.flight import Flight, FlightPhase
+from goose.core.flight import Flight
 from goose.plugins.base import Plugin
-from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
+from goose.plugins.contract import PluginCategory, PluginManifest
 
 # PX4 vibration thresholds in m/s^2
 VIBRATION_GOOD = 15.0

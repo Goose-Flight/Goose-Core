@@ -24,22 +24,19 @@ Design rules:
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightEvent, FlightMetadata, FlightPhase, ModeChange
 from goose.forensics.canonical import FindingSeverity, ForensicFinding
-from goose.forensics.lifting import build_signal_quality, generate_hypotheses
-from goose.forensics.models import EvidenceItem, Provenance
+from goose.forensics.lifting import generate_hypotheses
+from goose.forensics.models import EvidenceItem
 from goose.forensics.timeline import build_timeline_from_findings
 from goose.parsers.diagnostics import ParseDiagnostics, StreamCoverage
 from goose.plugins import PLUGIN_REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -439,7 +436,7 @@ def test_plugin_findings_drive_hypothesis_generation(plugin_id, rich_flight):
         return  # Only PASS or INFO findings — theme won't be generated; that's correct
 
     generated_themes = {h.theme for h in hypotheses}
-    expected_themes = _PLUGIN_TO_THEMES[plugin_id]
+    _PLUGIN_TO_THEMES[plugin_id]
 
     # Check if ANY theme in _HYPOTHESIS_THEMES directly references this plugin_id
     # (accounting for lazy callables)
@@ -504,8 +501,8 @@ def test_forensic_findings_are_serializable(plugin_id, rich_flight):
 @pytest.mark.parametrize("plugin_id", ALL_PLUGIN_IDS)
 def test_plugin_diagnostics_returned(plugin_id, rich_flight):
     """forensic_analyze() must return a PluginDiagnostics object alongside findings."""
-    from goose.plugins.contract import PluginDiagnostics
     from goose.forensics.tuning import TuningProfile
+    from goose.plugins.contract import PluginDiagnostics
 
     plugin = PLUGIN_REGISTRY[plugin_id]
     ev = _make_evidence_item()

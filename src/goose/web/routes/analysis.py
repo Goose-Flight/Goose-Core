@@ -29,7 +29,6 @@ async def analyze_case(case_id: str) -> JSONResponse:
     from goose.web.app import (
         _compute_overall_score,
         _extract_timeseries,
-        _finding_to_dict,
         _format_duration,
     )
     from goose.web.cases_api import get_service
@@ -246,7 +245,7 @@ async def analyze_case(case_id: str) -> JSONResponse:
     completed_at = datetime.now()
 
     # --- Hypotheses and signal quality (still use lifting layer) -------------
-    from goose.forensics.lifting import generate_hypotheses, build_signal_quality
+    from goose.forensics.lifting import build_signal_quality, generate_hypotheses
     hypotheses = generate_hypotheses(
         forensic_findings,
         run_id=run_id,

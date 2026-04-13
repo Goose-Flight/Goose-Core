@@ -22,9 +22,8 @@ Implementation status: IMPLEMENTED (basic stream heuristics, Sprint 6)
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -32,9 +31,7 @@ import pandas as pd
 from goose import __version__ as _engine_version
 from goose.core.flight import (
     Flight,
-    FlightEvent,
     FlightMetadata,
-    ModeChange,
 )
 from goose.forensics.models import Provenance
 from goose.parsers.base import BaseParser
@@ -286,7 +283,7 @@ class CSVParser(BaseParser):
         diag.missing_streams = [sc.stream_name for sc in coverage if not sc.present]
 
         # Warn for critically absent streams
-        if not pos_df.empty is True or (isinstance(pos_df, pd.DataFrame) and pos_df.empty):
+        if pos_df.empty is not True or (isinstance(pos_df, pd.DataFrame) and pos_df.empty):
             if not any(sc.present for sc in coverage if sc.stream_name == "position"):
                 diag.warnings.append("No position data found — crash detection and position tracking unavailable.")
         if not any(sc.present for sc in coverage if sc.stream_name == "battery"):

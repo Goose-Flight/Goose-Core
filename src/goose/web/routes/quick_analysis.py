@@ -18,7 +18,6 @@ quick-analysis result into a real Investigation Case.
 
 from __future__ import annotations
 
-import json
 import logging
 import math
 import tempfile
@@ -184,9 +183,9 @@ async def quick_analysis(
                 plugin_errors.append({"plugin": plugin.name, "error": str(exc)})
 
         from goose.core.scoring import compute_overall_score
-        from goose.forensics.lifting import generate_hypotheses, build_signal_quality
+        from goose.forensics.lifting import build_signal_quality, generate_hypotheses
         from goose.forensics.timeline import build_full_timeline
-        from goose.web.timeseries_utils import extract_timeseries, extract_flight_path, extract_setpoint_path
+        from goose.web.timeseries_utils import extract_flight_path, extract_setpoint_path, extract_timeseries
 
         overall_score = compute_overall_score(thin_findings)
         hypotheses = generate_hypotheses(

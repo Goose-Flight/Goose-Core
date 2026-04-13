@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
-from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
+from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Thresholds
 SATURATION_THRESHOLD = 0.95       # 95% output — near saturation
@@ -302,14 +301,13 @@ class MotorSaturationPlugin(Plugin):
 
             in_sat = False
             seg_start_ts: float = 0.0
-            seg_start_i: int = 0
 
             for i, row in df.iterrows():
                 above = row[col] > SATURATION_THRESHOLD
                 if above and not in_sat:
                     in_sat = True
                     seg_start_ts = float(row["timestamp"])
-                    seg_start_i = int(i)
+                    int(i)
                 elif not above and in_sat:
                     seg_end_ts = float(df.loc[i - 1, "timestamp"]) if i > 0 else seg_start_ts
                     duration = seg_end_ts - seg_start_ts

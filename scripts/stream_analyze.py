@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS analyzed_logs (
     duration_sec        REAL,
     vehicle_type        TEXT,
     hardware            TEXT,
+    is_sitl             INTEGER NOT NULL DEFAULT 0,
     firmware            TEXT,
     primary_mode        TEXT,
     motor_count         INTEGER,
@@ -1199,6 +1200,7 @@ def _analyze(log_path: str, entry: dict) -> dict:
         result["duration_sec"]  = round(meta.duration_sec, 1)
         result["vehicle_type"]  = meta.vehicle_type
         result["hardware"]      = meta.hardware or meta.autopilot
+        result["is_sitl"]       = int("SITL" in (result["hardware"] or "").upper())
         result["firmware"]      = meta.firmware_version
         result["primary_mode"]  = flight.primary_mode
         result["motor_count"]   = meta.motor_count
@@ -1410,11 +1412,13 @@ def _run_checkpoint_analysis(conn: sqlite3.Connection, db_path: Path) -> None:
                          if c in df.columns]
             X = df[feat_cols].fillna(-1)
             if len(X) >= 30 and len(feat_cols) >= 3:
-                iso = IsolationForest(n_estimators=100, contamination=0.05,
-                                      random_state=42, n_jobs=-1)
-                scores_iso = -iso.fit_predict(X)  # 1=anomaly, -1=normal -> flip to 1=normal
+                # Subsample to 5K to keep checkpoint fast regardless of DB size
+                sample = X.sample(min(5000, len(X)), random_state=42) if len(X) > 5000 else X
+                iso = IsolationForest(n_estimators=50, contamination=0.05,
+                                      random_state=42, n_jobs=1)
+                scores_iso = -iso.fit_predict(sample)
                 n_anomalies = int((scores_iso == 1).sum())
-                print(f"  Anomalies (IsoForest): {n_anomalies}/{n} flagged as unusual")
+                print(f"  Anomalies (IsoForest): {n_anomalies}/{len(sample)} sampled flagged as unusual")
         except Exception:
             pass
 

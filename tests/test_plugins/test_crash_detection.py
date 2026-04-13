@@ -8,8 +8,8 @@ import pytest
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight
-from goose.plugins.crash_detection import CrashDetectionPlugin
 from goose.parsers.detect import parse_file
+from goose.plugins.crash_detection import CrashDetectionPlugin
 
 
 @pytest.fixture

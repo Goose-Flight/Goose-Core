@@ -8,7 +8,6 @@ from typing import Any
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 
-
 # Classification constants
 MOTOR_FAILURE = "motor_failure"
 POWER_LOSS = "power_loss"

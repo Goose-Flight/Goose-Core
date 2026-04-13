@@ -6,7 +6,6 @@ These are forensic primitives — tests must be thorough and unambiguous.
 from __future__ import annotations
 
 import json
-import os
 import stat
 from pathlib import Path
 

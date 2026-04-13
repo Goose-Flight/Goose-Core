@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
+import time
+import uuid
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-import time
-import uuid
-
 from goose.core.finding import Finding
-from goose.core.flight import Flight, FlightPhase
+from goose.core.flight import Flight
 from goose.plugins.base import Plugin
-from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
+from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Crash classification types
 CRASH_TYPES = (

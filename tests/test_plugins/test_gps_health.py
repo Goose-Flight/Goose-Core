@@ -8,8 +8,8 @@ import pytest
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight
-from goose.plugins.gps_health import GPSHealthPlugin
 from goose.parsers.detect import parse_file
+from goose.plugins.gps_health import GPSHealthPlugin
 
 
 @pytest.fixture

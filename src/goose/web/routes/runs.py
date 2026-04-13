@@ -68,7 +68,6 @@ async def get_run(case_id: str, run_id: str) -> JSONResponse:
             pass
 
     # Get findings count for this run
-    findings_count = run.findings_count
     hypotheses_count = 0
     hyp_path = case_dir / "analysis" / "hypotheses.json"
     if hyp_path.exists():

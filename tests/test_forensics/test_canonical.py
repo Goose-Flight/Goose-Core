@@ -12,8 +12,6 @@ Covers:
 import json
 from datetime import datetime
 
-import pytest
-
 from goose.forensics.canonical import (
     ConfidenceBand,
     EvidenceReference,
@@ -24,7 +22,6 @@ from goose.forensics.canonical import (
     SignalQuality,
 )
 from goose.parsers.diagnostics import ParseDiagnostics
-
 
 # ---------------------------------------------------------------------------
 # Helper fixture

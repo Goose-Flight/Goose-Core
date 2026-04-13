@@ -48,7 +48,7 @@ async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, e
                     if end > start and times:
                         filtered_t = []
                         filtered_v = []
-                        for t, v in zip(times, values):
+                        for t, v in zip(times, values, strict=False):
                             if start <= t <= end:
                                 filtered_t.append(t)
                                 filtered_v.append(v)
@@ -95,7 +95,7 @@ async def get_charts_data(case_id: str, streams: str = "", start: float = 0.0, e
                                     times = df["timestamp"].tolist()
                                     values = df[col].tolist()
                                     clean_t, clean_v = [], []
-                                    for t, v in zip(times, values):
+                                    for t, v in zip(times, values, strict=False):
                                         if t is not None and v is not None:
                                             try:
                                                 tf = float(t)

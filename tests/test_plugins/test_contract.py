@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from goose.core.flight import Flight, FlightMetadata
 from goose.forensics.canonical import ForensicFinding
@@ -17,7 +15,6 @@ from goose.plugins.contract import (
     PluginManifest,
     PluginTrustState,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -190,7 +187,7 @@ class TestAllPluginManifests:
     def test_manifest_serialization_roundtrip(self):
         from goose.plugins import PLUGIN_REGISTRY
 
-        for plugin_id, plugin in PLUGIN_REGISTRY.items():
+        for _plugin_id, plugin in PLUGIN_REGISTRY.items():
             d = plugin.manifest.to_dict()
             m2 = PluginManifest.from_dict(d)
             assert m2.plugin_id == plugin.manifest.plugin_id

@@ -524,7 +524,7 @@ def _parse_binary_dataflash(data: bytes) -> dict[str, list[dict[str, Any]]]:
                 # Decode bytes fields
                 decoded = []
                 fmt_chars = desc["fmt_str"]
-                for val, fc in zip(values, fmt_chars):
+                for val, fc in zip(values, fmt_chars, strict=False):
                     if isinstance(val, bytes):
                         decoded.append(val.rstrip(b"\x00").decode("ascii", errors="ignore"))
                     elif fc in _SCALE_100:

@@ -9,20 +9,16 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-import pytest
-
 from goose.forensics.models import (
+    AnalysisRun,
     AuditAction,
     AuditEntry,
-    AnalysisRun,
     Case,
-    CaseExport,
     CaseStatus,
     EvidenceItem,
     EvidenceManifest,
     Provenance,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

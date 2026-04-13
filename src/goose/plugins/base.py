@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight
@@ -102,12 +102,12 @@ class Plugin(ABC):
         ``analyze()``. Explicit entries in ``config`` take precedence over
         tuning-profile values so callers can override individual thresholds.
         """
-        from goose.plugins.contract import PluginDiagnostics as PDiag
         from goose.forensics.canonical import (
             EvidenceReference,
             FindingSeverity,
             ForensicFinding,
         )
+        from goose.plugins.contract import PluginDiagnostics as PDiag
 
         # Dispatch to native emission if the plugin has overridden it.
         # We check by comparing the bound method to the base class version —

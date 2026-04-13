@@ -10,7 +10,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
-from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
+from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Thresholds
 MIN_SATELLITES = 8          # below this is degraded GPS

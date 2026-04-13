@@ -19,7 +19,6 @@ from goose.plugins.contract import (
 )
 from goose.plugins.payload_change_detection import PayloadChangeDetectionPlugin
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

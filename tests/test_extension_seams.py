@@ -13,9 +13,6 @@ behaviour is simulated by directly calling the registration functions.
 from __future__ import annotations
 
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock
-
 
 # ---------------------------------------------------------------------------
 # Plugin seam tests
@@ -25,7 +22,7 @@ class TestGetAllPlugins:
     """get_all_plugins() returns Core built-ins and merges Pro extension plugins."""
 
     def test_returns_all_core_plugins(self):
-        from goose.plugins import get_all_plugins, PLUGIN_REGISTRY
+        from goose.plugins import PLUGIN_REGISTRY, get_all_plugins
         result = get_all_plugins()
         # Must contain every Core plugin
         for pid in PLUGIN_REGISTRY:
@@ -60,9 +57,9 @@ class TestGetAllPlugins:
         upgrade Core implementations with enhanced versions. Third-party extensions
         that should NOT override Core should use unique plugin_ids.
         """
-        from goose.plugins import get_all_plugins, PLUGIN_REGISTRY
+        from goose.plugins import PLUGIN_REGISTRY, get_all_plugins
         from goose.plugins.base import Plugin
-        from goose.plugins.contract import PluginManifest, PluginCategory, PluginTrustState
+        from goose.plugins.contract import PluginCategory, PluginManifest
 
         # Build a fake Pro plugin with same id as an existing Core plugin
         core_pid = next(iter(PLUGIN_REGISTRY))  # e.g. "crash_detection"
@@ -100,9 +97,9 @@ class TestGetAllPlugins:
 
     def test_pro_plugins_added_when_not_conflicting(self, monkeypatch):
         """A Pro plugin with a unique plugin_id is included in the merged set."""
-        from goose.plugins import get_all_plugins, PLUGIN_REGISTRY
+        from goose.plugins import get_all_plugins
         from goose.plugins.base import Plugin
-        from goose.plugins.contract import PluginManifest, PluginCategory, PluginTrustState
+        from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 
         class FakeUniqueProPlugin(Plugin):
             name = "pro_unique_test_plugin"
@@ -167,8 +164,8 @@ class TestRegisterParser:
         )
 
     def test_register_parser_adds_to_all_parsers(self):
-        from goose.parsers.detect import register_parser, _ALL_PARSERS
         from goose.parsers.base import BaseParser
+        from goose.parsers.detect import _ALL_PARSERS, register_parser
 
         class FakeParser(BaseParser):
             format_name = "fake_test_format"
@@ -196,8 +193,8 @@ class TestRegisterParser:
         assert _ALL_PARSERS[-1] is fake
 
     def test_register_parser_updates_implemented_cache(self):
-        from goose.parsers.detect import register_parser, _IMPLEMENTED_PARSERS
         from goose.parsers.base import BaseParser
+        from goose.parsers.detect import _IMPLEMENTED_PARSERS, register_parser
 
         class ImplementedFakeParser(BaseParser):
             format_name = "implemented_fake"
@@ -225,8 +222,8 @@ class TestRegisterParser:
         assert _IMPLEMENTED_PARSERS[-1] is fake
 
     def test_register_parser_unimplemented_not_in_implemented_cache(self):
-        from goose.parsers.detect import register_parser, _IMPLEMENTED_PARSERS
         from goose.parsers.base import BaseParser
+        from goose.parsers.detect import _IMPLEMENTED_PARSERS, register_parser
 
         class StubFakeParser(BaseParser):
             format_name = "stub_fake"
@@ -253,8 +250,8 @@ class TestRegisterParser:
 
     def test_core_parsers_remain_first(self):
         """Core parsers always appear before extension parsers."""
-        from goose.parsers.detect import register_parser, _ALL_PARSERS
         from goose.parsers.base import BaseParser
+        from goose.parsers.detect import _ALL_PARSERS, register_parser
         from goose.parsers.ulog import ULogParser
 
         class LastFakeParser(BaseParser):
@@ -359,11 +356,11 @@ class TestCapabilitySystem:
     """Capability system supports Pro tier and extensible capability registration."""
 
     def test_oss_core_tier_is_default(self):
-        from goose.features import FeatureGate, EntitlementLevel
+        from goose.features import EntitlementLevel, FeatureGate
         assert FeatureGate.current_level() == EntitlementLevel.OSS_CORE
 
     def test_set_level_to_local_pro(self):
-        from goose.features import FeatureGate, EntitlementLevel
+        from goose.features import EntitlementLevel, FeatureGate
         original = FeatureGate.current_level()
         try:
             FeatureGate.set_level(EntitlementLevel.LOCAL_PRO)
@@ -372,7 +369,7 @@ class TestCapabilitySystem:
             FeatureGate.set_level(original)
 
     def test_local_pro_features_unlocked_at_local_pro(self):
-        from goose.features import FeatureGate, EntitlementLevel, is_feature_enabled
+        from goose.features import EntitlementLevel, FeatureGate, is_feature_enabled
         original = FeatureGate.current_level()
         try:
             FeatureGate.set_level(EntitlementLevel.LOCAL_PRO)
@@ -382,7 +379,7 @@ class TestCapabilitySystem:
             FeatureGate.set_level(original)
 
     def test_local_pro_features_not_available_at_oss_core(self):
-        from goose.features import FeatureGate, EntitlementLevel, is_feature_enabled
+        from goose.features import EntitlementLevel, FeatureGate, is_feature_enabled
         original = FeatureGate.current_level()
         try:
             FeatureGate.set_level(EntitlementLevel.OSS_CORE)
@@ -399,13 +396,13 @@ class TestCapabilitySystem:
         assert "enterprise_gov" in tiers
 
     def test_register_capability_adds_to_matrix(self):
-        from goose.features import register_capability, is_feature_enabled, FEATURE_TIER_MATRIX, EntitlementLevel
+        from goose.features import FEATURE_TIER_MATRIX, EntitlementLevel, is_feature_enabled, register_capability
 
         test_feature = "__test_pro_capability_xyz__"
         register_capability(test_feature, EntitlementLevel.LOCAL_PRO)
         assert test_feature in FEATURE_TIER_MATRIX
 
-        original = from_level = None
+        original = None
         from goose.features import FeatureGate
         original = FeatureGate.current_level()
         try:

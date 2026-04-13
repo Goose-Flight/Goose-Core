@@ -13,14 +13,12 @@ from pathlib import Path
 
 import pytest
 
-from goose.parsers.base import BaseParser
 from goose.parsers.csv_parser import CSVParser
 from goose.parsers.dataflash import DataFlashParser
 from goose.parsers.detect import detect_format, detect_parser, parse_file, supported_formats
 from goose.parsers.diagnostics import ParseDiagnostics, ParseResult, StreamCoverage
 from goose.parsers.tlog import TLogParser
 from goose.parsers.ulog import ULogParser
-
 
 # ---------------------------------------------------------------------------
 # ParseDiagnostics model
@@ -128,8 +126,9 @@ class TestParseResultModel:
         assert result.success
 
     def test_flight_with_errors_is_not_success(self) -> None:
-        from goose.core.flight import Flight, FlightMetadata
         import pandas as pd
+
+        from goose.core.flight import Flight, FlightMetadata
         meta = FlightMetadata(autopilot="px4", log_format="ulog", source_file="x.ulg",
                               duration_sec=10.0, firmware_version="1.0",
                               vehicle_type="quadcopter", motor_count=4,
@@ -380,7 +379,7 @@ class TestParserContractVersioning:
         assert d_back.confidence_scope == "parser_parse_quality"
 
     def test_real_parse_confidence_scope_is_parser_parse_quality(
-        self, normal_flight_path: "Path"
+        self, normal_flight_path: Path
     ) -> None:
         """Ensure ULogParser sets the correct scope on real output."""
         parser = ULogParser()
@@ -418,7 +417,7 @@ class TestParserContractVersioning:
         assert recovered.contract_version == "1.0"
 
     def test_real_parse_provenance_has_contract_version(
-        self, normal_flight_path: "Path"
+        self, normal_flight_path: Path
     ) -> None:
         parser = ULogParser()
         result = parser.parse(normal_flight_path)
@@ -427,7 +426,7 @@ class TestParserContractVersioning:
 
     # -- Confidence scoring semantics --------------------------------------
 
-    def test_parser_confidence_is_float_in_range(self, normal_flight_path: "Path") -> None:
+    def test_parser_confidence_is_float_in_range(self, normal_flight_path: Path) -> None:
         parser = ULogParser()
         result = parser.parse(normal_flight_path)
         c = result.diagnostics.parser_confidence
@@ -443,7 +442,8 @@ class TestParserContractVersioning:
         """A completely unrecognisable file must have parser_confidence == 0.0."""
         from goose.parsers.dataflash import DataFlashParser
         parser = DataFlashParser()
-        import tempfile, os
+        import os
+        import tempfile
         # Write a file with no FMT content and no binary header so the parser
         # cannot identify it as DataFlash at all → confidence 0.0
         with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:

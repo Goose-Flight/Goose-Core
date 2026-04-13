@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 _SKIP_KEYWORDS = frozenset([
     "skipped", "not available", "not found", "no data", "no battery",
     "no attitude", "no gps", "no motor", "no rc", "no ekf", "no position",

@@ -10,15 +10,12 @@ from __future__ import annotations
 
 import uuid
 
-import pytest
-
 from goose.forensics.canonical import (
     EvidenceReference,
     FindingSeverity,
     ForensicFinding,
 )
 from goose.forensics.lifting import generate_hypotheses
-
 
 # ---------------------------------------------------------------------------
 # Helpers

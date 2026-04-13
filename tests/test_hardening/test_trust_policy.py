@@ -5,8 +5,6 @@ Hardening Sprint — test_trust_policy
 
 from __future__ import annotations
 
-import pytest
-
 from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
 from goose.plugins.trust import TrustPolicy, fingerprint_plugin
 

@@ -14,17 +14,15 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # A1: Legacy /api/analyze endpoint returns 410
 # ---------------------------------------------------------------------------
 
 class TestLegacyAnalyzeEndpoint:
     def test_legacy_analyze_returns_410(self):
-        from goose.web.app import create_app
         from fastapi.testclient import TestClient
+
+        from goose.web.app import create_app
 
         app = create_app()
         client = TestClient(app, raise_server_exceptions=False)
@@ -36,8 +34,9 @@ class TestLegacyAnalyzeEndpoint:
         assert response.status_code == 410
 
     def test_legacy_analyze_body_has_error_gone(self):
-        from goose.web.app import create_app
         from fastapi.testclient import TestClient
+
+        from goose.web.app import create_app
 
         app = create_app()
         client = TestClient(app, raise_server_exceptions=False)
@@ -50,8 +49,9 @@ class TestLegacyAnalyzeEndpoint:
         assert body["error"] == "gone"
 
     def test_legacy_analyze_body_has_alternatives(self):
-        from goose.web.app import create_app
         from fastapi.testclient import TestClient
+
+        from goose.web.app import create_app
 
         app = create_app()
         client = TestClient(app, raise_server_exceptions=False)

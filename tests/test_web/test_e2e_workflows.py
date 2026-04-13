@@ -41,8 +41,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from goose.forensics.case_service import CaseService
-from goose.web.app import create_app
 from goose.web import cases_api
+from goose.web.app import create_app
 
 # ---------------------------------------------------------------------------
 # Paths

@@ -43,8 +43,7 @@ Sprint 4 — Canonical Model Completion
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from goose.core.finding import Finding
@@ -52,7 +51,6 @@ if TYPE_CHECKING:
     from goose.parsers.diagnostics import ParseDiagnostics
 
 from goose.forensics.canonical import (
-    ConfidenceBand,
     EvidenceReference,
     FindingSeverity,
     ForensicFinding,
@@ -60,7 +58,6 @@ from goose.forensics.canonical import (
     HypothesisStatus,
     SignalQuality,
 )
-
 
 # ---------------------------------------------------------------------------
 # SignalQuality building

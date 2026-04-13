@@ -99,7 +99,7 @@ CAPABILITY_SAVED_TEMPLATES = "saved_templates"
 CAPABILITY_ADVANCED_EXPORT_ZIP = "advanced_export_zip"
 
 
-FEATURE_TIER_MATRIX: dict[str, "EntitlementLevel"] = {
+FEATURE_TIER_MATRIX: dict[str, EntitlementLevel] = {
     # Core analysis — all tiers
     "quick_analysis": EntitlementLevel.OSS_CORE,
     "investigation_case": EntitlementLevel.OSS_CORE,

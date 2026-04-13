@@ -12,7 +12,6 @@ from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightMetadata
 from goose.plugins.ekf_consistency import EkfConsistencyPlugin
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -73,7 +72,7 @@ def _warning_ekf(n: int = 300) -> pd.DataFrame:
 def _critical_ekf(n: int = 300) -> pd.DataFrame:
     """EKF data with innovations exceeding critical threshold."""
     ts = np.linspace(0.0, 60.0, n)
-    rng = np.random.default_rng(13)
+    np.random.default_rng(13)
     vel = np.full(n, 1.2)  # above critical threshold 1.0
     return pd.DataFrame({
         "timestamp": ts,

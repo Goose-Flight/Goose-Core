@@ -445,10 +445,11 @@ class TestAnalyzerSweep:
 
     def test_forensic_analyze_no_crash_on_crash_fixture(self, parsed_vibration_crash):
         """forensic_analyze() (the production path) must not crash on any plugin."""
-        from goose.plugins import get_all_plugins
-        from goose.forensics.models import EvidenceItem
         from datetime import datetime
+
+        from goose.forensics.models import EvidenceItem
         from goose.forensics.tuning import TuningProfile
+        from goose.plugins import get_all_plugins
 
         ev = EvidenceItem(
             evidence_id="EV-0001",

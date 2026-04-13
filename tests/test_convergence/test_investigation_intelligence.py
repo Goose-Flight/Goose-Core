@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -35,7 +34,6 @@ from goose.forensics.timeline import (
     build_timeline_from_findings,
     cluster_timeline_events,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -71,8 +69,8 @@ def _finding(
 
 def _make_flight_with_failsafe():
     """Create a minimal Flight-like object with failsafe events."""
-    from goose.core.flight import Flight, FlightMetadata, FlightEvent
-    from datetime import datetime
+
+    from goose.core.flight import Flight, FlightEvent, FlightMetadata
     meta = FlightMetadata(
         source_file="test.ulg",
         autopilot="px4",
@@ -105,8 +103,8 @@ def _make_flight_with_failsafe():
 
 def _make_flight_with_rc_dropout():
     """Create a minimal Flight with RC input that drops to zero."""
+
     from goose.core.flight import Flight, FlightMetadata
-    from datetime import datetime
     meta = FlightMetadata(
         source_file="test.ulg",
         autopilot="px4",

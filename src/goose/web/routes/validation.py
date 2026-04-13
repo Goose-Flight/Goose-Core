@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from goose import __version__
-from goose.validation.harness import ValidationSummary, run_validation
+from goose.validation.harness import run_validation
 from goose.validation.quality import compute_quality_report
 
 logger = logging.getLogger(__name__)

@@ -5,8 +5,6 @@ Hardening Sprint — test_report_objects
 
 from __future__ import annotations
 
-import pytest
-
 from goose.forensics.reports import (
     AnomalyReport,
     CrashMishapReport,

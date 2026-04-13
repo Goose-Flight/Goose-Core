@@ -31,7 +31,6 @@ from goose.forensics.models import (
     EvidenceManifest,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -18,10 +18,9 @@ AnalyzerPlugin     — Protocol that all forensic analyzer plugins must satisfy
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Protocol, runtime_checkable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from goose.core.flight import Flight

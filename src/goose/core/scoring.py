@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 # Per-plugin importance weights
 PLUGIN_WEIGHTS: dict[str, float] = {
     "crash_detection": 3.0,

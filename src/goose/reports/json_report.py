@@ -8,7 +8,7 @@ from typing import Any
 
 import goose
 from goose.core.finding import Finding
-from goose.core.flight import Flight, FlightMetadata
+from goose.core.flight import Flight
 from goose.core.scoring import compute_overall_score
 
 

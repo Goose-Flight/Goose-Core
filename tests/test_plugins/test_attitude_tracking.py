@@ -12,7 +12,6 @@ from goose.core.finding import Finding
 from goose.core.flight import Flight, FlightMetadata
 from goose.plugins.attitude_tracking import AttitudeTrackingPlugin
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -259,7 +258,7 @@ class TestAttitudeTrackingWarning:
         # At least one finding should have axes evidence
         assert len(tracking) >= 1
         for f in tracking:
-            for axis_name, axis_data in f.evidence["axes"].items():
+            for _axis_name, axis_data in f.evidence["axes"].items():
                 if isinstance(axis_data, dict) and "rms_error_deg" in axis_data:
                     assert axis_data["rms_error_deg"] >= 0.0
 

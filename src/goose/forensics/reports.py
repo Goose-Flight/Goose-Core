@@ -38,7 +38,6 @@ from typing import Any
 
 from goose.forensics.profiles import WordingPack, get_profile
 
-
 # ---------------------------------------------------------------------------
 # Replay verification
 # ---------------------------------------------------------------------------

@@ -9,15 +9,14 @@ Covers: POST /api/cases, GET /api/cases, GET /api/cases/{id},
 from __future__ import annotations
 
 import io
-import json
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from goose.forensics.case_service import CaseService
-from goose.web.app import create_app
 from goose.web import cases_api
+from goose.web.app import create_app
 
 
 @pytest.fixture

@@ -111,7 +111,7 @@ class TestProfileConfigCompleteness:
         assert cfg.profile_id == "default"
 
     def test_all_profiles_roundtrip_serialization(self):
-        for pid, cfg in PROFILE_CONFIGS.items():
+        for _pid, cfg in PROFILE_CONFIGS.items():
             d = cfg.to_dict()
             from goose.forensics.profiles import ProfileConfig
             restored = ProfileConfig.from_dict(d)

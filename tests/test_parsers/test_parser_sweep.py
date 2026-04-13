@@ -10,9 +10,6 @@ Validates parse_file() against all available fixtures and edge cases:
 
 from __future__ import annotations
 
-import os
-import stat
-import tempfile
 from pathlib import Path
 
 import pytest

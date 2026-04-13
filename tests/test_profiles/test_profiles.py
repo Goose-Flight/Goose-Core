@@ -18,7 +18,6 @@ from goose.forensics.profiles import (
 from goose.web import cases_api
 from goose.web.app import create_app
 
-
 ALL_PROFILE_IDS = {p.value for p in UserProfile}
 
 
@@ -69,7 +68,7 @@ class TestProfileRegistry:
 
 class TestProfileConfigRoundtrip:
     def test_all_profiles_roundtrip(self):
-        for pid, cfg in PROFILE_CONFIGS.items():
+        for _pid, cfg in PROFILE_CONFIGS.items():
             d = cfg.to_dict()
             restored = ProfileConfig.from_dict(d)
             assert restored.profile_id == cfg.profile_id

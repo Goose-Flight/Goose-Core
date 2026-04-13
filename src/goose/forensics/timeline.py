@@ -20,7 +20,7 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 logger = logging.getLogger(__name__)
 
@@ -721,8 +721,8 @@ def cluster_timeline_events(
 
 
 def build_full_timeline(
-    flight: "Flight | None",
-    forensic_findings: "list[ForensicFinding]",
+    flight: Flight | None,
+    forensic_findings: list[ForensicFinding],
     run_id: str,
     hypotheses: list | None = None,
 ) -> list[TimelineEvent]:

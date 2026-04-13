@@ -9,7 +9,7 @@ import pandas as pd
 from goose.core.finding import Finding
 from goose.core.flight import Flight
 from goose.plugins.base import Plugin
-from goose.plugins.contract import PluginCategory, PluginManifest, PluginTrustState
+from goose.plugins.contract import PluginCategory, PluginManifest
 
 # Streams to inspect
 KEY_STREAMS = ["position", "attitude", "battery", "gps", "motors"]

@@ -8,8 +8,8 @@ import pytest
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight
-from goose.plugins.motor_saturation import MotorSaturationPlugin
 from goose.parsers.detect import parse_file
+from goose.plugins.motor_saturation import MotorSaturationPlugin
 
 
 @pytest.fixture

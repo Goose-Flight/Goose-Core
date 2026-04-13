@@ -8,8 +8,8 @@ import pytest
 
 from goose.core.finding import Finding
 from goose.core.flight import Flight
-from goose.plugins.battery_sag import BatterySagPlugin
 from goose.parsers.detect import parse_file
+from goose.plugins.battery_sag import BatterySagPlugin
 
 
 @pytest.fixture

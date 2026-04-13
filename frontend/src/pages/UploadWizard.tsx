@@ -81,7 +81,8 @@ export function UploadWizard() {
   }, [isAnalyzing, phase, file])
 
   const handleAnalyze = async () => {
-    if (!file) return
+    console.log('handleAnalyze called, file:', file?.name, 'size:', file?.size)
+    if (!file) { console.log('No file selected!'); return }
     setAnalyzing(true)
     setStageIndex(0)
     setUploadPct(0)

@@ -7,8 +7,10 @@ import { SeverityBadge, ConfidenceBadge, Badge } from '@/components/ui/Badge'
 import { EvidenceBadge } from '@/components/forensic/EvidenceBadge'
 import { Button } from '@/components/ui/Button'
 import { PlotlyChart } from '@/components/charts/PlotlyChart'
+import { getProfileConfig, subsystemMeta } from '@/lib/profiles'
 
-const subsystemCards = [
+// REMOVED hardcoded subsystemCards — now driven by profile config
+const _legacySubsystemCards = [
   { path: 'motors', label: 'Motors', icon: '⚙️', desc: 'Saturation, imbalance, headroom', color: 'from-goose-chart-1/10' },
   { path: 'battery', label: 'Battery', icon: '🔋', desc: 'Voltage sag, cell health, temperature', color: 'from-goose-chart-3/10' },
   { path: 'gps', label: 'GPS / Nav', icon: '📡', desc: 'Fix quality, HDOP, EKF fusion', color: 'from-goose-chart-7/10' },
@@ -44,14 +46,26 @@ export function QuickResults() {
   const crashConf = metadata.crash_confidence ?? 0
 
   // Profile and engine info
+  const profileId = typeof currentAnalysis.profile === 'object' && currentAnalysis.profile !== null
+    ? (currentAnalysis.profile as Record<string, unknown>).profile_id as string || 'default'
+    : 'default'
   const profileName = typeof currentAnalysis.profile === 'object' && currentAnalysis.profile !== null
     ? (currentAnalysis.profile as Record<string, unknown>).name as string || 'default'
     : 'default'
   const engineVersion = currentAnalysis.engine_version || 'unknown'
+  const profileConfig = getProfileConfig(profileId)
 
   // Plugin stats from summary
   const pluginsRun = summary?.plugins_run ?? 0
   const pluginErrors = summary?.plugin_errors ?? []
+
+  // Profile-driven subsystem cards
+  const subsystemCards = profileConfig.subsystemOrder
+    .filter(id => subsystemMeta[id])
+    .map(id => ({
+      path: id,
+      ...subsystemMeta[id],
+    }))
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -245,7 +259,7 @@ export function QuickResults() {
       </Card>
 
       {/* Hypotheses */}
-      {hypotheses.length > 0 && (
+      {profileConfig.showHypotheses && hypotheses.length > 0 && (
         <Card>
           <CardTitle className="mb-4">Root-Cause Hypotheses</CardTitle>
           <div className="space-y-3">

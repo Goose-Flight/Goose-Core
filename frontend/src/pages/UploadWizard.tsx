@@ -64,14 +64,21 @@ export function UploadWizard() {
   const [uploadPct, setUploadPct] = useState(0)
   const [phase, setPhase] = useState<'idle' | 'uploading' | 'analyzing' | 'done'>('idle')
 
-  // Animated progress during analysis
+  // Animated progress during analysis — speed adapts to file size
   useEffect(() => {
-    if (!isAnalyzing) { setStageIndex(0); return }
+    if (!isAnalyzing || phase === 'uploading') { return }
+    // Larger files take longer — slow down the animation
+    const fileSizeMB = file ? file.size / 1024 / 1024 : 1
+    const intervalMs = fileSizeMB > 100 ? 3000 : fileSizeMB > 20 ? 2000 : 1200
     const interval = setInterval(() => {
-      setStageIndex((prev) => (prev < analysisStages.length - 1 ? prev + 1 : prev))
-    }, 1200)
+      setStageIndex((prev) => {
+        // Don't go past second-to-last until analysis actually completes
+        const maxStage = analysisStages.length - 2
+        return prev < maxStage ? prev + 1 : prev
+      })
+    }, intervalMs)
     return () => clearInterval(interval)
-  }, [isAnalyzing])
+  }, [isAnalyzing, phase, file])
 
   const handleAnalyze = async () => {
     if (!file) return
@@ -161,9 +168,11 @@ export function UploadWizard() {
                     : analysisStages[stageIndex]
                 }
               </p>
-              {file && phase === 'uploading' && (
+              {file && (
                 <p className="text-xs text-goose-text-muted mt-1">
                   {(file.size / 1024 / 1024).toFixed(1)} MB
+                  {phase === 'analyzing' && file.size > 50 * 1024 * 1024 && ' — large file, this may take a minute'}
+                  {phase === 'analyzing' && file.size > 200 * 1024 * 1024 && ' or more'}
                 </p>
               )}
             </div>

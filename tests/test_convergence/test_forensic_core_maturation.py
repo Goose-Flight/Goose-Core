@@ -23,6 +23,7 @@ from goose.forensics.canonical import (
     FindingSeverity,
     ForensicFinding,
 )
+from goose.web.config import settings as _web_settings
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -630,7 +631,12 @@ class TestCaseCompletenessEndpoint:
 
         from goose.web.app import create_app
 
-        return TestClient(create_app(), raise_server_exceptions=False)
+        app = create_app()
+        return TestClient(
+            app,
+            raise_server_exceptions=False,
+            headers={"Authorization": f"Bearer {_web_settings.api_token}"},
+        )
 
     def _create_case(self, client, profile: str = "default") -> str:
         """Create a case and return its case_id."""
@@ -726,7 +732,12 @@ class TestCompletenessScoreIncreasesAfterAnalysis:
 
         from goose.web.app import create_app
 
-        client = TestClient(create_app(), raise_server_exceptions=False)
+        app = create_app()
+        client = TestClient(
+            app,
+            raise_server_exceptions=False,
+            headers={"Authorization": f"Bearer {_web_settings.api_token}"},
+        )
 
         # Create case 1 (empty)
         resp1 = client.post("/api/cases/", json={"created_by": "test"})
@@ -753,7 +764,12 @@ class TestCompletenessScoreIncreasesAfterAnalysis:
 
         from goose.web.app import create_app
 
-        client = TestClient(create_app(), raise_server_exceptions=False)
+        app = create_app()
+        client = TestClient(
+            app,
+            raise_server_exceptions=False,
+            headers={"Authorization": f"Bearer {_web_settings.api_token}"},
+        )
         resp = client.post("/api/cases/", json={"created_by": "test"})
         case_id = resp.json()["case"]["case_id"]
 
@@ -776,7 +792,12 @@ class TestMultiRunCompareEndpoint:
 
         from goose.web.app import create_app
 
-        return TestClient(create_app(), raise_server_exceptions=False)
+        app = create_app()
+        return TestClient(
+            app,
+            raise_server_exceptions=False,
+            headers={"Authorization": f"Bearer {_web_settings.api_token}"},
+        )
 
     def _create_case(self, client) -> str:
         resp = client.post("/api/cases/", json={"created_by": "test"})

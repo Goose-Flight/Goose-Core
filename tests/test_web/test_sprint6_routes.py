@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 from goose.forensics.case_service import CaseService
 from goose.web import cases_api
 from goose.web.app import create_app
+from goose.web.config import settings
 
 
 @pytest.fixture
@@ -32,7 +33,7 @@ def tmp_case_service(tmp_path: Path) -> CaseService:
 def client(tmp_case_service: CaseService) -> TestClient:
     cases_api._set_service(tmp_case_service)
     app = create_app()
-    return TestClient(app)
+    return TestClient(app, headers={"Authorization": f"Bearer {settings.api_token}"})
 
 
 @pytest.fixture

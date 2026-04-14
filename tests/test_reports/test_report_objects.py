@@ -36,6 +36,7 @@ from goose.forensics.reports import (
 )
 from goose.web import cases_api
 from goose.web.app import create_app
+from goose.web.config import settings
 
 
 @pytest.fixture
@@ -48,7 +49,7 @@ def svc(tmp_path: Path) -> CaseService:
 @pytest.fixture
 def client(svc: CaseService) -> TestClient:
     app = create_app()
-    return TestClient(app)
+    return TestClient(app, headers={"Authorization": f"Bearer {settings.api_token}"})
 
 
 def _write_analysis(case_dir: Path, *, findings=None, hypotheses=None, timeline=None):

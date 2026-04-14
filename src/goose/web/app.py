@@ -329,7 +329,10 @@ def create_app() -> FastAPI:
             status_code=410,
             content={
                 "error": "gone",
-                "message": ("POST /api/analyze has been removed. Use the case-based workflow instead."),
+                "message": (
+                    "POST /api/analyze has been removed. "
+                    "Use POST /api/quick-analysis for triage or the case-based workflow instead."
+                ),
                 "alternatives": {
                     "create_case": "POST /api/cases",
                     "ingest_evidence": "POST /api/cases/{case_id}/evidence",

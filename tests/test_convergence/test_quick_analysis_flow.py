@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 from goose.forensics.case_service import CaseService
 from goose.web import cases_api
 from goose.web.app import create_app
+from goose.web.config import settings
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -36,7 +37,11 @@ def client(tmp_case_service: CaseService) -> TestClient:
     """TestClient with an injected in-memory CaseService."""
     cases_api._set_service(tmp_case_service)
     app = create_app()
-    return TestClient(app, raise_server_exceptions=False)
+    return TestClient(
+        app,
+        raise_server_exceptions=False,
+        headers={"Authorization": f"Bearer {settings.api_token}"},
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -55,7 +55,7 @@ def _fetch_json(url: str) -> Any:
         return json.loads(raw.decode("utf-8"))
 
 
-def _build_browse_url(start: int, length: int) -> str:
+def _build_browse_url(start: int, length: int, search: str = "") -> str:
     """Build the DataTables server-side request URL."""
     params = {
         "draw": "1",
@@ -72,6 +72,9 @@ def _build_browse_url(start: int, length: int) -> str:
         "order[0][column]": "1",
         "order[0][dir]": "desc",
     }
+    if search:
+        params["search[value]"] = search
+        params["search[regex]"] = "false"
     return BROWSE_URL + "?" + urllib.parse.urlencode(params)
 
 
@@ -109,16 +112,20 @@ def _parse_entry(row: list) -> dict:
     }
 
 
-def list_public_logs(limit: int = 50) -> list[dict]:
-    """Return up to *limit* public log entries from logs.px4.io, paginating as needed."""
+def list_public_logs(limit: int = 50, browse_start: int = 0, search: str = "") -> list[dict]:
+    """Return up to *limit* public log entries from logs.px4.io, paginating as needed.
+
+    browse_start: row offset in the DataTables API (useful for parallel workers).
+    search: optional search string passed to the DataTables API (e.g. "crash").
+    """
     PAGE_SIZE = 100
     entries: list[dict] = []
     total_announced = None
-    offset = 0
+    offset = browse_start
 
     while len(entries) < limit:
         fetch = min(PAGE_SIZE, limit - len(entries))
-        url = _build_browse_url(offset, fetch)
+        url = _build_browse_url(offset, fetch, search=search)
         try:
             data = _fetch_json(url)
         except urllib.error.URLError as exc:
@@ -126,8 +133,8 @@ def list_public_logs(limit: int = 50) -> list[dict]:
             break
 
         if total_announced is None:
-            total_announced = data.get("recordsTotal", 0)
-            print(f"  Database has {total_announced:,} total public logs.")
+            total_announced = data.get("recordsFiltered", data.get("recordsTotal", 0))
+            print(f"  Database has {total_announced:,} matching logs (start={browse_start}).")
 
         rows = data.get("data", [])
         if not rows:
@@ -230,8 +237,14 @@ def download_logs(
     crashes_only: bool,
     output_dir: str | Path,
     dry_run: bool = False,
+    browse_start: int = 0,
+    index_start: int = 1,
 ) -> int:
-    """Download up to *limit* public logs and save them under *output_dir*."""
+    """Download up to *limit* public logs and save them under *output_dir*.
+
+    browse_start: row offset in the DataTables API for splitting work across parallel workers.
+    index_start: starting number for filename index (avoids collisions across workers).
+    """
     output_dir = Path(output_dir)
     crashes_dir = output_dir / CRASHES_SUBDIR
     good_dir = output_dir / GOOD_FLIGHTS_SUBDIR
@@ -240,9 +253,19 @@ def download_logs(
         crashes_dir.mkdir(parents=True, exist_ok=True)
         good_dir.mkdir(parents=True, exist_ok=True)
 
-    fetch_count = limit * 4 if crashes_only else limit
-    print(f"Fetching log listing from {LOGS_BASE} ...")
-    entries = list_public_logs(limit=fetch_count)
+    # When fetching crash logs, use the API search filter to pre-filter results
+    # so browse_start is meaningful as a crash-relative offset.
+    if crashes_only:
+        search = "crash"
+        fetch_count = limit
+        label = "crash"
+    else:
+        search = ""
+        fetch_count = limit
+        label = "all"
+
+    print(f"Fetching log listing from {LOGS_BASE} (start={browse_start}, search={search!r}) ...")
+    entries = list_public_logs(limit=fetch_count, browse_start=browse_start, search=search)
 
     if not entries:
         print("No logs returned.  Check your internet connection.")
@@ -250,12 +273,12 @@ def download_logs(
 
     print(f"  Retrieved {len(entries)} entries.  Selecting up to {limit} ...")
 
-    if crashes_only:
+    if crashes_only and not search:
+        # No server-side filter — apply heuristic locally
         selected = [e for e in entries if _is_crash(e)]
-        label = "crash"
     else:
+        # Server already filtered (search="crash") or no filter needed
         selected = entries
-        label = "all"
 
     selected = selected[:limit]
     print(f"  Selected {len(selected)} {label} logs.\n")
@@ -264,7 +287,7 @@ def download_logs(
     crash_count = 0
     good_count = 0
 
-    for idx, entry in enumerate(selected, start=1):
+    for idx, entry in enumerate(selected, start=index_start):
         log_id = entry.get("log_id")
         if not log_id:
             print(f"  [skip] entry {idx} has no log_id")
@@ -339,6 +362,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true", default=False,
         help="List what would be downloaded without actually downloading",
     )
+    p.add_argument(
+        "--browse-start", type=int, default=0, metavar="N",
+        help="Row offset in the DataTables API — use with parallel workers (default: 0)",
+    )
+    p.add_argument(
+        "--index-start", type=int, default=1, metavar="N",
+        help="Starting index for output filenames (default: 1)",
+    )
     return p
 
 
@@ -350,10 +381,12 @@ def main() -> None:
         parser.error("--limit must be at least 1")
 
     print(f"Goose PX4 Log Downloader")
-    print(f"  source : {LOGS_BASE}")
-    print(f"  limit  : {args.limit}")
-    print(f"  mode   : {'crashes only' if args.crashes_only else 'all public logs'}")
-    print(f"  output : {args.output_dir}")
+    print(f"  source      : {LOGS_BASE}")
+    print(f"  limit       : {args.limit}")
+    print(f"  mode        : {'crashes only' if args.crashes_only else 'all public logs'}")
+    print(f"  browse-start: {args.browse_start}")
+    print(f"  index-start : {args.index_start}")
+    print(f"  output      : {args.output_dir}")
     if args.dry_run:
         print(f"  [DRY RUN]")
     print()
@@ -363,6 +396,8 @@ def main() -> None:
         crashes_only=args.crashes_only,
         output_dir=args.output_dir,
         dry_run=args.dry_run,
+        browse_start=args.browse_start,
+        index_start=args.index_start,
     )
 
     if count == 0:

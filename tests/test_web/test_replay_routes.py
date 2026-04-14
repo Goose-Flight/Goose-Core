@@ -23,9 +23,10 @@ def client_and_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     cases_api._set_service(CaseService(base_dir=tmp_path / "cases"))
 
     from goose.web.app import create_app
+    from goose.web.config import settings
 
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"Authorization": f"Bearer {settings.api_token}"})
     yield client, cases_api.get_service()
 
 

@@ -20,13 +20,21 @@ from pathlib import Path
 
 
 class TestLegacyAnalyzeEndpoint:
-    def test_legacy_analyze_returns_410(self):
+    def _make_client(self):
         from fastapi.testclient import TestClient
 
         from goose.web.app import create_app
+        from goose.web.config import settings
 
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
+        return TestClient(
+            app,
+            raise_server_exceptions=False,
+            headers={"Authorization": f"Bearer {settings.api_token}"},
+        )
+
+    def test_legacy_analyze_returns_410(self):
+        client = self._make_client()
 
         response = client.post(
             "/api/analyze",
@@ -35,12 +43,7 @@ class TestLegacyAnalyzeEndpoint:
         assert response.status_code == 410
 
     def test_legacy_analyze_body_has_error_gone(self):
-        from fastapi.testclient import TestClient
-
-        from goose.web.app import create_app
-
-        app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
+        client = self._make_client()
 
         response = client.post(
             "/api/analyze",
@@ -50,12 +53,7 @@ class TestLegacyAnalyzeEndpoint:
         assert body["error"] == "gone"
 
     def test_legacy_analyze_body_has_alternatives(self):
-        from fastapi.testclient import TestClient
-
-        from goose.web.app import create_app
-
-        app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
+        client = self._make_client()
 
         response = client.post(
             "/api/analyze",

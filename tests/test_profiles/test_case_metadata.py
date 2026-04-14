@@ -13,6 +13,7 @@ from goose.forensics.case_service import CaseService
 from goose.forensics.models import Attachment, AttachmentType, Case
 from goose.web import cases_api
 from goose.web.app import create_app
+from goose.web.config import settings
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def client(tmp_path: Path) -> TestClient:
     svc = CaseService(base_dir=tmp_path / "cases")
     cases_api._set_service(svc)
     app = create_app()
-    return TestClient(app)
+    return TestClient(app, headers={"Authorization": f"Bearer {settings.api_token}"})
 
 
 # ---------------------------------------------------------------------------

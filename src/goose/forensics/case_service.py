@@ -139,10 +139,13 @@ class CaseService:
     def get_case(self, case_id: str) -> Case:
         """Load a case from disk by case_id.
 
-        Raises FileNotFoundError if case does not exist.
-        Raises ValueError if case_id format is invalid (path traversal guard).
+        Raises FileNotFoundError if case does not exist or case_id format is
+        invalid (an invalid format ID can never correspond to an existing case).
         """
-        self._check_case_id(case_id)
+        try:
+            self._check_case_id(case_id)
+        except ValueError as exc:
+            raise FileNotFoundError(f"Case not found: {case_id}") from exc
         case_json = self.base_dir / case_id / "case.json"
         if not case_json.exists():
             raise FileNotFoundError(f"Case not found: {case_id}")

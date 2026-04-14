@@ -25,6 +25,7 @@ from goose.forensics.profiles import get_profile
 from goose.plugins import PLUGIN_REGISTRY
 from goose.web import cases_api
 from goose.web.app import create_app
+from goose.web.config import settings
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 SAMPLE_ULG = FIXTURES / "px4_normal_flight.ulg"
@@ -35,7 +36,7 @@ def client(tmp_path: Path) -> TestClient:
     svc = CaseService(base_dir=tmp_path / "cases")
     cases_api._set_service(svc)
     app = create_app()
-    return TestClient(app)
+    return TestClient(app, headers={"Authorization": f"Bearer {settings.api_token}"})
 
 
 def _fixture_bytes() -> bytes:

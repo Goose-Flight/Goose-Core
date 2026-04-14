@@ -20,6 +20,7 @@ from goose.forensics.case_service import CaseService
 from goose.forensics.profiles import PROFILE_CONFIGS, UserProfile, get_profile
 from goose.web import cases_api
 from goose.web.app import create_app
+from goose.web.config import settings
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 VIBRATION_CRASH = FIXTURES_DIR / "px4_vibration_crash.ulg"
@@ -44,7 +45,11 @@ def svc(tmp_path: Path) -> CaseService:
 @pytest.fixture
 def client(svc: CaseService) -> TestClient:
     app = create_app()
-    return TestClient(app, raise_server_exceptions=False)
+    return TestClient(
+        app,
+        raise_server_exceptions=False,
+        headers={"Authorization": f"Bearer {settings.api_token}"},
+    )
 
 
 def _run_analysis_with_profile(

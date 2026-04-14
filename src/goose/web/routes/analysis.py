@@ -28,10 +28,10 @@ async def analyze_case(case_id: str) -> JSONResponse:
     """Run the parser framework and all plugins against the case's evidence."""
     from goose.web.app import (
         _compute_overall_score,
-        _extract_timeseries,
         _format_duration,
     )
     from goose.web.cases_api import get_service
+    from goose.web.timeseries_utils import extract_timeseries as _extract_timeseries
 
     try:
         svc = get_service()

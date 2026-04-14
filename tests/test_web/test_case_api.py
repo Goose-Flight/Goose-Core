@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from goose.forensics.case_service import CaseService
 from goose.web import cases_api
 from goose.web.app import create_app
+from goose.web.config import settings
 
 
 @pytest.fixture
@@ -30,7 +31,10 @@ def client(tmp_case_service: CaseService) -> TestClient:
     """TestClient with an injected in-memory CaseService."""
     cases_api._set_service(tmp_case_service)
     app = create_app()
-    return TestClient(app)
+    # create_app() sets settings.api_token to the session token (generated or
+    # from GOOSE_API_TOKEN env var).  Inject it as the default Authorization
+    # header so all requests in this test session are authenticated.
+    return TestClient(app, headers={"Authorization": f"Bearer {settings.api_token}"})
 
 
 @pytest.fixture

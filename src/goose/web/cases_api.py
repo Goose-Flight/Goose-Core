@@ -36,8 +36,10 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 from goose.forensics import CaseService
+from goose.web.routes.cases import CreateCaseRequest
 
 logger = logging.getLogger(__name__)
 
@@ -66,3 +68,27 @@ def _set_service(svc: CaseService) -> None:
 from goose.web.routes import register_routes  # noqa: E402
 
 register_routes(router)
+
+# ---------------------------------------------------------------------------
+# Root-level routes registered directly on the parent router so they resolve
+# to /api/cases (no trailing slash).  This avoids the Starlette redirect_slashes
+# interaction with the SPA GET /{full_path:path} catch-all, which causes 405
+# Method Not Allowed when a POST /api/cases (no trailing slash) is received.
+#
+# The sub-router routes in goose.web.routes.cases still register /api/cases/
+# (with trailing slash) for backward compatibility — both paths work.
+# ---------------------------------------------------------------------------
+
+
+@router.post("", status_code=201, include_in_schema=False)
+async def _create_case_no_slash(body: CreateCaseRequest) -> JSONResponse:
+    from goose.web.routes.cases import create_case
+
+    return await create_case(body)
+
+
+@router.get("", include_in_schema=False)
+async def _list_cases_no_slash() -> JSONResponse:
+    from goose.web.routes.cases import list_cases
+
+    return await list_cases()

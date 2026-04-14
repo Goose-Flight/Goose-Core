@@ -236,6 +236,110 @@ def create_app() -> FastAPI:
         return JSONResponse({"ok": True, "settings": settings.as_dict()})
 
     # ------------------------------------------------------------------
+    # Recent runs — must be registered before the SPA catch-all
+    # ------------------------------------------------------------------
+    @app.get("/api/runs/recent", dependencies=[Depends(verify_token)])
+    async def recent_runs(limit: int = 20) -> JSONResponse:
+        """Return the most recent analysis runs across all cases."""
+        from goose.web.cases_api import get_service
+
+        limit = max(1, min(limit, 100))
+
+        try:
+            svc = get_service()
+            all_runs: list[Any] = []
+
+            for case in svc.list_cases():
+                case_id = case.case_id
+                if not case_id:
+                    continue
+
+                case_name = getattr(case, "case_name", None) or getattr(case, "title", None) or case_id
+                profile = getattr(case, "profile", "default") or "default"
+
+                for run in case.analysis_runs:
+                    all_runs.append(
+                        {
+                            "case_id": case_id,
+                            "case_name": case_name,
+                            "run_id": run.run_id,
+                            "profile": run.profile_id or profile,
+                            "started_at": run.started_at.isoformat(),
+                            "status": run.status,
+                            "findings_count": run.findings_count,
+                            "critical_count": run.critical_count,
+                            "warning_count": run.warning_count,
+                            "hypotheses_count": run.hypotheses_count,
+                            "engine_version": run.engine_version,
+                            "parser_name": run.parser_name,
+                        }
+                    )
+
+            all_runs.sort(key=lambda r: r.get("started_at", ""), reverse=True)
+            return JSONResponse(
+                {
+                    "ok": True,
+                    "runs": all_runs[:limit],
+                    "count": len(all_runs[:limit]),
+                    "limit": limit,
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to list recent runs")
+            raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+    # ------------------------------------------------------------------
+    # Plugin registry — must be registered before the SPA catch-all
+    # ------------------------------------------------------------------
+    @app.get("/api/plugins", dependencies=[Depends(verify_token)])
+    async def list_plugins() -> JSONResponse:
+        """Return metadata for all discovered plugins."""
+        try:
+            from goose.plugins.registry import load_plugins
+
+            plugins = load_plugins()
+            return JSONResponse(
+                {
+                    "plugins": [
+                        {
+                            "name": p.name,
+                            "description": p.description,
+                            "version": p.version,
+                            "min_mode": p.min_mode,
+                        }
+                        for p in plugins
+                    ],
+                    "count": len(plugins),
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to list plugins")
+            raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+    # ------------------------------------------------------------------
+    # Removed endpoint shim — POST /api/analyze (Convergence Sprint 1)
+    # The old single-shot analyze endpoint was removed. All analysis now
+    # goes through the case workflow:
+    #   POST /api/cases → POST /api/cases/{id}/evidence → POST /api/cases/{id}/analyze
+    # Return 410 Gone so clients receive a clear, actionable error.
+    # ------------------------------------------------------------------
+    @app.post("/api/analyze", dependencies=[Depends(verify_token)], status_code=410)
+    async def analyze_gone(request: Request) -> JSONResponse:
+        return JSONResponse(
+            status_code=410,
+            content={
+                "error": "gone",
+                "message": ("POST /api/analyze has been removed. Use the case-based workflow instead."),
+                "alternatives": {
+                    "create_case": "POST /api/cases",
+                    "ingest_evidence": "POST /api/cases/{case_id}/evidence",
+                    "run_analysis": "POST /api/cases/{case_id}/analyze",
+                    "quick_analysis": "POST /api/quick-analysis",
+                },
+            },
+        )
+
+    # ------------------------------------------------------------------
     # Routes
     # ------------------------------------------------------------------
 
@@ -283,81 +387,6 @@ def create_app() -> FastAPI:
                 return FileResponse(file_path)
             # Otherwise serve the SPA
             return _serve_spa(_FRONTEND_DIR / "index.html")
-
-    @app.get("/api/runs/recent", dependencies=[Depends(verify_token)])
-    async def recent_runs(limit: int = 20) -> JSONResponse:
-        """Return the most recent analysis runs across all cases."""
-        from goose.web.cases_api import get_service
-
-        limit = max(1, min(limit, 100))
-
-        try:
-            svc = get_service()
-            all_runs: list[dict] = []
-
-            for case in svc.list_cases():
-                case_id = case.case_id
-                if not case_id:
-                    continue
-
-                case_name = getattr(case, "case_name", None) or getattr(case, "title", None) or case_id
-                profile = getattr(case, "profile", "default") or "default"
-
-                for run in case.analysis_runs:
-                    all_runs.append(
-                        {
-                            "case_id": case_id,
-                            "case_name": case_name,
-                            "run_id": run.run_id,
-                            "profile": run.profile_id or profile,
-                            "started_at": run.started_at.isoformat(),
-                            "status": run.status,
-                            "findings_count": run.findings_count,
-                            "critical_count": run.critical_count,
-                            "warning_count": run.warning_count,
-                            "hypotheses_count": run.hypotheses_count,
-                            "engine_version": run.engine_version,
-                            "parser_name": run.parser_name,
-                        }
-                    )
-
-            all_runs.sort(key=lambda r: r.get("started_at", ""), reverse=True)
-            return JSONResponse(
-                {
-                    "ok": True,
-                    "runs": all_runs[:limit],
-                    "count": len(all_runs[:limit]),
-                    "limit": limit,
-                }
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Failed to list recent runs")
-            raise HTTPException(status_code=500, detail="Internal server error") from exc
-
-    @app.get("/api/plugins", dependencies=[Depends(verify_token)])
-    async def list_plugins() -> JSONResponse:
-        """Return metadata for all discovered plugins."""
-        try:
-            from goose.plugins.registry import load_plugins
-
-            plugins = load_plugins()
-            return JSONResponse(
-                {
-                    "plugins": [
-                        {
-                            "name": p.name,
-                            "description": p.description,
-                            "version": p.version,
-                            "min_mode": p.min_mode,
-                        }
-                        for p in plugins
-                    ],
-                    "count": len(plugins),
-                }
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Failed to list plugins")
-            raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     return app
 

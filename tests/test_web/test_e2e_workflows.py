@@ -43,6 +43,7 @@ from fastapi.testclient import TestClient
 from goose.forensics.case_service import CaseService
 from goose.web import cases_api
 from goose.web.app import create_app
+from goose.web.config import settings
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -67,7 +68,11 @@ def tmp_svc(tmp_path: Path) -> CaseService:
 def client(tmp_svc: CaseService) -> TestClient:
     cases_api._set_service(tmp_svc)
     app = create_app()
-    return TestClient(app, raise_server_exceptions=False)
+    return TestClient(
+        app,
+        raise_server_exceptions=False,
+        headers={"Authorization": f"Bearer {settings.api_token}"},
+    )
 
 
 @pytest.fixture
@@ -244,12 +249,12 @@ class TestQuickAnalysisFlow:
         assert res.status_code == 400
 
     def test_quick_analysis_txt_file_rejected(self, client: TestClient):
-        """POST /api/quick-analysis with .txt file → 422 (parse error)."""
+        """POST /api/quick-analysis with .txt file → 4xx (unsupported or parse error)."""
         res = client.post(
             "/api/quick-analysis",
             files={"file": ("not_a_log.txt", io.BytesIO(b"this is not a flight log"), "text/plain")},
         )
-        assert res.status_code in (400, 422)
+        assert res.status_code in (400, 415, 422)
 
     def test_quick_analysis_no_file_rejected(self, client: TestClient):
         """POST /api/quick-analysis with no file → 400 or 422."""
